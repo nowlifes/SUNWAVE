@@ -1,0 +1,144 @@
+export type SunMode = 'SUN' | 'SHADE';
+
+export type VenueCategory =
+  | 'cafe'
+  | 'restaurant'
+  | 'bar'
+  | 'rooftop'
+  | 'park'
+  | 'beach'
+  | 'viewpoint'
+  | 'square';
+
+export type Confidence = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+export interface OpeningHours {
+  open: string; // "08:00"
+  close: string; // "22:00"
+}
+
+export interface WeeklyHours {
+  [key: number]: OpeningHours | null; // 0=Sun ... 6=Sat
+}
+
+export interface GeoPoint {
+  lat: number;
+  lng: number;
+}
+
+export interface OutdoorPolygon {
+  points: GeoPoint[];
+  areaM2: number;
+  orientationDeg: number; // 0 = north-facing
+}
+
+export interface SunExposure {
+  percentage: number; // 0-100
+  confidence: Confidence;
+  startTime: string | null;
+  endTime: string | null;
+}
+
+export interface Venue {
+  id: string;
+  name: string;
+  category: VenueCategory;
+  latitude: number;
+  longitude: number;
+  address: string;
+  rating: number;
+  photo: string;
+  isOpen: boolean;
+  openingHours: WeeklyHours;
+  hasOutdoorArea: boolean;
+  outdoorPolygon: OutdoorPolygon | null;
+  buildingHeight: number; // meters
+  confidence: Confidence;
+  sunExposureByHour: number[]; // 24 values, 0-100
+  shadeExposureByHour: number[]; // 24 values, 0-100
+  description: string;
+}
+
+export interface SunData {
+  timestamp: Date;
+  sunrise: Date;
+  sunset: Date;
+  azimuth: number;
+  elevation: number;
+}
+
+export interface SunPosition {
+  azimuth: number;
+  elevation: number;
+}
+
+export interface BuildingFootprint {
+  id: string;
+  points: GeoPoint[];
+  height: number;
+}
+
+export interface Recommendation {
+  venue: Venue;
+  sunMatch: number;
+  sunPercentage: number;
+  shadePercentage: number;
+  walkTimeMin: number;
+  distanceM: number;
+  sunWindowStart: string | null;
+  sunWindowEnd: string | null;
+  sunWindowDurationMin: number;
+  confidence: Confidence;
+  sunArrivesInMin: number | null;
+  sunLeavesInMin: number | null;
+  isOpen: boolean;
+}
+
+export interface UserPreferences {
+  mode: SunMode;
+  preferredCategories: VenueCategory[];
+  location: GeoPoint | null;
+}
+
+export interface UserLocation {
+  coords: GeoPoint;
+  accuracy: number;
+  granted: boolean;
+}
+
+export interface WeatherData {
+  temperature: number;
+  condition: 'clear' | 'partly_cloudy' | 'cloudy' | 'rain' | 'windy';
+  rainProbability: number;
+  windSpeedKmh: number;
+  description: string;
+}
+
+export interface Report {
+  id: string;
+  venueId: string;
+  type: ReportType;
+  timestamp: number;
+}
+
+export type ReportType =
+  | 'terrace_shaded'
+  | 'terrace_sunny'
+  | 'terrace_missing'
+  | 'venue_closed'
+  | 'building_missing'
+  | 'outdoor_different'
+  | 'other';
+
+export type ScreenName = 'map' | 'discover' | 'saved' | 'profile';
+
+export interface DiscoverCategory {
+  id: string;
+  label: string;
+  icon: string;
+  mode: SunMode | 'ANY';
+  categories: VenueCategory[];
+  description: string;
+}
