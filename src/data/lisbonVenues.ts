@@ -155,11 +155,20 @@ interface VenueSpec {
 function venue(spec: VenueSpec): Venue {
   const seed = ++idCounter;
   const id = `v_${String(seed).padStart(2, '0')}`;
+  const groundAltitude = TerrainService.altitudeAtRounded({ lat: spec.lat, lng: spec.lng });
+  // A rooftop venue sits on TOP of its own building, not on the street below
+  // it: `TerrainService` only ever answers "how high is the ground here",
+  // which for a rooftop bar is the base of the car park it's built over, not
+  // where anyone is standing. See docs/memory sunwave-rooftop-vertical-bug —
+  // Park Bar measured at 219 sun-minutes/day vs 469 average before this line
+  // existed, read as if it stood in the street surrounded by its own building.
+  const altitude = spec.category === 'rooftop' ? groundAltitude + spec.buildingHeight : groundAltitude;
   const target = {
     id,
     lat: spec.lat,
     lng: spec.lng,
     orientationDeg: spec.polygon?.orientationDeg ?? 180,
+    altitude,
   };
   const band = VenueSunService.computeExposureBand(target, lisbonBuildings, TODAY);
   const sun = band.mid;
@@ -177,9 +186,10 @@ function venue(spec: VenueSpec): Venue {
     hasOutdoorArea: spec.hasOutdoor,
     outdoorPolygon: spec.polygon,
     buildingHeight: spec.buildingHeight,
-    // Ground elevation from the frozen ~90m terrain grid. This is what lets
-    // the shadow engine know a miradouro stands above the roofs below it.
-    altitude: TerrainService.altitudeAtRounded({ lat: spec.lat, lng: spec.lng }),
+    // Observer elevation actually used by the shadow engine: ground level,
+    // except for a rooftop venue where it's ground + its own building's
+    // height. See the comment above and Venue.altitude's doc.
+    altitude,
     confidence: spec.confidence,
     sunExposureByHour: sun,
     shadeExposureByHour: sun.map((s) => 100 - s),

@@ -348,7 +348,8 @@ class ShadowServiceClass {
     date: Date,
     lat: number,
     lng: number,
-    heightBias: number = 0
+    heightBias: number = 0,
+    altitudeOverride?: number
   ): number {
     if (!SunService.isDaytime(date, lat, lng)) return 100;
 
@@ -361,9 +362,12 @@ class ShadowServiceClass {
     const samples = samplePoints.length;
 
     // One terrain lookup for the whole venue: the sample ring has a 15m radius
-    // and the DEM cell is ~90m, so every sample sits in the same cell anyway.
-    // Sampling per point would cost 12x for a difference the data cannot see.
-    const pointAltitude = TerrainService.altitudeAt(targetPoint);
+    // and the DEM cell is ~30m/90m, so every sample sits in the same cell
+    // anyway. Sampling per point would cost 12x for a difference the data
+    // cannot see. `altitudeOverride` is the venue's own elevation when it is
+    // known to sit above bare ground (a rooftop bar on its building's roof) —
+    // see the comment on `Venue.altitude` and `VenueSunService.targetOf`.
+    const pointAltitude = altitudeOverride ?? TerrainService.altitudeAt(targetPoint);
 
     for (const sp of samplePoints) {
       let inShadow = false;
@@ -509,7 +513,8 @@ class ShadowServiceClass {
     venueOrientation: number,
     buildings: BuildingFootprint[],
     date: Date,
-    heightBias: number = 0
+    heightBias: number = 0,
+    altitudeOverride?: number
   ): number {
     const testDate = new Date(date);
     testDate.setHours(hour, 30, 0, 0);
@@ -523,7 +528,8 @@ class ShadowServiceClass {
       testDate,
       venueLat,
       venueLng,
-      heightBias
+      heightBias,
+      altitudeOverride
     );
 
     const sunData = SunService.getSunData(testDate, venueLat, venueLng);

@@ -46,6 +46,11 @@ export interface SunTarget {
   lat: number;
   lng: number;
   orientationDeg: number;
+  /** Observer elevation, metres above sea level, when it's known to differ
+   *  from bare ground at this lat/lng (a rooftop bar on its building's roof,
+   *  a miradouro's own surveyed altitude). Omitted lets ShadowService read
+   *  ground level from TerrainService, as before. */
+  altitude?: number;
 }
 
 class VenueSunServiceClass {
@@ -115,7 +120,7 @@ class VenueSunServiceClass {
       const curve: number[] = new Array(24);
       for (let h = 0; h < 24; h++) {
         curve[h] = ShadowService.computeSunExposureForHour(
-          h, target.lat, target.lng, target.orientationDeg, nearby, date, heightBias
+          h, target.lat, target.lng, target.orientationDeg, nearby, date, heightBias, target.altitude
         );
       }
       return ReportService.applyToCurve(target.id, curve);
@@ -154,16 +159,7 @@ class VenueSunServiceClass {
 
   /** Convenience overload for an already-built Venue. */
   getSunExposureByHour(venue: Venue, buildings: BuildingFootprint[], date: Date): number[] {
-    return this.computeExposureCurve(
-      {
-        id: venue.id,
-        lat: venue.latitude,
-        lng: venue.longitude,
-        orientationDeg: venue.outdoorPolygon?.orientationDeg ?? DEFAULT_ORIENTATION_DEG,
-      },
-      buildings,
-      date
-    );
+    return this.computeExposureCurve(this.targetOf(venue), buildings, date);
   }
 
   /** Band for an already-built Venue, in SUN terms. */
@@ -177,6 +173,7 @@ class VenueSunServiceClass {
       lat: venue.latitude,
       lng: venue.longitude,
       orientationDeg: venue.outdoorPolygon?.orientationDeg ?? DEFAULT_ORIENTATION_DEG,
+      altitude: venue.altitude,
     };
   }
 
