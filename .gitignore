@@ -22,3 +22,5 @@ dist-ssr
 *.sw?
 .env
 scripts/.terrain-cache.json
+scripts/.anchors-cache.json
+scripts/.named-cache.json
