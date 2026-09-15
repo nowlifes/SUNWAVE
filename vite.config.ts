@@ -13,4 +13,9 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  // maplibre instancie son worker en `{ type: 'module' }` : le bundle worker
+  // doit sortir en ESM, sinon il est chargé comme module et échoue.
+  worker: {
+    format: 'es',
+  },
 });

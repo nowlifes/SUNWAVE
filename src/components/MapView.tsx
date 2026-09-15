@@ -5,7 +5,9 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 // que Vite ne peut pas détecter : le fichier n'était pas émis et répondait 404
 // en prod. Worker mort = toute source GeoJSON reste non chargée, donc zéro ombre
 // affichée alors que le fond raster et les marqueurs DOM continuaient de marcher.
-import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
+// `?worker&url` et pas `?url` : le worker importe ./maplibre-gl-shared.mjs, que
+// seul le bundling embarque — copié verbatim il échoue au chargement, en silence.
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import type { Venue, SunMode, GeoPoint, Recommendation } from '@/types';
 import { SunService } from '@/services/SunService';
 import { ShadowService } from '@/services/ShadowService';
