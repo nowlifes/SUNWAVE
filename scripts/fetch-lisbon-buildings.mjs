@@ -587,7 +587,13 @@ type RawBuilding = [number, [number, number][], number, number];
 
 const HEIGHT_SOURCES: HeightSource[] = ['tagged', 'levels', 'estimated'];
 
-const RAW_BUILDINGS: RawBuilding[] = ${JSON.stringify(compact)};
+// One tuple per line, not a single JSON.stringify(compact) blob: a 1.1MB
+// single line here made \`vite build\` (not \`vite\` dev/SSR, which is why this
+// went unnoticed) hang for good — a regex somewhere in the Rollup/Vite
+// pipeline backtracks catastrophically on a single line that long.
+const RAW_BUILDINGS: RawBuilding[] = [
+${compact.map((b) => JSON.stringify(b)).join(',\n')}
+];
 
 export const lisbonBuildings: BuildingFootprint[] = RAW_BUILDINGS.map(
   ([osmId, rawPoints, height, sourceIdx]) => {

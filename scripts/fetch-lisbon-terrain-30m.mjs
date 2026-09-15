@@ -75,6 +75,16 @@ const TILE =
  *  of its neighbours — 400m is well past the 150m neighbour radius. */
 const MARGIN_M = 400;
 
+/** A single multi-hundred-KB line (all elevations comma-joined) made
+ *  `vite build` hang for good — a regex somewhere in the Rollup/Vite pipeline
+ *  backtracks catastrophically on a line that long. Wrapping at N numbers per
+ *  line keeps every line short without bloating the file with indentation. */
+function wrapNumbers(nums, perLine) {
+  const lines = [];
+  for (let i = 0; i < nums.length; i += perLine) lines.push(nums.slice(i, i + perLine).join(','));
+  return lines.join(',\n');
+}
+
 /** The generated RAW_BUILDINGS literal is plain JSON (numbers and arrays only),
  *  so it can be read without evaluating the module or its imports. */
 function readFootprints() {
@@ -291,7 +301,9 @@ export const lisbonTerrain30: TerrainGrid = {
   lngStep: ${grid.lngStep},
   rows: ${rows},
   cols: ${cols},
-  elevations: [${elevations.join(',')}],
+  elevations: [
+${wrapNumbers(elevations, 40)}
+  ],
 };
 `;
 
