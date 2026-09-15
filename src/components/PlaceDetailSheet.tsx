@@ -4,6 +4,7 @@ import { RecommendationService } from '@/services/RecommendationService';
 import { VenueService } from '@/services/VenueService';
 import { ReportService } from '@/services/ReportService';
 import { MapService } from '@/services/MapService';
+import { lisbonHour, lisbonWeekday, lisbonMinutesOfDay } from '@/utils/lisbonTime';
 
 interface PlaceDetailSheetProps {
   venue: Venue;
@@ -42,7 +43,7 @@ export function PlaceDetailSheet({
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [saved, setSaved] = useState(isSaved);
 
-  const hour = currentDate.getHours();
+  const hour = lisbonHour(currentDate);
   const sunPct = venue.sunExposureByHour[hour] || 0;
   const shadePct = venue.shadeExposureByHour[hour] || 0;
   const displayPct = mode === 'SUN' ? sunPct : shadePct;
@@ -51,10 +52,10 @@ export function PlaceDetailSheet({
   const walkTime = recommendation?.walkTimeMin ?? MapService.walkTimeMinutes(distanceM);
 
   const isOpen = recommendation?.isOpen ?? (() => {
-    const day = currentDate.getDay();
+    const day = lisbonWeekday(currentDate);
     const hours = venue.openingHours[day];
     if (!hours) return false;
-    const nowMin = currentDate.getHours() * 60 + currentDate.getMinutes();
+    const nowMin = lisbonMinutesOfDay(currentDate);
     const [openH, openM] = hours.open.split(':').map(Number);
     const [closeH, closeM] = hours.close.split(':').map(Number);
     const openMin = openH * 60 + openM;

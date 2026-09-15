@@ -12,6 +12,7 @@ import type { Venue, SunMode, GeoPoint, Recommendation } from '@/types';
 import { SunService } from '@/services/SunService';
 import { ShadowService } from '@/services/ShadowService';
 import { lisbonBuildings } from '@/data/lisbonBuildings';
+import { lisbonHour } from '@/utils/lisbonTime';
 
 setWorkerUrl(maplibreWorkerUrl);
 
@@ -200,7 +201,7 @@ export function MapView({
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
-    const hour = currentDate.getHours();
+    const hour = lisbonHour(currentDate);
     const topScore = recommendations.length > 0 ? recommendations[0].sunMatch : -1;
     const recMap = new Map(recommendations.map((r) => [r.venue.id, r]));
 

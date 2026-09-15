@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { SunMode, Venue } from '@/types';
 import { RecommendationService } from '@/services/RecommendationService';
 import { VenueService } from '@/services/VenueService';
+import { lisbonHour } from '@/utils/lisbonTime';
 
 interface SavedScreenProps {
   savedVenues: Venue[];
@@ -13,7 +14,7 @@ interface SavedScreenProps {
 
 export function SavedScreen({ savedVenues, currentDate, mode, onVenueSelect, onRemove }: SavedScreenProps) {
   const [activeTab, setActiveTab] = useState<'sun' | 'shade'>('sun');
-  const hour = currentDate.getHours();
+  const hour = lisbonHour(currentDate);
   const currentMode = activeTab === 'sun' ? 'SUN' : 'SHADE' as SunMode;
 
   const displayVenues = savedVenues.filter((v) => {

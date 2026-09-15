@@ -5,6 +5,7 @@ import { WeatherService } from './WeatherService';
 import { SunService } from './SunService';
 import { VenueSunService } from './VenueSunService';
 import { lisbonBuildings } from '@/data/lisbonBuildings';
+import { lisbonHour, lisbonMinute, lisbonMinutesOfDay, lisbonWeekday } from '@/utils/lisbonTime';
 
 // Reads through VenueSunService (real ShadowService physics against real
 // buildings, memoized per venue+day) using the explicit `date` this service
@@ -37,7 +38,7 @@ class RecommendationServiceClass {
   ): Recommendation[] {
     const venues = VenueService.getVenuesByCategory(categories);
     const wx = weather || WeatherService.getCurrentWeather();
-    const hour = date.getHours();
+    const hour = lisbonHour(date);
 
     const recs: Recommendation[] = venues.map((venue) =>
       this.scoreVenue(venue, mode, userLocation, date, hour, wx)
@@ -159,7 +160,7 @@ class RecommendationServiceClass {
       }
     }
 
-    const nowMin = date.getHours() * 60 + date.getMinutes();
+    const nowMin = lisbonMinutesOfDay(date);
 
     if (start === null) {
       let nextStart: number | null = null;
@@ -180,7 +181,7 @@ class RecommendationServiceClass {
 
     const startStr = `${String(start).padStart(2, '0')}:00`;
     const endStr = end !== null && end < 23 ? `${String(end + 1).padStart(2, '0')}:00` : '23:59';
-    const durationMin = ((end || 0) - currentHour) * 60 + (60 - date.getMinutes());
+    const durationMin = ((end || 0) - currentHour) * 60 + (60 - lisbonMinute(date));
 
     const currentlyExposed = exposure[currentHour] >= threshold;
     const arrivesIn = !currentlyExposed && start !== null ? start * 60 - nowMin : null;
@@ -196,11 +197,11 @@ class RecommendationServiceClass {
   }
 
   private checkOpen(venue: Venue, date: Date): boolean {
-    const day = date.getDay();
+    const day = lisbonWeekday(date);
     const hours = venue.openingHours[day];
     if (!hours) return false;
 
-    const nowMin = date.getHours() * 60 + date.getMinutes();
+    const nowMin = lisbonMinutesOfDay(date);
     const [openH, openM] = hours.open.split(':').map(Number);
     const [closeH, closeM] = hours.close.split(':').map(Number);
     const openMin = openH * 60 + openM;

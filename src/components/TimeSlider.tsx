@@ -1,5 +1,6 @@
 import { useRef, useCallback, useMemo, useState } from 'react';
 import type { SunMode } from '@/types';
+import { lisbonHour, lisbonMinute, setLisbonTime } from '@/utils/lisbonTime';
 
 interface TimeSliderProps {
   mode: SunMode;
@@ -15,8 +16,8 @@ export function TimeSlider({ mode, currentDate, onTimeChange }: TimeSliderProps)
   const isDragging = useRef(false);
   const [expanded, setExpanded] = useState(false);
 
-  const h = currentDate.getHours();
-  const m = currentDate.getMinutes();
+  const h = lisbonHour(currentDate);
+  const m = lisbonMinute(currentDate);
   const accent = mode === 'SUN' ? '#F59E0B' : '#64748B';
   const accentText = mode === 'SUN' ? 'text-sun-600' : 'text-shade-600';
   const accentBg = mode === 'SUN' ? 'bg-sun-500' : 'bg-shade-500';
@@ -26,7 +27,7 @@ export function TimeSlider({ mode, currentDate, onTimeChange }: TimeSliderProps)
   const pct = Math.max(0, Math.min(100, (totalMin / MAX_MIN) * 100));
   const nowPct = useMemo(() => {
     const n = new Date();
-    return Math.max(0, Math.min(100, ((n.getHours() - 7) * 60 + n.getMinutes()) / MAX_MIN * 100));
+    return Math.max(0, Math.min(100, ((lisbonHour(n) - 7) * 60 + lisbonMinute(n)) / MAX_MIN * 100));
   }, []);
 
   const posToTime = useCallback((clientX: number) => {
@@ -36,9 +37,7 @@ export function TimeSlider({ mode, currentDate, onTimeChange }: TimeSliderProps)
     const mins = 7 * 60 + p * MAX_MIN;
     const hr = Math.floor(mins / 60);
     const min = Math.round((mins % 60) / 15) * 15;
-    const d = new Date();
-    d.setHours(hr, min % 60, 0, 0);
-    onTimeChange(d);
+    onTimeChange(setLisbonTime(new Date(), hr, min % 60));
   }, [onTimeChange]);
 
   const onDown = useCallback((e: React.PointerEvent) => {
@@ -109,7 +108,7 @@ export function TimeSlider({ mode, currentDate, onTimeChange }: TimeSliderProps)
             {HOURS.map((hr) => (
               <button
                 key={hr}
-                onClick={() => { const d = new Date(); d.setHours(hr, 0, 0, 0); onTimeChange(d); }}
+                onClick={() => onTimeChange(setLisbonTime(new Date(), hr, 0))}
                 className={`text-[8px] font-medium ${h === hr ? `${accentText} font-bold` : 'text-shade-400'}`}
               >
                 {String(hr).padStart(2, '0')}

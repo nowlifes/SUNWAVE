@@ -1,6 +1,7 @@
 import type { GeoPoint, BuildingFootprint, HeightSource } from '@/types';
 import { SunService } from './SunService';
 import { TerrainService } from './TerrainService';
+import { setLisbonTime } from '@/utils/lisbonTime';
 
 const EARTH_RADIUS_M = 6378137;
 
@@ -516,8 +517,7 @@ class ShadowServiceClass {
     heightBias: number = 0,
     altitudeOverride?: number
   ): number {
-    const testDate = new Date(date);
-    testDate.setHours(hour, 30, 0, 0);
+    const testDate = setLisbonTime(date, hour, 30);
 
     if (!SunService.isDaytime(testDate, venueLat, venueLng)) return 0;
 
