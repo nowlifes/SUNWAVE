@@ -24,3 +24,5 @@ dist-ssr
 scripts/.terrain-cache.json
 scripts/.anchors-cache.json
 scripts/.named-cache.json
+.vercel
+.env*
