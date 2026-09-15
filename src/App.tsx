@@ -5,6 +5,7 @@ import { VenueService } from '@/services/VenueService';
 import { MapService } from '@/services/MapService';
 
 import { Onboarding } from '@/components/Onboarding';
+import { NowScreen } from '@/components/NowScreen';
 import { MapScreen } from '@/components/MapScreen';
 import { DiscoverScreen, DiscoverResults } from '@/components/DiscoverScreen';
 import { SavedScreen } from '@/components/SavedScreen';
@@ -44,7 +45,8 @@ export default function App() {
   const [onboardingComplete, setOnboardingComplete] = useState(
     () => loadFromStorage(STORAGE_KEYS.onboarding, false)
   );
-  const [screen, setScreen] = useState<ScreenName>('map');
+  // L'app ouvre sur la réponse, pas sur la carte : voir NowScreen.
+  const [screen, setScreen] = useState<ScreenName>('now');
   const [mode, setMode] = useState<SunMode>(() => loadFromStorage(STORAGE_KEYS.mode, 'SUN'));
   const [currentDate, setCurrentDate] = useState(new Date());
   const [userLocation, setUserLocation] = useState<GeoPoint>(LISBON_CENTER);
@@ -208,6 +210,19 @@ export default function App() {
       {/* Mobile container */}
       <div className="relative w-full h-full max-w-md mx-auto bg-shade-50 overflow-hidden shadow-2xl">
         {/* Screen routing */}
+        {screen === 'now' && (
+          <NowScreen
+            mode={mode}
+            currentDate={currentDate}
+            userLocation={userLocation}
+            locationGranted={locationGranted}
+            onModeChange={handleModeChange}
+            onVenueSelect={handleVenueSelect}
+            onGetDirections={handleGetDirections}
+            onOpenMap={() => handleScreenChange('map')}
+          />
+        )}
+
         {screen === 'map' && (
           <MapScreen
             mode={mode}

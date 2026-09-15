@@ -59,6 +59,51 @@ class RecommendationServiceClass {
     return recs[0] || null;
   }
 
+  /**
+   * The ordered list behind the one-answer screen.
+   *
+   * Differs from getRecommendations on the one point that sinks apps in this
+   * category: a closed venue is EXCLUDED, not merely penalised. Sending
+   * someone to a shut bar is the failure users never forgive, and scoring a
+   * closed venue at 0.3x still lets a brilliant one outrank an open mediocre
+   * one. `scoreVenue` keeps the soft penalty for the map, which legitimately
+   * shows closed places; this list is the one that tells someone to walk.
+   *
+   * Never returns an empty list while any venue is open: if nothing is
+   * currently in the sun, open venues stay, ranked by how soon the sun
+   * reaches them, so the screen can say "nobody's in the sun yet, here's who
+   * gets it first" instead of showing nothing.
+   */
+  getAnswerList(
+    mode: SunMode,
+    userLocation: GeoPoint,
+    date: Date,
+    categories: VenueCategory[] = [],
+    weather?: WeatherData,
+    maxResults: number = 6
+  ): Recommendation[] {
+    const all = this.getRecommendations(mode, userLocation, date, categories, weather, 100);
+    const open = all.filter((r) => r.isOpen);
+    const pool = open.length > 0 ? open : all;
+
+    const exposureOf = (r: Recommendation) =>
+      mode === 'SUN' ? r.sunPercentage : r.shadePercentage;
+    const inItNow = pool.filter((r) => exposureOf(r) >= 40);
+
+    if (inItNow.length > 0) return inItNow.slice(0, maxResults);
+
+    // Nobody qualifies right now — rank by who gets it soonest rather than
+    // handing back an empty screen.
+    return [...pool]
+      .sort((a, b) => {
+        const aw = a.sunArrivesInMin ?? Number.POSITIVE_INFINITY;
+        const bw = b.sunArrivesInMin ?? Number.POSITIVE_INFINITY;
+        if (aw !== bw) return aw - bw;
+        return b.sunMatch - a.sunMatch;
+      })
+      .slice(0, maxResults);
+  }
+
   private scoreVenue(
     venue: Venue,
     mode: SunMode,
