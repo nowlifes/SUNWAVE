@@ -26,7 +26,9 @@ interface MapViewProps {
 const CARTO_KEY = import.meta.env.VITE_CARTO_API_KEY ?? '';
 const cartoTiles = (style: string) =>
   ['a', 'b', 'c'].map(
-    (s) => `https://${s}.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}@2x.png${CARTO_KEY ? `?api_key=${CARTO_KEY}` : ''}`
+    // CARTO attend `key=`, pas `api_key=` — avec l'ancien nom la clé était
+    // silencieusement ignorée et les tuiles servies en quota anonyme.
+    (s) => `https://${s}.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}@2x.png${CARTO_KEY ? `?key=${CARTO_KEY}` : ''}`
   );
 
 const MAP_STYLE: import('maplibre-gl').StyleSpecification = {
@@ -173,7 +175,11 @@ export function MapView({
         id: 'building-shadows',
         type: 'fill',
         source: 'building-shadows',
-        paint: { 'fill-color': '#1E293B', 'fill-opacity': mode === 'SHADE' ? 0.15 : 0.08 },
+        // Les ombres viennent maintenant du vrai moteur physique (bâtiments OSM
+        // réels + SunService corrigé). À 0.08 elles étaient invisibles, ce qui
+        // rendait le calcul inutile à l'écran. Direction validée (composition 1) :
+        // l'ombre EST la réponse, donc elle doit se lire sans légende.
+        paint: { 'fill-color': '#2B3A4D', 'fill-opacity': mode === 'SHADE' ? 0.5 : 0.4 },
       });
     }
   }, [mode, isDaytime, mapReady, sunPos, currentDate, mapCenter]);

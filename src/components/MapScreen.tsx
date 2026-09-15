@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
-import type { Venue, SunMode, VenueCategory, GeoPoint, Recommendation } from '@/types';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import type { Venue, SunMode, VenueCategory, GeoPoint, Recommendation, WeatherData } from '@/types';
 import { MapView } from './MapView';
 import { TimeSlider } from './TimeSlider';
 import { BestMatchSheet } from './BestMatchSheet';
@@ -58,7 +58,18 @@ export function MapScreen({
   const [activeFilter, setActiveFilter] = useState<VenueCategory | 'all'>('all');
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [searchVenue, setSearchVenue] = useState<Venue | null>(null);
-  const weather = useMemo(() => WeatherService.getCurrentWeather(), []);
+  // Non-visual: source real weather from Open-Meteo via WeatherService instead
+  // of a static computed value — synchronous cache read on mount, then a real
+  // fetch (+ periodic refresh) updates it in the background. See
+  // WeatherService.ts for the stale-while-revalidate design.
+  const [weather, setWeather] = useState<WeatherData>(() => WeatherService.getCurrentWeather());
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = () => WeatherService.refreshWeather().then((w) => { if (!cancelled) setWeather(w); });
+    refresh();
+    const interval = setInterval(refresh, 10 * 60 * 1000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
   const categories = activeFilter === 'all' ? [] : [activeFilter];
 

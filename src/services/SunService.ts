@@ -5,10 +5,18 @@ const LISBON: GeoPoint = { lat: 38.7223, lng: -9.1393 };
 
 class SunServiceClass {
   getSunPosition(date: Date, lat: number = LISBON.lat, lng: number = LISBON.lng): SunPosition {
+    // NB: suncalc 2.x's getPosition() returns azimuth/altitude already in
+    // degrees, azimuth already north-based clockwise (0=N, 90=E, 180=S,
+    // 270=W) — see node_modules/suncalc/index.js. The @types/suncalc typings
+    // installed here are from the 1.x line (radians, south-based azimuth)
+    // and used to describe a different contract; the previous conversion
+    // here (`* 180/Math.PI + 180`) was written against that old v1 contract
+    // and silently produced nonsense values (e.g. elevation > 1000) with the
+    // v2 package actually installed. No conversion is needed with v2.
     const pos = SunCalc.getPosition(date, lat, lng);
     return {
-      azimuth: (pos.azimuth * 180) / Math.PI + 180,
-      elevation: (pos.altitude * 180) / Math.PI,
+      azimuth: pos.azimuth,
+      elevation: pos.altitude,
     };
   }
 

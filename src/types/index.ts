@@ -55,6 +55,11 @@ export interface Venue {
   hasOutdoorArea: boolean;
   outdoorPolygon: OutdoorPolygon | null;
   buildingHeight: number; // meters
+  /** Ground elevation of the venue, metres above sea level (~90m DEM).
+   *  Lisbon's miradouros sit tens of metres above the streets around them;
+   *  without this the shadow engine hands them shadows from buildings far
+   *  below that can never reach them. */
+  altitude: number;
   confidence: Confidence;
   sunExposureByHour: number[]; // 24 values, 0-100
   shadeExposureByHour: number[]; // 24 values, 0-100
@@ -74,10 +79,23 @@ export interface SunPosition {
   elevation: number;
 }
 
+/** Where a building's height number actually came from. `estimated` means the
+ *  OSM data carried no height at all and the value is a typology guess — the
+ *  UI must never present it as measured. */
+export type HeightSource = 'tagged' | 'levels' | 'estimated';
+
 export interface BuildingFootprint {
   id: string;
   points: GeoPoint[];
+  /** Height of the building itself, in metres above its own base. */
   height: number;
+  /** Provenance of `height` — see HeightSource. */
+  heightSource: HeightSource;
+  /** Ground elevation of the building's base, metres above sea level.
+   *  Lisbon is built on hills: a building's roof is at `altitude + height`,
+   *  and comparing that against the observed point's own altitude is the only
+   *  way to know whether it can occlude the sun. ~90m DEM, +/- several metres. */
+  altitude: number;
 }
 
 export interface Recommendation {

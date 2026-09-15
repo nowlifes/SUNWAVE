@@ -1,0 +1,131 @@
+import type { BuildingFootprint, GeoPoint, Venue } from '@/types';
+import { ShadowService } from './ShadowService';
+import { ReportService } from './ReportService';
+
+// ---------------------------------------------------------------------------
+// Bridges the real physics engine (ShadowService + real building footprints)
+// to the venue-level 24-hour sun/shade curves consumed across the app.
+//
+// Previously `lisbonVenues.ts` invented these curves from a hand-picked
+// "archetype" bell curve per venue (rooftop/park/street-dense/...) and
+// `ShadowService.computeSunExposureForHour` — which does the correct
+// shadow-length/elevation math — was never called. This service is the one
+// place that now calls it, for every venue, using the real OSM building
+// footprints from `lisbonBuildings.ts`.
+//
+// Perf: a naive per-hour call would test every building in the city against
+// every venue. Buildings more than NEARBY_RADIUS_M away cannot cast a shadow
+// reaching the venue at realistic Lisbon sun elevations/heights, so we
+// pre-filter to nearby buildings once per venue (not once per hour) before
+// handing them to ShadowService.
+// ---------------------------------------------------------------------------
+
+const NEARBY_RADIUS_M = 150;
+const DEFAULT_ORIENTATION_DEG = 180; // south-facing default when a venue has no outdoor polygon
+
+/** Cheap equirectangular distance in meters — accurate enough at city scale. */
+function distanceM(a: GeoPoint, b: GeoPoint): number {
+  const latRad = (a.lat * Math.PI) / 180;
+  const dx = (b.lng - a.lng) * 111320 * Math.cos(latRad);
+  const dy = (b.lat - a.lat) * 110540;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function buildingCentroid(building: BuildingFootprint): GeoPoint {
+  let lat = 0;
+  let lng = 0;
+  for (const p of building.points) {
+    lat += p.lat;
+    lng += p.lng;
+  }
+  return { lat: lat / building.points.length, lng: lng / building.points.length };
+}
+
+export interface SunTarget {
+  id: string;
+  lat: number;
+  lng: number;
+  orientationDeg: number;
+}
+
+class VenueSunServiceClass {
+  /** Cache of nearby-buildings-per-venue, keyed by venue id — the building
+   *  dataset doesn't change at runtime, so this only needs computing once. */
+  private nearbyBuildingsCache = new Map<string, BuildingFootprint[]>();
+
+  /** Cache of computed 24h curves, keyed by `${venueId}|${YYYY-MM-DD}` so the
+   *  (rare, currently unreachable via the UI) case of a different calendar
+   *  day still gets a physically-correct curve instead of a stale one — see
+   *  the architecture note in the research log for why this matters less
+   *  than it sounds today (TimeSlider never changes the day). */
+  private curveCache = new Map<string, number[]>();
+
+  constructor() {
+    // A new report must take effect immediately, not on next page load.
+    ReportService.onChange((venueId) => this.invalidateVenue(venueId));
+  }
+
+  private nearbyBuildings(target: SunTarget, buildings: BuildingFootprint[]): BuildingFootprint[] {
+    const cached = this.nearbyBuildingsCache.get(target.id);
+    if (cached) return cached;
+    const origin = { lat: target.lat, lng: target.lng };
+    const nearby = buildings.filter((b) => distanceM(origin, buildingCentroid(b)) <= NEARBY_RADIUS_M);
+    this.nearbyBuildingsCache.set(target.id, nearby);
+    return nearby;
+  }
+
+  private dateKey(date: Date): string {
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  }
+
+  /** Real 24-value (0-23h) sun-exposure curve for an arbitrary target point,
+   *  computed from actual sun position + real nearby building shadows. */
+  computeExposureCurve(target: SunTarget, buildings: BuildingFootprint[], date: Date): number[] {
+    const key = `${target.id}|${this.dateKey(date)}`;
+    const cached = this.curveCache.get(key);
+    if (cached) return cached;
+
+    const nearby = this.nearbyBuildings(target, buildings);
+    const curve: number[] = new Array(24);
+    for (let h = 0; h < 24; h++) {
+      curve[h] = ShadowService.computeSunExposureForHour(h, target.lat, target.lng, target.orientationDeg, nearby, date);
+    }
+
+    // User reports override the geometry, because they see what it cannot:
+    // parasols, awnings, trees, scaffolding, a terrace that moved. The engine
+    // models buildings and nothing else, so a terrace reported shaded stays
+    // shaded however perfect the shadow math is.
+    const adjusted = ReportService.applyToCurve(target.id, curve);
+
+    this.curveCache.set(key, adjusted);
+    return adjusted;
+  }
+
+  /** A new report invalidates the cached curves it contradicts. Without this
+   *  a user would report a terrace shaded and see the old number until reload. */
+  invalidateVenue(venueId: string): void {
+    for (const key of [...this.curveCache.keys()]) {
+      if (key.startsWith(`${venueId}|`)) this.curveCache.delete(key);
+    }
+  }
+
+  /** Convenience overload for an already-built Venue. */
+  getSunExposureByHour(venue: Venue, buildings: BuildingFootprint[], date: Date): number[] {
+    return this.computeExposureCurve(
+      {
+        id: venue.id,
+        lat: venue.latitude,
+        lng: venue.longitude,
+        orientationDeg: venue.outdoorPolygon?.orientationDeg ?? DEFAULT_ORIENTATION_DEG,
+      },
+      buildings,
+      date
+    );
+  }
+
+  getShadeExposureByHour(venue: Venue, buildings: BuildingFootprint[], date: Date): number[] {
+    return this.getSunExposureByHour(venue, buildings, date).map((s) => 100 - s);
+  }
+}
+
+export const VenueSunService = new VenueSunServiceClass();

@@ -6,6 +6,17 @@ import type {
   VenueCategory,
   WeeklyHours,
 } from '@/types';
+import { lisbonBuildings } from './lisbonBuildings';
+import { VenueSunService } from '@/services/VenueSunService';
+import { TerrainService } from '@/services/TerrainService';
+
+// The venue module is evaluated once when the app loads, for "today" — see
+// the architecture note in the research log: TimeSlider only ever scrubs the
+// hour within the current calendar day, never the day itself, so a curve
+// computed once at load time for `new Date()` is accurate for the whole
+// session (it goes slightly stale only if the tab is left open past
+// midnight, which is an accepted edge case).
+const TODAY = new Date();
 
 // ---------------------------------------------------------------------------
 // Geo helpers
@@ -45,99 +56,28 @@ function makeOutdoorPolygon(
 }
 
 // ---------------------------------------------------------------------------
-// Sun / shade curve helpers
+// Sun / shade curve — REAL physics, not invented curves
 // ---------------------------------------------------------------------------
-// Lisbon summer sun: sunrise ~06:00, sunset ~20:00. We build 24-value arrays
-// where night hours are 0 and daytime hours follow a bell-ish curve shaped by
-// the venue's sun profile. Shade is always 100 - sun.
-
+// Historically this file generated 24-value arrays from a hand-picked
+// "archetype" bell curve per venue (rooftop/park/street-dense/...). That
+// never called the real shadow-physics engine. It now delegates to
+// VenueSunService, which runs ShadowService.computeSunExposureForHour against
+// the real OSM building footprints in lisbonBuildings.ts for every hour.
+//
+// `SunProfile` is kept purely as descriptive metadata on each venue spec
+// (documents the intended character of the spot) — it no longer drives the
+// calculation, VenueSpec still carries it so none of the 64 venue() call
+// sites below need touching.
 type SunProfile =
-  | 'rooftop' // exposed: 78-95 midday
-  | 'viewpoint' // very exposed: 72-90
-  | 'park' // open ground: 55-85
-  | 'beach' // fully open: 80-95
-  | 'square' // open but partly obstructed: 40-70
-  | 'street-dense' // dense grid, low peaks: 25-55
-  | 'street-mixed' // medium density: 40-70
-  | 'street-open' // open street level: 55-78
-  | 'indoor-shaded'; // mostly shaded outdoor nook: 15-40
-
-const SUNRISE = 6;
-const SUNSET = 20;
-
-/**
- * Produces a 24-entry sun-exposure array for the given profile, with small
- * per-hour jitter so curves feel organic rather than perfectly smooth. A stable
- * `seed` keeps the jitter deterministic.
- */
-function sunCurve(profile: SunProfile, seed: number): number[] {
-  const out: number[] = new Array(24).fill(0);
-
-  const peak: Record<SunProfile, number> = {
-    rooftop: 92,
-    viewpoint: 82,
-    park: 78,
-    beach: 90,
-    square: 62,
-    'street-dense': 48,
-    'street-mixed': 60,
-    'street-open': 72,
-    'indoor-shaded': 32,
-  };
-
-  const minDay: Record<SunProfile, number> = {
-    rooftop: 60,
-    viewpoint: 52,
-    park: 42,
-    beach: 70,
-    square: 30,
-    'street-dense': 18,
-    'street-mixed': 28,
-    'street-open': 38,
-    'indoor-shaded': 10,
-  };
-
-  const p = peak[profile];
-  const m = minDay[profile];
-
-  for (let h = 0; h < 24; h++) {
-    if (h < SUNRISE || h >= SUNSET) {
-      out[h] = 0;
-      continue;
-    }
-    // Bell curve across daylight hours. Peak at ~13:00.
-    const dayLen = SUNSET - SUNRISE;
-    const t = (h - SUNRISE) / (dayLen - 1); // 0..1
-    const bell = Math.sin(Math.PI * t); // 0 -> 1 -> 0
-    let value = m + (p - m) * bell;
-
-    // Early morning and late evening decay faster.
-    if (h <= 7) value *= 0.55 + (h - SUNRISE) * 0.15;
-    if (h >= 19) value *= 0.5 + (SUNSET - h) * 0.1;
-
-    // Deterministic jitter: -4..+4 from a hash of seed+hour.
-    const jitter = pseudoRandom(seed * 31 + h * 7) * 8 - 4;
-    value += jitter;
-
-    // Roofs/beaches climb a touch earlier; dense streets lose early sun.
-    if (profile === 'beach' || profile === 'rooftop') value += h <= 8 ? 6 : 0;
-    if (profile === 'street-dense' && h <= 9) value -= 5;
-
-    out[h] = Math.max(0, Math.min(100, Math.round(value)));
-  }
-
-  return out;
-}
-
-function shadeCurve(sun: number[]): number[] {
-  return sun.map((s) => 100 - s);
-}
-
-/** Small deterministic PRNG in [0,1). */
-function pseudoRandom(n: number): number {
-  const x = Math.sin(n * 12.9898) * 43758.5453;
-  return x - Math.floor(x);
-}
+  | 'rooftop'
+  | 'viewpoint'
+  | 'park'
+  | 'beach'
+  | 'square'
+  | 'street-dense'
+  | 'street-mixed'
+  | 'street-open'
+  | 'indoor-shaded';
 
 // ---------------------------------------------------------------------------
 // Opening-hours helpers
@@ -214,9 +154,19 @@ interface VenueSpec {
 
 function venue(spec: VenueSpec): Venue {
   const seed = ++idCounter;
-  const sun = sunCurve(spec.sunProfile, seed);
+  const id = `v_${String(seed).padStart(2, '0')}`;
+  const sun = VenueSunService.computeExposureCurve(
+    {
+      id,
+      lat: spec.lat,
+      lng: spec.lng,
+      orientationDeg: spec.polygon?.orientationDeg ?? 180,
+    },
+    lisbonBuildings,
+    TODAY
+  );
   return {
-    id: `v_${String(seed).padStart(2, '0')}`,
+    id,
     name: spec.name,
     category: spec.category,
     latitude: spec.lat,
@@ -229,9 +179,12 @@ function venue(spec: VenueSpec): Venue {
     hasOutdoorArea: spec.hasOutdoor,
     outdoorPolygon: spec.polygon,
     buildingHeight: spec.buildingHeight,
+    // Ground elevation from the frozen ~90m terrain grid. This is what lets
+    // the shadow engine know a miradouro stands above the roofs below it.
+    altitude: TerrainService.altitudeAtRounded({ lat: spec.lat, lng: spec.lng }),
     confidence: spec.confidence,
     sunExposureByHour: sun,
-    shadeExposureByHour: shadeCurve(sun),
+    shadeExposureByHour: sun.map((s) => 100 - s),
     description: spec.description,
   };
 }
@@ -255,14 +208,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Café Miradouro',
     category: 'cafe',
-    lat: 38.7142,
-    lng: -9.1412,
+    lat: 38.714041,
+    lng: -9.14103,
     address: 'Rua da Misericórdia 2, Chiado',
     rating: 4.5,
     isOpen: true,
     hours: cafeHours(),
     hasOutdoor: true,
-    polygon: poly(38.7142, -9.1412, 12, 8, 180),
+    polygon: poly(38.714041, -9.14103, 12, 8, 180),
     buildingHeight: 24,
     confidence: 'HIGH',
     sunProfile: 'street-mixed',
@@ -272,14 +225,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Hello, Kristof',
     category: 'cafe',
-    lat: 38.7152,
-    lng: -9.1428,
+    lat: 38.715423,
+    lng: -9.14285,
     address: 'Rua da Rosa 9, Bairro Alto',
     rating: 4.6,
     isOpen: true,
     hours: cafeHours(),
     hasOutdoor: true,
-    polygon: poly(38.7152, -9.1428, 10, 6, 90),
+    polygon: poly(38.715423, -9.14285, 10, 6, 90),
     buildingHeight: 18,
     confidence: 'MEDIUM',
     sunProfile: 'street-dense',
@@ -289,8 +242,8 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Dear Breakfast',
     category: 'cafe',
-    lat: 38.7131,
-    lng: -9.1408,
+    lat: 38.713122,
+    lng: -9.140724,
     address: 'Rua da Madalena 83, Baixa',
     rating: 4.4,
     isOpen: true,
@@ -340,8 +293,8 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Bairro do Avillez',
     category: 'restaurant',
-    lat: 38.7144,
-    lng: -9.1424,
+    lat: 38.714323,
+    lng: -9.142231,
     address: 'R. de D. Pedro V 13, Chiado',
     rating: 4.8,
     isOpen: true,
@@ -418,14 +371,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Praça do Comércio',
     category: 'square',
-    lat: 38.7075,
-    lng: -9.1365,
+    lat: 38.707461,
+    lng: -9.136529,
     address: 'Praça do Comércio, Baixa',
     rating: 4.8,
     isOpen: true,
     hours: alwaysOpen(),
     hasOutdoor: true,
-    polygon: poly(38.7075, -9.1365, 30, 20, 180),
+    polygon: poly(38.707461, -9.136529, 30, 20, 180),
     buildingHeight: 0,
     confidence: 'HIGH',
     sunProfile: 'square',
@@ -471,14 +424,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Pensão Amor',
     category: 'bar',
-    lat: 38.7158,
+    lat: 38.715845,
     lng: -9.1455,
     address: 'R. da Alecrim 58, Cais do Sodré',
     rating: 4.4,
     isOpen: true,
     hours: barHours(),
     hasOutdoor: true,
-    polygon: poly(38.7158, -9.1455, 10, 6, 180),
+    polygon: poly(38.715845, -9.1455, 10, 6, 180),
     buildingHeight: 20,
     confidence: 'HIGH',
     sunProfile: 'street-mixed',
@@ -505,14 +458,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'The Decadente',
     category: 'bar',
-    lat: 38.7150,
-    lng: -9.1462,
+    lat: 38.715072,
+    lng: -9.14604,
     address: 'R. da Rosa 15, Bairro Alto',
     rating: 4.3,
     isOpen: true,
     hours: barHours(),
     hasOutdoor: true,
-    polygon: poly(38.7150, -9.1462, 8, 5, 180),
+    polygon: poly(38.715072, -9.14604, 8, 5, 180),
     buildingHeight: 18,
     confidence: 'MEDIUM',
     sunProfile: 'street-dense',
@@ -522,14 +475,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Largo do Carmo',
     category: 'square',
-    lat: 38.7138,
-    lng: -9.1400,
+    lat: 38.713852,
+    lng: -9.139921,
     address: 'Largo do Carmo, Chiado',
     rating: 4.5,
     isOpen: true,
     hours: alwaysOpen(),
     hasOutdoor: true,
-    polygon: poly(38.7138, -9.1400, 18, 14, 180),
+    polygon: poly(38.713852, -9.139921, 18, 14, 180),
     buildingHeight: 0,
     confidence: 'HIGH',
     sunProfile: 'square',
@@ -594,14 +547,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Miradouro das Portas do Sol',
     category: 'viewpoint',
-    lat: 38.7132,
-    lng: -9.1298,
+    lat: 38.713262,
+    lng: -9.129733,
     address: 'Largo das Portas do Sol, Alfama',
     rating: 4.9,
     isOpen: true,
     hours: alwaysOpen(),
     hasOutdoor: true,
-    polygon: poly(38.7132, -9.1298, 20, 12, 90),
+    polygon: poly(38.713262, -9.129733, 20, 12, 90),
     buildingHeight: 0,
     confidence: 'HIGH',
     sunProfile: 'viewpoint',
@@ -628,14 +581,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Café da Garagem',
     category: 'cafe',
-    lat: 38.7126,
-    lng: -9.1310,
+    lat: 38.712653,
+    lng: -9.130988,
     address: 'Costa do Castelo 74, Graça',
     rating: 4.7,
     isOpen: true,
     hours: cafeHours(),
     hasOutdoor: true,
-    polygon: poly(38.7126, -9.1310, 12, 8, 90),
+    polygon: poly(38.712653, -9.130988, 12, 8, 90),
     buildingHeight: 14,
     confidence: 'HIGH',
     sunProfile: 'street-open',
@@ -645,14 +598,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Faz Figura',
     category: 'restaurant',
-    lat: 38.7118,
-    lng: -9.1288,
+    lat: 38.711628,
+    lng: -9.128927,
     address: 'R. dos Bacalhoeiros 12, Alfama',
     rating: 4.5,
     isOpen: true,
     hours: restaurantHours(),
     hasOutdoor: true,
-    polygon: poly(38.7118, -9.1288, 8, 6, 180),
+    polygon: poly(38.711628, -9.128927, 8, 6, 180),
     buildingHeight: 15,
     confidence: 'MEDIUM',
     sunProfile: 'street-mixed',
@@ -664,14 +617,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Goa Labs',
     category: 'bar',
-    lat: 38.7072,
-    lng: -9.1458,
+    lat: 38.70738,
+    lng: -9.145527,
     address: 'R. da Boavista 84, Cais do Sodré',
     rating: 4.3,
     isOpen: true,
     hours: barHours(),
     hasOutdoor: true,
-    polygon: poly(38.7072, -9.1458, 10, 6, 180),
+    polygon: poly(38.70738, -9.145527, 10, 6, 180),
     buildingHeight: 20,
     confidence: 'MEDIUM',
     sunProfile: 'street-mixed',
@@ -734,14 +687,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Miradouro de Santa Catarina',
     category: 'viewpoint',
-    lat: 38.7108,
-    lng: -9.1470,
+    lat: 38.710759,
+    lng: -9.14691,
     address: 'R. de Santa Catarina, Santa Catarina',
     rating: 4.7,
     isOpen: true,
     hours: alwaysOpen(),
     hasOutdoor: true,
-    polygon: poly(38.7108, -9.1470, 22, 14, 180),
+    polygon: poly(38.710759, -9.14691, 22, 14, 180),
     buildingHeight: 0,
     confidence: 'HIGH',
     sunProfile: 'viewpoint',
@@ -751,14 +704,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Wish Slow',
     category: 'cafe',
-    lat: 38.7112,
-    lng: -9.1474,
+    lat: 38.711289,
+    lng: -9.14738,
     address: 'R. de Santa Catarina 86, Santa Catarina',
     rating: 4.5,
     isOpen: true,
     hours: cafeHours(),
     hasOutdoor: true,
-    polygon: poly(38.7112, -9.1474, 10, 6, 180),
+    polygon: poly(38.711289, -9.14738, 10, 6, 180),
     buildingHeight: 19,
     confidence: 'MEDIUM',
     sunProfile: 'street-open',
@@ -787,14 +740,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Jardim da Estrela',
     category: 'park',
-    lat: 38.7148,
-    lng: -9.1555,
+    lat: 38.714765,
+    lng: -9.155447,
     address: 'R. da Estrela, Estrela',
     rating: 4.7,
     isOpen: true,
     hours: parkHours(),
     hasOutdoor: true,
-    polygon: poly(38.7148, -9.1555, 28, 20, 180),
+    polygon: poly(38.714765, -9.155447, 28, 20, 180),
     buildingHeight: 0,
     confidence: 'HIGH',
     sunProfile: 'park',
@@ -910,14 +863,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Stubborn',
     category: 'cafe',
-    lat: 38.7185,
-    lng: -9.1432,
+    lat: 38.718539,
+    lng: -9.143171,
     address: 'R. de São José 23, Avenida',
     rating: 4.5,
     isOpen: true,
     hours: cafeHours(),
     hasOutdoor: true,
-    polygon: poly(38.7185, -9.1432, 9, 6, 90),
+    polygon: poly(38.718539, -9.143171, 9, 6, 90),
     buildingHeight: 26,
     confidence: 'MEDIUM',
     sunProfile: 'street-mixed',
@@ -927,14 +880,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Avenida Café',
     category: 'cafe',
-    lat: 38.7192,
-    lng: -9.1438,
+    lat: 38.719138,
+    lng: -9.143733,
     address: 'Av. da Liberdade 24A, Avenida',
     rating: 4.3,
     isOpen: true,
     hours: cafeHours(),
     hasOutdoor: true,
-    polygon: poly(38.7192, -9.1438, 12, 7, 180),
+    polygon: poly(38.719138, -9.143733, 12, 7, 180),
     buildingHeight: 28,
     confidence: 'HIGH',
     sunProfile: 'street-open',
@@ -944,14 +897,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Saldanha Grill',
     category: 'restaurant',
-    lat: 38.7240,
-    lng: -9.1448,
+    lat: 38.723982,
+    lng: -9.14484,
     address: 'Av. da República 84A, Saldanha',
     rating: 4.3,
     isOpen: true,
     hours: restaurantHours(),
     hasOutdoor: true,
-    polygon: poly(38.7240, -9.1448, 9, 6, 180),
+    polygon: poly(38.723982, -9.14484, 9, 6, 180),
     buildingHeight: 27,
     confidence: 'HIGH',
     sunProfile: 'street-mixed',
@@ -1295,14 +1248,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Tapada das Mercês',
     category: 'park',
-    lat: 38.7128,
-    lng: -9.1470,
+    lat: 38.712772,
+    lng: -9.147097,
     address: 'Calçada da Estrela, Estrela',
     rating: 4.2,
     isOpen: true,
     hours: parkHours(),
     hasOutdoor: true,
-    polygon: poly(38.7128, -9.1470, 20, 14, 180),
+    polygon: poly(38.712772, -9.147097, 20, 14, 180),
     buildingHeight: 0,
     confidence: 'MEDIUM',
     sunProfile: 'park',
@@ -1331,14 +1284,14 @@ export const lisbonVenues: Venue[] = [
   venue({
     name: 'Ponto Final',
     category: 'restaurant',
-    lat: 38.7085,
-    lng: -9.1500,
+    lat: 38.708595,
+    lng: -9.149791,
     address: 'Cais do Sodré riverside terrace',
     rating: 4.7,
     isOpen: true,
     hours: restaurantHours(),
     hasOutdoor: true,
-    polygon: poly(38.7085, -9.1500, 16, 10, 180),
+    polygon: poly(38.708595, -9.149791, 16, 10, 180),
     buildingHeight: 12,
     confidence: 'MEDIUM',
     sunProfile: 'street-open',

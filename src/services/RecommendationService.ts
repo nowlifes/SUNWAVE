@@ -3,6 +3,22 @@ import { VenueService } from './VenueService';
 import { MapService } from './MapService';
 import { WeatherService } from './WeatherService';
 import { SunService } from './SunService';
+import { VenueSunService } from './VenueSunService';
+import { lisbonBuildings } from '@/data/lisbonBuildings';
+
+// Reads through VenueSunService (real ShadowService physics against real
+// buildings, memoized per venue+day) using the explicit `date` this service
+// already receives, instead of the venue's static "today at load time" field
+// — see the architecture note in the research log. In the current UI this
+// resolves to the exact same values (TimeSlider never changes the day), but
+// it makes RecommendationService correct even if that ever changes.
+function sunExposureAt(venue: Venue, date: Date, hour: number): number {
+  return VenueSunService.getSunExposureByHour(venue, lisbonBuildings, date)[hour] ?? 0;
+}
+
+function shadeExposureAt(venue: Venue, date: Date, hour: number): number {
+  return VenueSunService.getShadeExposureByHour(venue, lisbonBuildings, date)[hour] ?? 0;
+}
 
 const CONFIDENCE_SCORE: Record<Confidence, number> = {
   HIGH: 100,
@@ -50,8 +66,8 @@ class RecommendationServiceClass {
     hour: number,
     weather: WeatherData
   ): Recommendation {
-    const sunPct = venue.sunExposureByHour[hour] || 0;
-    const shadePct = venue.shadeExposureByHour[hour] || 0;
+    const sunPct = sunExposureAt(venue, date, hour);
+    const shadePct = shadeExposureAt(venue, date, hour);
 
     const sunExposureScore = mode === 'SUN' ? sunPct : shadePct;
 
@@ -125,7 +141,10 @@ class RecommendationServiceClass {
     sunArrivesInMin: number | null;
     sunLeavesInMin: number | null;
   } {
-    const exposure = mode === 'SUN' ? venue.sunExposureByHour : venue.shadeExposureByHour;
+    const exposure =
+      mode === 'SUN'
+        ? VenueSunService.getSunExposureByHour(venue, lisbonBuildings, date)
+        : VenueSunService.getShadeExposureByHour(venue, lisbonBuildings, date);
     const threshold = mode === 'SUN' ? 40 : 50;
 
     let start: number | null = null;
@@ -192,7 +211,10 @@ class RecommendationServiceClass {
   }
 
   getBestTime(venue: Venue, mode: SunMode, date: Date): { start: string; end: string } | null {
-    const exposure = mode === 'SUN' ? venue.sunExposureByHour : venue.shadeExposureByHour;
+    const exposure =
+      mode === 'SUN'
+        ? VenueSunService.getSunExposureByHour(venue, lisbonBuildings, date)
+        : VenueSunService.getShadeExposureByHour(venue, lisbonBuildings, date);
     const threshold = mode === 'SUN' ? 50 : 60;
 
     let bestStart = -1;
