@@ -181,7 +181,7 @@ export type ReportType =
   | 'outdoor_different'
   | 'other';
 
-export type ScreenName = 'map' | 'discover' | 'saved' | 'profile';
+export type ScreenName = 'now' | 'map' | 'discover' | 'saved' | 'profile';
 
 export interface DiscoverCategory {
   id: string;
