@@ -1,10 +1,17 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
-import { Map as MapLibreMap, Marker } from 'maplibre-gl';
+import { Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+// maplibre 6 construit l'URL de son worker à l'exécution (`new URL(nom, base)`),
+// que Vite ne peut pas détecter : le fichier n'était pas émis et répondait 404
+// en prod. Worker mort = toute source GeoJSON reste non chargée, donc zéro ombre
+// affichée alors que le fond raster et les marqueurs DOM continuaient de marcher.
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import type { Venue, SunMode, GeoPoint, Recommendation } from '@/types';
 import { SunService } from '@/services/SunService';
 import { ShadowService } from '@/services/ShadowService';
 import { lisbonBuildings } from '@/data/lisbonBuildings';
+
+setWorkerUrl(maplibreWorkerUrl);
 
 interface MapViewProps {
   venues: Venue[];
