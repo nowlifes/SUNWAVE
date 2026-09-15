@@ -7,6 +7,7 @@ import { SearchBar } from './SearchBar';
 import { RecommendationService } from '@/services/RecommendationService';
 import { VenueService } from '@/services/VenueService';
 import { WeatherService } from '@/services/WeatherService';
+import { formatLisbonTime } from '@/utils/lisbonTime';
 
 interface MapScreenProps {
   mode: SunMode;
@@ -127,7 +128,9 @@ export function MapScreen({
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-sm">
               <span className="text-xs font-bold text-shade-700">Lisbon</span>
               <span className="text-shade-300 text-xs">·</span>
-              <span className="text-xs font-medium text-shade-500">Now</span>
+              <span className="text-xs font-medium text-shade-500">
+                {Math.abs(currentDate.getTime() - Date.now()) < 90000 ? 'Now' : formatLisbonTime(currentDate)}
+              </span>
             </div>
             <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-sm">
               <span className="text-xs">{weather.condition === 'rain' ? '🌧' : weather.condition === 'cloudy' ? '☁' : weather.condition === 'partly_cloudy' ? '⛅' : '☀'}</span>

@@ -207,18 +207,49 @@ export function MapView({
 
     const visibleVenues = venues
       .map((v) => ({ venue: v, rec: recMap.get(v.id), score: recMap.get(v.id)?.sunMatch ?? 0 }))
-      .sort((a, b) => b.score - a.score)
+      // Selected venue always wins a spot regardless of score, so tapping a
+      // marker never makes it vanish behind a higher-scoring neighbour on
+      // the next render; everything else falls back to score order.
+      .sort((a, b) => {
+        if (a.venue.id === selectedVenueId) return -1;
+        if (b.venue.id === selectedVenueId) return 1;
+        return b.score - a.score;
+      })
       .slice(0, 10);
 
     const borderColor = mode === 'SUN' ? '#F59E0B' : '#475569';
     const textColor = mode === 'SUN' ? '#D97706' : '#475569';
 
+    // Declutter in screen space: at typical zoom, several venues a block
+    // apart project to overlapping circles and their "N%" labels become
+    // unreadable static. Greedily keep a marker only if its centre clears
+    // every marker already placed (highest score / selected first), instead
+    // of drawing all 10 on top of each other.
+    const MIN_MARKER_GAP_PX = 40;
+    const placedPx: { x: number; y: number }[] = [];
+    // In full sun (or full shade) many venues tie for the exact top score —
+    // this exemption is for THE single best-match badge shown in the sheet
+    // below, not for every tied venue, so only the first one encountered
+    // (highest in sort order) gets to skip the distance check.
+    let topExemptionUsed = false;
+
     for (const { venue: v, rec } of visibleVenues) {
+      const isSelected = v.id === selectedVenueId;
+      const isTop = !topExemptionUsed && rec && rec.sunMatch === topScore && topScore > 0;
+      if (isTop) topExemptionUsed = true;
+
+      const screenPos = map.project([v.longitude, v.latitude]);
+      if (!isSelected && !isTop) {
+        const tooClose = placedPx.some(
+          (p) => Math.hypot(p.x - screenPos.x, p.y - screenPos.y) < MIN_MARKER_GAP_PX
+        );
+        if (tooClose) continue;
+      }
+      placedPx.push({ x: screenPos.x, y: screenPos.y });
+
       const sunPct = v.sunExposureByHour[hour] || 0;
       const shadePct = v.shadeExposureByHour[hour] || 0;
       const displayPct = mode === 'SUN' ? sunPct : shadePct;
-      const isTop = rec && rec.sunMatch === topScore && topScore > 0;
-      const isSelected = v.id === selectedVenueId;
 
       const el = document.createElement('div');
       el.style.cursor = 'pointer';
@@ -238,7 +269,11 @@ export function MapView({
         new Marker({ element: el, anchor: 'center' }).setLngLat([v.longitude, v.latitude]).addTo(map)
       );
     }
-  }, [venues, recommendations, mode, currentDate, selectedVenueId, mapReady, onVenueSelect]);
+    // mapZoom: not read directly (map.project already reflects the live
+    // zoom), but the declutter distances above are only valid for the zoom
+    // they were computed at — without this dep the effect would keep the
+    // pre-zoom layout until something else happened to re-run it.
+  }, [venues, recommendations, mode, currentDate, selectedVenueId, mapReady, onVenueSelect, mapZoom]);
 
   // User location marker
   useEffect(() => {
