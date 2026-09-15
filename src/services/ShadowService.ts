@@ -1,4 +1,4 @@
-import type { GeoPoint, BuildingFootprint } from '@/types';
+import type { GeoPoint, BuildingFootprint, HeightSource } from '@/types';
 import { SunService } from './SunService';
 import { TerrainService } from './TerrainService';
 
@@ -32,6 +32,39 @@ const MAX_SHADOW_LENGTH_M = 2000;
 const SAMPLE_RING_RADIUS_M = 15;
 /** Ray-march step when following a shadow down sloping ground. */
 const TERRAIN_MARCH_STEP_M = 20;
+// ---------------------------------------------------------------------------
+// HEIGHT UNCERTAINTY — why a figure here comes with a bracket
+//
+// Shadow length is `height / tan(elevation)`: an error of one storey on a
+// neighbour moves the edge of its shadow by several metres, which is the width
+// of a terrace. And the heights are mostly not measured — across the 9112
+// footprints in lisbonBuildings.ts, 7.4% carry an OSM `height` tag, 21.8% are
+// derived from a floor count, and 70.7% are a typology guess.
+//
+// So every exposure figure can be recomputed with `heightBias` = +1 / -1,
+// which moves each building by the uncertainty OF ITS OWN PROVENANCE. A
+// measured height does not move; a guessed one moves a whole storey. The
+// spread between the two runs is the honest width of the answer.
+// ---------------------------------------------------------------------------
+
+/** Metres a height may be off by, per provenance of that height. */
+const HEIGHT_UNCERTAINTY_M: Record<HeightSource, number> = {
+  // Tagged in OSM by someone who measured it. Taken at face value.
+  tagged: 0,
+  // Floor count is real; the 3m-per-floor conversion is the assumption.
+  levels: 1.5,
+  // No height at all in the data — the neighbourhood median. One storey.
+  estimated: 3,
+};
+
+/** A building's height under a bracketing run. `bias` is 0 for the central
+ *  estimate, +1 for "every guessed neighbour is a storey taller", -1 for
+ *  "a storey shorter". Never returns a negative height. */
+export function bracketedHeight(building: BuildingFootprint, bias: number): number {
+  if (bias === 0) return building.height;
+  return Math.max(0, building.height + bias * HEIGHT_UNCERTAINTY_M[building.heightSource]);
+}
+
 /** Below this distance the "is it in the sun's direction" cone is unreliable
  *  (a close facade spans too much sky) and is skipped — see isBlockedByBuilding. */
 const AZIMUTH_FILTER_MIN_DISTANCE_M = 60;
@@ -314,7 +347,8 @@ class ShadowServiceClass {
     buildings: BuildingFootprint[],
     date: Date,
     lat: number,
-    lng: number
+    lng: number,
+    heightBias: number = 0
   ): number {
     if (!SunService.isDaytime(date, lat, lng)) return 100;
 
@@ -334,7 +368,7 @@ class ShadowServiceClass {
     for (const sp of samplePoints) {
       let inShadow = false;
       for (const building of buildings) {
-        if (this.isBlockedByBuilding(sp, building, sunPos, pointAltitude)) {
+        if (this.isBlockedByBuilding(sp, building, sunPos, pointAltitude, heightBias)) {
           inShadow = true;
           break;
         }
@@ -399,7 +433,8 @@ class ShadowServiceClass {
     point: GeoPoint,
     building: BuildingFootprint,
     sunPos: { azimuth: number; elevation: number },
-    pointAltitude: number
+    pointAltitude: number,
+    heightBias: number = 0
   ): boolean {
     const sunElRad = sunPos.elevation * (Math.PI / 180);
     if (sunElRad < 0.01) return true;
@@ -408,7 +443,7 @@ class ShadowServiceClass {
     // height but how far its roof stands above the point's ground. A building
     // downhill from a miradouro has a negative effective height and is
     // dismissed here, before any geometry runs.
-    const effectiveHeight = building.altitude + building.height - pointAltitude;
+    const effectiveHeight = building.altitude + bracketedHeight(building, heightBias) - pointAltitude;
     if (effectiveHeight <= 0) return false;
 
     const pointM = toMercator(point);
@@ -473,7 +508,8 @@ class ShadowServiceClass {
     venueLng: number,
     venueOrientation: number,
     buildings: BuildingFootprint[],
-    date: Date
+    date: Date,
+    heightBias: number = 0
   ): number {
     const testDate = new Date(date);
     testDate.setHours(hour, 30, 0, 0);
@@ -486,7 +522,8 @@ class ShadowServiceClass {
       buildings,
       testDate,
       venueLat,
-      venueLng
+      venueLng,
+      heightBias
     );
 
     const sunData = SunService.getSunData(testDate, venueLat, venueLng);

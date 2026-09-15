@@ -155,16 +155,14 @@ interface VenueSpec {
 function venue(spec: VenueSpec): Venue {
   const seed = ++idCounter;
   const id = `v_${String(seed).padStart(2, '0')}`;
-  const sun = VenueSunService.computeExposureCurve(
-    {
-      id,
-      lat: spec.lat,
-      lng: spec.lng,
-      orientationDeg: spec.polygon?.orientationDeg ?? 180,
-    },
-    lisbonBuildings,
-    TODAY
-  );
+  const target = {
+    id,
+    lat: spec.lat,
+    lng: spec.lng,
+    orientationDeg: spec.polygon?.orientationDeg ?? 180,
+  };
+  const band = VenueSunService.computeExposureBand(target, lisbonBuildings, TODAY);
+  const sun = band.mid;
   return {
     id,
     name: spec.name,
@@ -185,6 +183,8 @@ function venue(spec: VenueSpec): Venue {
     confidence: spec.confidence,
     sunExposureByHour: sun,
     shadeExposureByHour: sun.map((s) => 100 - s),
+    sunBand: band,
+    heightProvenance: VenueSunService.heightProvenance(target, lisbonBuildings),
     description: spec.description,
   };
 }

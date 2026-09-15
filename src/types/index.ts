@@ -63,6 +63,11 @@ export interface Venue {
   confidence: Confidence;
   sunExposureByHour: number[]; // 24 values, 0-100
   shadeExposureByHour: number[]; // 24 values, 0-100
+  /** `sunExposureByHour` bracketed by the uncertainty on neighbour heights.
+   *  `sunBand.mid` IS `sunExposureByHour` — same array of numbers. */
+  sunBand: ExposureBand;
+  /** Where the heights used for that computation came from. */
+  heightProvenance: HeightProvenance;
   description: string;
 }
 
@@ -83,6 +88,32 @@ export interface SunPosition {
  *  OSM data carried no height at all and the value is a typology guess — the
  *  UI must never present it as measured. */
 export type HeightSource = 'tagged' | 'levels' | 'estimated';
+
+/** How many of the buildings behind one figure had a measured height, a height
+ *  derived from a floor count, or no height at all. Counted over the buildings
+ *  actually fed to the shadow engine for that venue, not over the whole city. */
+export interface HeightProvenance {
+  tagged: number;
+  levels: number;
+  estimated: number;
+  total: number;
+}
+
+/** A sun-exposure figure WITH the width of the doubt around it.
+ *
+ *  `mid` is the number the app has always shown. `low` and `high` come from
+ *  re-running the same geometry with every UNMEASURED neighbour one storey
+ *  taller and one storey shorter — the dominant error in this model, since 70%
+ *  of Lisbon's footprints carry no height in OSM at all. A narrow band means
+ *  the answer does not depend on those guesses; a wide one means it does. */
+export interface ExposureBand {
+  /** 24 values, 0-100 — central estimate. */
+  mid: number[];
+  /** 24 values, 0-100 — pessimistic end of the band. */
+  low: number[];
+  /** 24 values, 0-100 — optimistic end of the band. */
+  high: number[];
+}
 
 export interface BuildingFootprint {
   id: string;

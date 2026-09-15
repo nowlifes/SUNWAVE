@@ -1,4 +1,4 @@
-import type { BuildingFootprint, GeoPoint, Venue } from '@/types';
+import type { BuildingFootprint, ExposureBand, GeoPoint, HeightProvenance, Venue } from '@/types';
 import { ShadowService } from './ShadowService';
 import { ReportService } from './ReportService';
 
@@ -53,12 +53,12 @@ class VenueSunServiceClass {
    *  dataset doesn't change at runtime, so this only needs computing once. */
   private nearbyBuildingsCache = new Map<string, BuildingFootprint[]>();
 
-  /** Cache of computed 24h curves, keyed by `${venueId}|${YYYY-MM-DD}` so the
+  /** Cache of computed 24h BANDS, keyed by `${venueId}|${YYYY-MM-DD}` so the
    *  (rare, currently unreachable via the UI) case of a different calendar
    *  day still gets a physically-correct curve instead of a stale one — see
    *  the architecture note in the research log for why this matters less
    *  than it sounds today (TimeSlider never changes the day). */
-  private curveCache = new Map<string, number[]>();
+  private bandCache = new Map<string, ExposureBand>();
 
   constructor() {
     // A new report must take effect immediately, not on next page load.
@@ -79,33 +79,76 @@ class VenueSunServiceClass {
   }
 
   /** Real 24-value (0-23h) sun-exposure curve for an arbitrary target point,
-   *  computed from actual sun position + real nearby building shadows. */
+   *  computed from actual sun position + real nearby building shadows.
+   *  This is the central estimate — `computeExposureBand` gives it its bracket. */
   computeExposureCurve(target: SunTarget, buildings: BuildingFootprint[], date: Date): number[] {
+    return this.computeExposureBand(target, buildings, date).mid;
+  }
+
+  /**
+   * The same curve, plus the two curves obtained by re-running the identical
+   * geometry with every UNMEASURED neighbour one storey taller, then one
+   * storey shorter (see HEIGHT_UNCERTAINTY_M in ShadowService).
+   *
+   * Three passes instead of one. That is the whole cost of the feature, and it
+   * is paid once per venue per day at module load, behind the map.
+   *
+   * The band is NOT assumed to be ordered pointwise: raising a neighbour can
+   * occasionally ADD sun at an hour (a taller building stops occluding the
+   * point and starts occluding the one that used to shade it). `low` and
+   * `high` are therefore the per-hour min and max of the three passes, which
+   * keeps `low <= mid <= high` true by construction.
+   */
+  computeExposureBand(target: SunTarget, buildings: BuildingFootprint[], date: Date): ExposureBand {
     const key = `${target.id}|${this.dateKey(date)}`;
-    const cached = this.curveCache.get(key);
+    const cached = this.bandCache.get(key);
     if (cached) return cached;
 
     const nearby = this.nearbyBuildings(target, buildings);
-    const curve: number[] = new Array(24);
-    for (let h = 0; h < 24; h++) {
-      curve[h] = ShadowService.computeSunExposureForHour(h, target.lat, target.lng, target.orientationDeg, nearby, date);
-    }
 
     // User reports override the geometry, because they see what it cannot:
     // parasols, awnings, trees, scaffolding, a terrace that moved. The engine
     // models buildings and nothing else, so a terrace reported shaded stays
-    // shaded however perfect the shadow math is.
-    const adjusted = ReportService.applyToCurve(target.id, curve);
+    // shaded however perfect the shadow math is. Applied to every pass, so a
+    // report narrows the whole band rather than only its middle.
+    const pass = (heightBias: number): number[] => {
+      const curve: number[] = new Array(24);
+      for (let h = 0; h < 24; h++) {
+        curve[h] = ShadowService.computeSunExposureForHour(
+          h, target.lat, target.lng, target.orientationDeg, nearby, date, heightBias
+        );
+      }
+      return ReportService.applyToCurve(target.id, curve);
+    };
 
-    this.curveCache.set(key, adjusted);
-    return adjusted;
+    const mid = pass(0);
+    const taller = pass(1);
+    const shorter = pass(-1);
+
+    const band: ExposureBand = {
+      mid,
+      low: mid.map((m, h) => Math.min(m, taller[h], shorter[h])),
+      high: mid.map((m, h) => Math.max(m, taller[h], shorter[h])),
+    };
+
+    this.bandCache.set(key, band);
+    return band;
+  }
+
+  /** Provenance mix of the heights that produced this target's figures — the
+   *  buildings the engine actually tested, not the whole city. */
+  heightProvenance(target: SunTarget, buildings: BuildingFootprint[]): HeightProvenance {
+    const nearby = this.nearbyBuildings(target, buildings);
+    const out: HeightProvenance = { tagged: 0, levels: 0, estimated: 0, total: nearby.length };
+    for (const b of nearby) out[b.heightSource]++;
+    return out;
   }
 
   /** A new report invalidates the cached curves it contradicts. Without this
    *  a user would report a terrace shaded and see the old number until reload. */
   invalidateVenue(venueId: string): void {
-    for (const key of [...this.curveCache.keys()]) {
-      if (key.startsWith(`${venueId}|`)) this.curveCache.delete(key);
+    for (const key of [...this.bandCache.keys()]) {
+      if (key.startsWith(`${venueId}|`)) this.bandCache.delete(key);
     }
   }
 
@@ -121,6 +164,20 @@ class VenueSunServiceClass {
       buildings,
       date
     );
+  }
+
+  /** Band for an already-built Venue, in SUN terms. */
+  getSunBand(venue: Venue, buildings: BuildingFootprint[], date: Date): ExposureBand {
+    return this.computeExposureBand(this.targetOf(venue), buildings, date);
+  }
+
+  private targetOf(venue: Venue): SunTarget {
+    return {
+      id: venue.id,
+      lat: venue.latitude,
+      lng: venue.longitude,
+      orientationDeg: venue.outdoorPolygon?.orientationDeg ?? DEFAULT_ORIENTATION_DEG,
+    };
   }
 
   getShadeExposureByHour(venue: Venue, buildings: BuildingFootprint[], date: Date): number[] {

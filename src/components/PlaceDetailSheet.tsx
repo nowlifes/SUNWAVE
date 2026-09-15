@@ -103,6 +103,29 @@ export function PlaceDetailSheet({
     }, 2500);
   }, [venue.id]);
 
+  // THE BAND. `venue.sunBand` brackets the figure by re-running the shadow
+  // geometry with every unmeasured neighbour a storey taller, then shorter.
+  // In SHADE mode the band flips with the number: shade = 100 - sun, so the
+  // optimistic end of one is the pessimistic end of the other.
+  const bandAt = useCallback((h: number) => {
+    const lo = venue.sunBand.low[h] ?? 0;
+    const hi = venue.sunBand.high[h] ?? 0;
+    return mode === 'SUN' ? { lo, hi } : { lo: 100 - hi, hi: 100 - lo };
+  }, [venue.sunBand, mode]);
+
+  const nowBand = bandAt(hour);
+  const bandWidth = nowBand.hi - nowBand.lo;
+  // Under 2 points the range is narrower than the rounding and showing it as
+  // "95-96%" reads as precision, which is the opposite of the point.
+  const showRange = bandWidth >= 2;
+
+  const prov = venue.heightProvenance;
+  const estimatedShare = prov.total > 0 ? prov.estimated / prov.total : 0;
+  const provVerdict =
+    prov.total === 0 ? 'OPEN SKY' : estimatedShare > 0.5 ? 'ESTIMATED' : estimatedShare > 0.2 ? 'MIXED' : 'MEASURED';
+  const provColor =
+    provVerdict === 'ESTIMATED' ? 'text-orange-600' : provVerdict === 'MIXED' ? 'text-amber-600' : 'text-green-600';
+
   const sunBars = venue.sunExposureByHour.slice(7, 20).map((pct, i) => {
     const h = i + 7;
     const isCurrent = h === hour;
@@ -172,7 +195,9 @@ export function PlaceDetailSheet({
               <div className="flex items-center gap-3 mb-4">
                 <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${mode === 'SUN' ? 'bg-sun-100' : 'bg-shade-200'}`}>
                   <span className="text-sm">{mode === 'SUN' ? '☀' : '🌑'}</span>
-                  <span className={`text-sm font-bold ${mode === 'SUN' ? 'text-sun-600' : 'text-shade-600'}`}>{displayPct}%</span>
+                  <span className={`text-sm font-bold ${mode === 'SUN' ? 'text-sun-600' : 'text-shade-600'}`}>
+                    {showRange ? `${nowBand.lo}–${nowBand.hi}%` : `${displayPct}%`}
+                  </span>
                   <span className="text-[10px] font-medium text-shade-500">{mode === 'SUN' ? 'sunny' : 'shaded'}</span>
                 </div>
                 <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-shade-100">
@@ -205,16 +230,34 @@ export function PlaceDetailSheet({
                     const activeColor = mode === 'SUN' ? 'bg-sun-500' : 'bg-shade-500';
                     const inactiveColor = mode === 'SUN' ? 'bg-sun-300' : 'bg-shade-300';
                     const accentText = mode === 'SUN' ? 'text-sun-600' : 'text-shade-600';
+                    const hb = bandAt(h);
+                    const rangeColor = mode === 'SUN' ? 'bg-sun-200' : 'bg-shade-200';
                     return (
                       <div key={h} className="flex items-center gap-2">
                         <span className={`text-[10px] font-medium w-8 ${isCurrent ? `${accentText} font-bold` : 'text-shade-400'}`}>
                           {String(h).padStart(2, '0')}:00
                         </span>
-                        <div className="flex-1 h-3 bg-shade-100 rounded-full overflow-hidden">
+                        <div className="relative flex-1 h-3 bg-shade-100 rounded-full overflow-hidden">
+                          {/* Three layers, in reading order: what holds however
+                              wrong the guessed heights are (solid, up to the
+                              low end), how far it could go (pale, to the high
+                              end), and the central estimate (tick). Drawing the
+                              band UNDER a full-width bar would have hidden its
+                              lower half, which is the half that matters. */}
                           <div
-                            className={`h-full rounded-full smooth-transition ${isCurrent ? activeColor : inactiveColor}`}
-                            style={{ width: `${displayPct}%` }}
+                            className={`absolute inset-y-0 left-0 rounded-full smooth-transition ${isCurrent ? activeColor : inactiveColor}`}
+                            style={{ width: `${hb.lo}%` }}
                           />
+                          <div
+                            className={`absolute inset-y-0 ${rangeColor}`}
+                            style={{ left: `${hb.lo}%`, width: `${Math.max(0, hb.hi - hb.lo)}%` }}
+                          />
+                          {hb.hi > hb.lo && (
+                            <div
+                              className={`absolute inset-y-0 w-0.5 ${activeColor}`}
+                              style={{ left: `calc(${displayPct}% - 1px)` }}
+                            />
+                          )}
                         </div>
                         <span className={`text-[10px] font-semibold w-7 text-right ${isCurrent ? accentText : 'text-shade-500'}`}>
                           {displayPct}%
@@ -235,20 +278,37 @@ export function PlaceDetailSheet({
                 </div>
               )}
 
-              {/* Confidence */}
+              {/* Where this number comes from — provenance of the heights the
+                  shadow engine used here, and how far the figure moves with
+                  them. Replaces a `confidence` field typed by hand per venue,
+                  which knew nothing about the data behind the calculation. */}
               <div className="bg-shade-50 rounded-2xl p-3 mb-5">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-[10px] font-bold tracking-wider text-shade-400">CONFIDENCE</p>
-                  <span className={`text-xs font-bold ${venue.confidence === 'HIGH' ? 'text-green-600' : venue.confidence === 'MEDIUM' ? 'text-amber-600' : 'text-orange-600'}`}>
-                    {venue.confidence}
-                  </span>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-bold tracking-wider text-shade-400">WHERE THIS NUMBER COMES FROM</p>
+                  <span className={`text-xs font-bold ${provColor}`}>{provVerdict}</span>
                 </div>
+
+                {prov.total > 0 && (
+                  <div className="flex h-1.5 rounded-full overflow-hidden bg-shade-200 mb-2">
+                    <span className="bg-green-500" style={{ width: `${(prov.tagged / prov.total) * 100}%` }} />
+                    <span className="bg-blue-400" style={{ width: `${(prov.levels / prov.total) * 100}%` }} />
+                    <span className="bg-sun-500" style={{ width: `${(prov.estimated / prov.total) * 100}%` }} />
+                  </div>
+                )}
+
                 <p className="text-[11px] text-shade-500 leading-relaxed">
-                  {venue.confidence === 'HIGH'
-                    ? 'Based on strong spatial data and mapped outdoor area.'
-                    : venue.confidence === 'MEDIUM'
-                    ? 'Good location data but incomplete outdoor geometry.'
-                    : 'Estimated from incomplete data — treat with caution.'}
+                  {prov.total === 0
+                    ? 'No building stands close enough to shade this spot, so the figure rests on no guessed height at all.'
+                    : `Of the ${prov.total} buildings tested around this spot, ${prov.tagged} carry a measured height, ${prov.levels} a height derived from their floor count, and ${prov.estimated} a height estimated from the neighbourhood.`}
+                </p>
+                <p className="text-[11px] text-shade-500 leading-relaxed mt-1.5">
+                  {showRange
+                    ? `Replaying the shadows with those neighbours a storey taller or shorter moves ${
+                        mode === 'SUN' ? 'sun' : 'shade'
+                      } between ${nowBand.lo}% and ${nowBand.hi}% — a ${bandWidth}-point spread around ${displayPct}%.`
+                    : `Moving those neighbours a storey up or down barely shifts the result: ${
+                        bandWidth === 0 ? 'no change' : `${bandWidth} point`
+                      } at this hour.`}
                 </p>
               </div>
 

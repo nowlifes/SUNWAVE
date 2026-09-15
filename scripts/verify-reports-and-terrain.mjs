@@ -3,6 +3,13 @@
 // engine now depends on. Loads the real modules through Vite's SSR loader.
 //
 // Run with: TZ=Europe/Lisbon node scripts/verify-reports-and-terrain.mjs
+// The whole dataset is Lisbon. Sun position is computed with local-time Date
+// objects, so running this on a machine set to another zone shifts every curve
+// by that offset and the checks below fail for a reason that is not the code.
+// Forced, not defaulted: an exported TZ in the shell would otherwise win and
+// the script would silently check a city that is not the one in the data.
+process.env.TZ = 'Europe/Lisbon';
+
 import { createServer } from 'vite';
 
 const server = await createServer({ server: { middlewareMode: true }, appType: 'custom' });
