@@ -39,6 +39,11 @@ const CLUSTERS = [
   { name: 'Saldanha', lat: 38.7235, lng: -9.145, radiusM: 450 },
   { name: 'Graca', lat: 38.714, lng: -9.1335, radiusM: 400 },
   { name: 'Belem', lat: 38.6975, lng: -9.205, radiusM: 600 },
+  // Added 2026-09-15: no venues here yet, but flagged in the handoff as a
+  // gap — fetching now so buildings are ready the day venues.ts expands here.
+  { name: 'Arroios', lat: 38.7295, lng: -9.1335, radiusM: 450 },
+  { name: 'Pena', lat: 38.723, lng: -9.135, radiusM: 400 },
+  { name: 'Anjos', lat: 38.7245, lng: -9.1355, radiusM: 350 },
 ];
 
 // Adding `relation` to the query roughly doubled its cost and the main
