@@ -6,6 +6,7 @@ import { SunService } from './SunService';
 import { VenueSunService } from './VenueSunService';
 import { lisbonBuildings } from '@/data/lisbonBuildings';
 import { formatLisbonTime, lisbonHour, lisbonMinutesOfDay, lisbonWeekday } from '@/utils/lisbonTime';
+import { HOT_THRESHOLD_C } from '@/utils/autoMode';
 
 // Reads through VenueSunService (real ShadowService physics against real
 // buildings, memoized per venue+day) using the explicit `date` this service
@@ -146,9 +147,14 @@ class RecommendationServiceClass {
     const { sunWindowStart, sunWindowEnd, sunWindowDurationMin, sunArrivesInMin, sunLeavesInMin, arrivesTomorrow, lastsUntilSunset, endsAtSunset } =
       this.computeSunWindow(venue, mode, date);
 
+    // Sous forte chaleur, une ombre qui tombe en plein après-midi ne vaut pas
+    // une ombre qui tient : la durée compte double, jusqu'à 4 h au lieu de 2.
+    // Plafond 240 min = médiane des ombres ouvertes un 15 juillet à 13 h.
+    const heat = mode === 'SHADE' && weather.temperature >= HOT_THRESHOLD_C;
+    const fullWindowMin = heat ? 240 : 120;
     let timeRemainingScore = 50;
     if (sunWindowDurationMin > 0) {
-      timeRemainingScore = Math.min(100, (sunWindowDurationMin / 120) * 100);
+      timeRemainingScore = Math.min(100, (sunWindowDurationMin / fullWindowMin) * 100);
     }
     if (mode === 'SUN' && sunArrivesInMin !== null && sunArrivesInMin > 0 && sunArrivesInMin < 30) {
       timeRemainingScore = Math.max(30, timeRemainingScore - 20);
@@ -163,9 +169,9 @@ class RecommendationServiceClass {
     const isOpen = this.checkOpen(venue, date);
 
     const sunMatch = Math.round(
-      sunExposureScore * 0.45 +
-      distanceScore * 0.20 +
-      timeRemainingScore * 0.15 +
+      sunExposureScore * (heat ? 0.35 : 0.45) +
+      distanceScore * (heat ? 0.15 : 0.20) +
+      timeRemainingScore * (heat ? 0.30 : 0.15) +
       outdoorScore * 0.10 +
       confidenceScore * 0.10
     );

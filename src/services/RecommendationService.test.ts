@@ -114,3 +114,28 @@ describe('mode Soleil', () => {
     }
   });
 });
+
+describe('mode Ombre sous forte chaleur', () => {
+  // 15 juillet, 13 h, 31 °C : Café Janis, à l'ombre pour 1 h 15 seulement,
+  // passait devant Comoba, à l'ombre jusqu'au coucher. Par cette chaleur,
+  // une ombre qui tombe en plein après-midi ne vaut pas une ombre qui tient.
+  const date = at('2026-07-15T13:00:00+01:00');
+  const hot = { temperature: 31, condition: 'clear' as const, rainProbability: 0, windSpeedKmh: 10, description: '' };
+  const answers = RecommendationService.getAnswerList('SHADE', LISBON, date, [], hot, 6);
+
+  it("une ombre qui tient passe devant une ombre aussi dense qui tombe dans l'heure et demie", () => {
+    answers.forEach((short, i) => {
+      if (short.sunLeavesInMin === null || short.sunLeavesInMin > 90) return;
+      for (const long of answers.slice(i + 1)) {
+        const holds = long.sunLeavesInMin !== null && long.sunLeavesInMin >= 240;
+        if (holds && long.shadePercentage >= short.shadePercentage) {
+          throw new Error(`${short.venue.name} (${short.sunLeavesInMin} min) devant ${long.venue.name} (${long.sunLeavesInMin} min)`);
+        }
+      }
+    });
+  });
+
+  it('en tête : une ombre qui tient tout l\'après-midi', () => {
+    expect(answers[0].sunLeavesInMin).toBeGreaterThanOrEqual(240);
+  });
+});
