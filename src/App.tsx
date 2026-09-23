@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { SunMode, Venue, GeoPoint, ScreenName, DiscoverCategory } from '@/types';
 import { LocationService } from '@/services/LocationService';
 import { VenueService } from '@/services/VenueService';
+import { venueIdFromUrl } from '@/utils/share';
 
 import { Onboarding } from '@/components/Onboarding';
 import { NowScreen } from '@/components/NowScreen';
@@ -40,8 +41,15 @@ function saveToStorage(key: string, value: unknown) {
 }
 
 export default function App() {
+  // Arrivé par une invitation (« ?lieu=… ») : la fiche du lieu s'ouvre tout
+  // de suite, sans les écrans d'accueil — l'invité veut savoir où et jusqu'à
+  // quand, pas découvrir l'app. Lu une fois, au montage.
+  const [invitedVenueId] = useState(() => {
+    const id = venueIdFromUrl(window.location.href);
+    return id && VenueService.getVenueById(id) ? id : null;
+  });
   const [onboardingComplete, setOnboardingComplete] = useState(
-    () => loadFromStorage(STORAGE_KEYS.onboarding, false)
+    () => invitedVenueId !== null || loadFromStorage(STORAGE_KEYS.onboarding, false)
   );
   // L'app ouvre sur la réponse, pas sur la carte : voir NowScreen.
   const [screen, setScreen] = useState<ScreenName>('now');
@@ -51,7 +59,7 @@ export default function App() {
   const [locationGranted, setLocationGranted] = useState(false);
   const [outsideLisbon, setOutsideLisbon] = useState(false);
   const [locationRequested, setLocationRequested] = useState(false);
-  const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
+  const [selectedVenueId, setSelectedVenueId] = useState<string | null>(invitedVenueId);
   const [mapCenter, setMapCenter] = useState<GeoPoint>(LISBON_CENTER);
   const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
   const [savedVenueIds, setSavedVenueIds] = useState<string[]>(() =>
@@ -61,6 +69,10 @@ export default function App() {
 
   // Persist state
   useEffect(() => saveToStorage(STORAGE_KEYS.mode, mode), [mode]);
+  // Le lien a servi : un rechargement ne doit pas rouvrir la fiche.
+  useEffect(() => {
+    if (invitedVenueId) window.history.replaceState(null, '', window.location.pathname);
+  }, [invitedVenueId]);
   useEffect(() => saveToStorage(STORAGE_KEYS.saved, savedVenueIds), [savedVenueIds]);
 
   // Auto-request location when entering map after onboarding

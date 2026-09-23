@@ -6,6 +6,7 @@ import { SunService } from '@/services/SunService';
 import { SunTrailService, type SunTrail } from '@/services/SunTrailService';
 import { formatLisbonTime } from '@/utils/lisbonTime';
 import { categoryLabel, formatGap, statusCopy, statusShort } from '@/utils/copy';
+import { inviteText, inviteUrl, shareInvite } from '@/utils/share';
 
 // ---------------------------------------------------------------------------
 // L'écran réponse — l'écran d'accueil.
@@ -91,6 +92,24 @@ export function NowScreen({
     [mode, phase, pick, userLocation, currentDate]
   );
 
+  // Retour visible quand la feuille de partage native n'existe pas (desktop) :
+  // le lien part dans le presse-papiers, et il faut le dire.
+  const [shareState, setShareState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  useEffect(() => {
+    if (shareState === 'idle') return;
+    const t = setTimeout(() => setShareState('idle'), 2500);
+    return () => clearTimeout(t);
+  }, [shareState]);
+
+  const handleShare = useCallback(async () => {
+    if (!pick) return;
+    const result = await shareInvite(
+      inviteText(pick, mode, trail, formatLisbonTime(sunset)),
+      inviteUrl(window.location.origin, pick.venue.id)
+    );
+    if (result === 'copied' || result === 'failed') setShareState(result);
+  }, [pick, mode, trail, sunset]);
+
   const handleSomethingElse = useCallback(() => {
     setPickIndex((i) => (answers.length > 0 ? (i + 1) % answers.length : 0));
   }, [answers.length]);
@@ -161,6 +180,8 @@ export function NowScreen({
             onDirections={() => onGetDirections(pick.venue.id)}
             onSomethingElse={handleSomethingElse}
             hasAlternatives={answers.length > 1}
+            onShare={handleShare}
+            shareState={shareState}
           />
         ) : (
           <div className="mt-6 rounded-3xl bg-white p-6 shadow-lg shadow-shade-900/5">
@@ -235,6 +256,8 @@ function AnswerCard({
   onDirections,
   onSomethingElse,
   hasAlternatives,
+  onShare,
+  shareState,
 }: {
   rec: Recommendation;
   mode: SunMode;
@@ -242,6 +265,8 @@ function AnswerCard({
   onDirections: () => void;
   onSomethingElse: () => void;
   hasAlternatives: boolean;
+  onShare: () => void;
+  shareState: 'idle' | 'copied' | 'failed';
 }) {
   const isSun = mode === 'SUN';
   const exposure = isSun ? rec.sunPercentage : rec.shadePercentage;
@@ -264,9 +289,18 @@ function AnswerCard({
 
   return (
     <div className="mt-6 rounded-3xl bg-white p-6 shadow-xl shadow-shade-900/10">
-      <p className="text-[10.5px] font-bold uppercase tracking-wider text-sun-600">
-        {inItNow ? `Va là pour ${isSun ? 'le soleil' : "l'ombre"}` : `Prochain ${isSun ? 'au soleil' : "à l'ombre"}`}
-      </p>
+      <div className="-mr-2.5 -mt-2.5 flex items-center justify-between gap-2">
+        <p className="text-[10.5px] font-bold uppercase tracking-wider text-sun-600">
+          {inItNow ? `Va là pour ${isSun ? 'le soleil' : "l'ombre"}` : `Prochain ${isSun ? 'au soleil' : "à l'ombre"}`}
+        </p>
+        <button
+          onClick={onShare}
+          aria-label="Inviter quelqu'un"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-shade-400 active:scale-90 active:bg-shade-50 transition-transform"
+        >
+          <ShareIcon />
+        </button>
+      </div>
 
       <button onClick={onOpen} className="mt-1.5 block text-left active:opacity-70 transition-opacity">
         <h2 className="text-[1.7rem] font-bold leading-tight tracking-tight text-shade-900">
@@ -291,6 +325,14 @@ function AnswerCard({
         <p className="mt-3.5 flex items-start gap-2 px-0.5 text-[12.5px] leading-snug text-shade-500">
           <ReliefIcon />
           <span>{relief}</span>
+        </p>
+      )}
+
+      {shareState !== 'idle' && (
+        <p role="status" className="mt-3.5 text-center text-[12.5px] font-semibold text-shade-600">
+          {shareState === 'copied'
+            ? "Invitation copiée — colle-la dans ta conversation."
+            : "Copie impossible sur cet appareil."}
         </p>
       )}
 
@@ -427,6 +469,17 @@ function AlternativeRow({
 }
 
 // ---------------------------------------------------------------------------
+
+/** Partager — une flèche qui sort d'une boîte. */
+function ShareIcon() {
+  return (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 3v12" />
+      <polyline points="7 8 12 3 17 8" />
+      <path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
+    </svg>
+  );
+}
 
 /** Une crête — le relief sous le lieu, pas une décoration. */
 function ReliefIcon() {
