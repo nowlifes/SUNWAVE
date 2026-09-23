@@ -56,6 +56,22 @@ describe('position d\'un lieu', () => {
     expect(ponto.latitude).toBeLessThan(38.69);
     expect(VenueService.getNeighborhood(ponto)).toBe('Almada');
   });
+
+  // Comoba était posé 330 m au sud de sa rue, entre les blocs de l'avenue
+  // 24 de Julho : 10 points d'échantillonnage sur 12 tombaient dans des
+  // bâtiments, et l'app le donnait à l'ombre toute la journée. Son adresse est
+  // le 90 (site officiel), pas le 120 ; OSM situe le 66 et le 116 de part et
+  // d'autre, sur le trottoir nord.
+  it('Comoba est sur la Rua da Boavista, devant le 90', () => {
+    const comoba = venues.find((v) => v.name === 'Comoba')!;
+    expect(comoba.address).toMatch(/Boavista 90\b/);
+    expect(metres(comoba, { latitude: 38.7089, longitude: -9.149 })).toBeLessThan(25);
+  });
+
+  it('Comoba prend le soleil à un moment de la journée', () => {
+    const comoba = venues.find((v) => v.name === 'Comoba')!;
+    expect(Math.max(...comoba.sunExposureByHour.slice(9, 17))).toBeGreaterThan(20);
+  });
 });
 
 // Le même jardin figurait deux fois sous deux noms (Príncipe Real, Estrela).

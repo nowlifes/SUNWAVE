@@ -645,19 +645,22 @@ const entries: (Venue | null)[] = [
   venue({
     name: 'Comoba',
     category: 'cafe',
-    lat: 38.7060,
-    lng: -9.1462,
-    address: 'R. da Boavista 120, Cais do Sodré',
+    // Trottoir nord devant le 90, entre le 66 et le 116 relevés dans OSM.
+    // L'ancien point (38.7060, -9.1462) était 330 m au sud, entre les blocs de
+    // l'avenue 24 de Julho, et le mettait à l'ombre toute la journée.
+    lat: 38.7088,
+    lng: -9.14899,
+    address: 'R. da Boavista 90, Cais do Sodré',
     rating: 4.4,
     isOpen: true,
-    hours: cafeHours(),
+    hours: { 0: { open: '08:30', close: '17:00' }, 1: { open: '08:30', close: '17:00' }, 2: { open: '08:30', close: '17:00' }, 3: { open: '08:30', close: '17:00' }, 4: { open: '08:30', close: '17:00' }, 5: { open: '08:30', close: '17:00' }, 6: { open: '08:30', close: '17:00' } },
     hasOutdoor: true,
-    polygon: poly(38.7060, -9.1462, 12, 7, 180),
-    buildingHeight: 19,
+    polygon: poly(38.7088, -9.14899, 12, 7, 180),
+    buildingHeight: 12,
     confidence: 'HIGH',
     sunProfile: 'street-mixed',
     description:
-      'Spot brunch tenu par des Australiens, avec une terrasse sur trottoir — lumineux et ensoleillé dès la fin de matinée.',
+      'Brunch et café de spécialité dans une ancienne pharmacie, avec quelques tables sur le trottoir de la Rua da Boavista.',
   }),
   venue({
     name: 'Cervejaria Ramiro',
