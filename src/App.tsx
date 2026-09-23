@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { SunMode, Venue, GeoPoint, UserPreferences, ScreenName, DiscoverCategory } from '@/types';
+import type { SunMode, Venue, GeoPoint, ScreenName, DiscoverCategory } from '@/types';
 import { LocationService } from '@/services/LocationService';
 import { VenueService } from '@/services/VenueService';
-import { MapService } from '@/services/MapService';
 
 import { Onboarding } from '@/components/Onboarding';
 import { NowScreen } from '@/components/NowScreen';
@@ -20,7 +19,6 @@ const STORAGE_KEYS = {
   onboarding: 'sun_onboarding_complete',
   mode: 'sun_mode',
   saved: 'sun_saved_venues',
-  prefs: 'sun_preferences',
 };
 
 function loadFromStorage<T>(key: string, fallback: T): T {
@@ -59,24 +57,11 @@ export default function App() {
   const [savedVenueIds, setSavedVenueIds] = useState<string[]>(() =>
     loadFromStorage(STORAGE_KEYS.saved, [] as string[])
   );
-  const [preferences, setPreferences] = useState<UserPreferences>(() =>
-    loadFromStorage(STORAGE_KEYS.prefs, {
-      mode: 'SUN' as SunMode,
-      preferredCategories: [],
-      location: null,
-    })
-  );
   const [discoverCategory, setDiscoverCategory] = useState<DiscoverCategory | null>(null);
-
-  // Sync mode to preferences
-  useEffect(() => {
-    setPreferences((p) => ({ ...p, mode }));
-  }, [mode]);
 
   // Persist state
   useEffect(() => saveToStorage(STORAGE_KEYS.mode, mode), [mode]);
   useEffect(() => saveToStorage(STORAGE_KEYS.saved, savedVenueIds), [savedVenueIds]);
-  useEffect(() => saveToStorage(STORAGE_KEYS.prefs, preferences), [preferences]);
 
   // Auto-request location when entering map after onboarding
   useEffect(() => {
@@ -198,8 +183,8 @@ export default function App() {
   }, [selectedVenueId]);
 
   const locationLabel = useMemo(() => {
-    if (locationGranted) return 'Your location';
-    return 'Lisbon, Portugal';
+    if (locationGranted) return 'Ta position';
+    return 'Lisbonne, Portugal';
   }, [locationGranted]);
 
   if (!onboardingComplete) {
@@ -274,7 +259,6 @@ export default function App() {
           <SavedScreen
             savedVenues={savedVenues}
             currentDate={currentDate}
-            mode={mode}
             onVenueSelect={handleVenueSelect}
             onRemove={handleRemoveSaved}
           />
@@ -282,8 +266,8 @@ export default function App() {
 
         {screen === 'profile' && (
           <ProfileScreen
-            preferences={preferences}
-            onPreferencesChange={setPreferences}
+            mode={mode}
+            onModeChange={handleModeChange}
             locationLabel={locationLabel}
             locationGranted={locationGranted}
           />

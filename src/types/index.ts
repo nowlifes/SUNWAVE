@@ -149,12 +149,6 @@ export interface Recommendation {
   isOpen: boolean;
 }
 
-export interface UserPreferences {
-  mode: SunMode;
-  preferredCategories: VenueCategory[];
-  location: GeoPoint | null;
-}
-
 export interface UserLocation {
   coords: GeoPoint;
   accuracy: number;
