@@ -107,6 +107,11 @@ function hourLabel(hhmm: string | null): string {
 /** La pastille de carte : ce qui distingue un lieu de ses voisins. En plein
  *  ciel ils partagent tous le même pourcentage ; pas la même durée. */
 export function markerLabel(rec: Recommendation, mode: SunMode): string {
+  // À l'ombre jusqu'au coucher, tous partagent la même durée ; la
+  // profondeur de l'ombre, elle, varie d'un lieu à l'autre.
+  if (mode === 'SHADE' && rec.lastsUntilSunset && rec.sunLeavesInMin !== null) {
+    return `${rec.shadePercentage} %`;
+  }
   if (rec.sunLeavesInMin !== null) {
     const gap = compactGap(rec.sunLeavesInMin);
     return mode === 'SUN' ? `☀ ${gap}` : gap;

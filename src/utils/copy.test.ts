@@ -89,9 +89,17 @@ describe('markerLabel', () => {
     expect(markerLabel(rec({ sunLeavesInMin: 34 }), 'SUN')).toBe('☀ 34 min');
   });
 
-  it('à l\'ombre : même chose, sans le soleil', () => {
-    const r = rec({ shadePercentage: 100, lastsUntilSunset: true, sunLeavesInMin: 302 });
-    expect(markerLabel(r, 'SHADE')).toBe('5h02');
+  it('à l\'ombre : le temps qu\'il reste, sans le soleil', () => {
+    const r = rec({ shadePercentage: 100, sunLeavesInMin: 150 });
+    expect(markerLabel(r, 'SHADE')).toBe('2h30');
+  });
+
+  it('à l\'ombre jusqu\'au coucher : la profondeur de l\'ombre', () => {
+    // Tous les lieux ombragés jusqu'au coucher partagent la même durée —
+    // 6 pastilles sur 7 disaient « 5h02 ». Ce qui les distingue, c'est
+    // l'ombre elle-même : 100 % sous une arcade, 59 % sous un arbre.
+    const r = rec({ shadePercentage: 82, lastsUntilSunset: true, sunLeavesInMin: 302 });
+    expect(markerLabel(r, 'SHADE')).toBe('82 %');
   });
 
   it('plus tard aujourd\'hui : l\'heure d\'arrivée', () => {
