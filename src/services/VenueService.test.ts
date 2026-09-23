@@ -27,3 +27,33 @@ describe('quartier d\'un lieu', () => {
     for (const v of venues) expect(QUARTIERS, v.name).toContain(VenueService.getNeighborhood(v));
   });
 });
+
+// Trois plages de Caparica partageaient à 200 m près le même point, dans les
+// terres ; Carcavelos flottait au milieu du Tage ; Ponto Final était rive
+// nord alors qu'il est à Almada. Deux lieux distincts n'occupent pas le même
+// endroit : deux plages collées trahissent une position inventée.
+describe('position d\'un lieu', () => {
+  const venues = VenueService.getVenuesByCategory([]);
+  const metres = (a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }) =>
+    Math.hypot(
+      (b.longitude - a.longitude) * 111320 * Math.cos((a.latitude * Math.PI) / 180),
+      (b.latitude - a.latitude) * 110540
+    );
+
+  it('deux plages distinctes sont à plus de 300 m l\'une de l\'autre', () => {
+    const beaches = venues.filter((v) => v.category === 'beach');
+    const clashes: string[] = [];
+    beaches.forEach((a, i) =>
+      beaches.slice(i + 1).forEach((b) => {
+        if (metres(a, b) < 300) clashes.push(`${a.name} / ${b.name}`);
+      })
+    );
+    expect(clashes).toEqual([]);
+  });
+
+  it('Ponto Final est sur la rive sud, à Almada', () => {
+    const ponto = venues.find((v) => v.name === 'Ponto Final')!;
+    expect(ponto.latitude).toBeLessThan(38.69);
+    expect(VenueService.getNeighborhood(ponto)).toBe('Almada');
+  });
+});
