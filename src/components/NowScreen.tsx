@@ -3,6 +3,7 @@ import type { GeoPoint, Recommendation, SunMode } from '@/types';
 import { RecommendationService } from '@/services/RecommendationService';
 import { ReliefService } from '@/services/ReliefService';
 import { SunService } from '@/services/SunService';
+import { SunTrailService, type SunTrail } from '@/services/SunTrailService';
 import { formatLisbonTime } from '@/utils/lisbonTime';
 import { categoryLabel, formatGap, statusCopy, statusShort } from '@/utils/copy';
 
@@ -79,6 +80,15 @@ export function NowScreen({
         ? SunService.getSunrise(new Date(currentDate.getTime() + 24 * 3600 * 1000))
         : sunrise,
     [phase, currentDate, sunrise]
+  );
+
+  // Le parcours suit le lieu affiché : « Autre chose » en change le départ.
+  const trail = useMemo(
+    () =>
+      mode === 'SUN' && phase === 'day' && pick
+        ? SunTrailService.plan(pick, userLocation, currentDate)
+        : null,
+    [mode, phase, pick, userLocation, currentDate]
   );
 
   const handleSomethingElse = useCallback(() => {
@@ -166,6 +176,8 @@ export function NowScreen({
             </button>
           </div>
         )}
+
+        {trail && <SunTrailCard trail={trail} onSelect={onVenueSelect} />}
 
         {/* --- le filet, toujours visible ----------------------------------- */}
         {!nightShade && alternatives.length > 0 && (
@@ -299,6 +311,80 @@ function AnswerCard({
         )}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+/** « Et après ? » — là où aller quand l'ombre rattrape le lieu proposé. */
+function SunTrailCard({ trail, onSelect }: { trail: SunTrail; onSelect: (venueId: string) => void }) {
+  const [first, ...next] = trail.stops;
+  const last = trail.stops[trail.stops.length - 1];
+
+  return (
+    <div className="mt-4 rounded-3xl bg-white/80 p-5 shadow-sm backdrop-blur">
+      <p className="text-[10.5px] font-bold uppercase tracking-wider text-sun-600">Suivre le soleil</p>
+      <h2 className="mt-1 text-[1.15rem] font-bold leading-tight text-shade-900">
+        Et après {formatLisbonTime(first.leaveAt)} ?
+      </h2>
+      <p className="mt-0.5 text-[13px] text-shade-500">
+        {trail.untilSunset
+          ? `Au soleil jusqu'au coucher, à ${formatLisbonTime(last.leaveAt)}.`
+          : `Au soleil jusqu'à ${formatLisbonTime(last.leaveAt)}.`}
+      </p>
+
+      <ol className="mt-4">
+        <TrailRow time={`jusqu'à ${formatLisbonTime(first.leaveAt)}`} name={first.rec.venue.name} muted />
+        {next.map((stop) => (
+          <li key={stop.rec.venue.id}>
+            <p className="ml-[5px] border-l-2 border-dashed border-shade-200 py-1.5 pl-[17px] text-[11.5px] text-shade-400">
+              {stop.walkMin} min à pied
+            </p>
+            <button
+              onClick={() => onSelect(stop.rec.venue.id)}
+              className="block w-full text-left active:opacity-70 transition-opacity"
+            >
+              <TrailRow
+                as="div"
+                time={`${formatLisbonTime(stop.arriveAt)} – ${formatLisbonTime(stop.leaveAt)}`}
+                name={stop.rec.venue.name}
+                detail={categoryLabel(stop.rec.venue.category)}
+              />
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function TrailRow({
+  time,
+  name,
+  detail,
+  muted = false,
+  as = 'li',
+}: {
+  time: string;
+  name: string;
+  detail?: string;
+  muted?: boolean;
+  as?: 'li' | 'div';
+}) {
+  const Tag = as;
+  return (
+    <Tag className="flex items-start gap-3">
+      <span className={`mt-1 h-3 w-3 shrink-0 rounded-full ${muted ? 'bg-sun-200' : 'bg-sun-500'}`} />
+      <span className="min-w-0 flex-1">
+        <span className={`block truncate text-sm font-semibold ${muted ? 'text-shade-500' : 'text-shade-800'}`}>
+          {name}
+        </span>
+        <span className="block text-xs tabular-nums text-shade-400">
+          {time}
+          {detail && ` · ${detail}`}
+        </span>
+      </span>
+    </Tag>
   );
 }
 
