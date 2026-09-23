@@ -1,6 +1,6 @@
 import { useRef, useCallback, useMemo, useState } from 'react';
 import type { SunMode } from '@/types';
-import { lisbonHour, lisbonMinute, setLisbonTime } from '@/utils/lisbonTime';
+import { lisbonHour, lisbonMinute, setLisbonTime, snapToQuarter } from '@/utils/lisbonTime';
 
 interface TimeSliderProps {
   mode: SunMode;
@@ -34,10 +34,8 @@ export function TimeSlider({ mode, currentDate, onTimeChange }: TimeSliderProps)
     if (!sliderRef.current) return;
     const r = sliderRef.current.getBoundingClientRect();
     const p = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
-    const mins = 7 * 60 + p * MAX_MIN;
-    const hr = Math.floor(mins / 60);
-    const min = Math.round((mins % 60) / 15) * 15;
-    onTimeChange(setLisbonTime(new Date(), hr, min % 60));
+    const { hour, minute } = snapToQuarter(7 * 60 + p * MAX_MIN);
+    onTimeChange(setLisbonTime(new Date(), hour, minute));
   }, [onTimeChange]);
 
   const onDown = useCallback((e: React.PointerEvent) => {
@@ -103,16 +101,22 @@ export function TimeSlider({ mode, currentDate, onTimeChange }: TimeSliderProps)
             style={{ left: `calc(${pct}% - 10px)`, background: accent }}
           />
 
-          {/* Hour labels */}
-          <div className="absolute top-7 left-0 right-0 flex justify-between">
+          {/* Hour labels — placés à leur vraie heure sur la piste. En
+              `justify-between` ils tombaient à côté : toucher « 18 »
+              posait le curseur à 17:45, et le clic du bouton, avalé par
+              la capture du pointeur, ne corrigeait rien. Simples libellés :
+              le toucher remonte à la piste (par le DOM — ils débordent sous
+              elle, donc pas de pointer-events-none), qui arrondit au quart
+              d'heure. */}
+          <div className="absolute top-7 left-0 right-0 h-3">
             {HOURS.map((hr) => (
-              <button
+              <span
                 key={hr}
-                onClick={() => onTimeChange(setLisbonTime(new Date(), hr, 0))}
-                className={`text-[8px] font-medium ${h === hr ? `${accentText} font-bold` : 'text-shade-400'}`}
+                className={`absolute -translate-x-1/2 text-[8px] font-medium ${h === hr ? `${accentText} font-bold` : 'text-shade-400'}`}
+                style={{ left: `${((hr - 7) * 60 / MAX_MIN) * 100}%` }}
               >
                 {String(hr).padStart(2, '0')}
-              </button>
+              </span>
             ))}
           </div>
         </div>

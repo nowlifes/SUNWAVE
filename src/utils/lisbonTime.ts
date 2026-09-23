@@ -98,3 +98,10 @@ export function formatLisbonTime(date: Date): string {
   const p = lisbonParts(date);
   return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`;
 }
+
+/** Minutes depuis minuit → heure et minute au quart d'heure le plus proche.
+ *  Arrondir le TOTAL, pas les minutes seules : 17 h 59 donnait 17:00. */
+export function snapToQuarter(totalMinutes: number): { hour: number; minute: number } {
+  const snapped = Math.round(totalMinutes / 15) * 15;
+  return { hour: Math.floor(snapped / 60), minute: snapped % 60 };
+}
