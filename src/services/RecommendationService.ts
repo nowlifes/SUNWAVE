@@ -48,6 +48,19 @@ class RecommendationServiceClass {
     return recs.slice(0, maxResults);
   }
 
+  /** Un lieu précis, évalué exactement comme dans les listes — la fiche
+   *  détail recalculait ses propres chiffres et contredisait l'accueil. */
+  getRecommendationFor(
+    venue: Venue,
+    mode: SunMode,
+    userLocation: GeoPoint,
+    date: Date,
+    weather?: WeatherData
+  ): Recommendation {
+    const wx = weather || WeatherService.getCurrentWeather();
+    return this.scoreVenue(venue, mode, userLocation, date, lisbonHour(date), wx);
+  }
+
   getTopRecommendation(
     mode: SunMode,
     userLocation: GeoPoint,
@@ -332,12 +345,6 @@ class RecommendationServiceClass {
     if (h === 0) return `${m} min`;
     if (m === 0) return `${h}h`;
     return `${h}h ${m}m`;
-  }
-
-  formatArrival(min: number | null, prefix: string): string | null {
-    if (min === null) return null;
-    if (min <= 0) return `${prefix} now`;
-    return `${prefix} in ${this.formatDuration(min)}`;
   }
 }
 
