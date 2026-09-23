@@ -24,6 +24,8 @@ interface NowScreenProps {
   currentDate: Date;
   userLocation: GeoPoint;
   locationGranted: boolean;
+  /** Position GPS obtenue mais hors de Lisbonne : on mesure depuis le centre. */
+  outsideLisbon: boolean;
   onModeChange: (mode: SunMode) => void;
   onVenueSelect: (venueId: string) => void;
   onGetDirections: (venueId: string) => void;
@@ -56,6 +58,7 @@ export function NowScreen({
   currentDate,
   userLocation,
   locationGranted,
+  outsideLisbon,
   onModeChange,
   onVenueSelect,
   onGetDirections,
@@ -83,19 +86,28 @@ export function NowScreen({
     [answers, pickIndex]
   );
 
-  const sunset = useMemo(
-    () => SunService.getSunset(currentDate, userLocation.lat, userLocation.lng),
-    [currentDate, userLocation.lat, userLocation.lng]
-  );
+  // Lever et coucher de LISBONNE, pas de la position : l'app ne parle que
+  // de cette ville.
+  const sunrise = useMemo(() => SunService.getSunrise(currentDate), [currentDate]);
+  const sunset = useMemo(() => SunService.getSunset(currentDate), [currentDate]);
+  const phase: 'before' | 'day' | 'after' =
+    currentDate < sunrise ? 'before' : currentDate < sunset ? 'day' : 'after';
   const minutesToSunset = Math.round((sunset.getTime() - currentDate.getTime()) / 60000);
-  const daylightLeft = minutesToSunset > 0;
+  const nextSunrise = useMemo(
+    () =>
+      phase === 'after'
+        ? SunService.getSunrise(new Date(currentDate.getTime() + 24 * 3600 * 1000))
+        : sunrise,
+    [phase, currentDate, sunrise]
+  );
 
   const handleSomethingElse = useCallback(() => {
     setPickIndex((i) => (answers.length > 0 ? (i + 1) % answers.length : 0));
   }, [answers.length]);
 
   const isSun = mode === 'SUN';
-  const seeking = isSun ? 'soleil' : 'ombre';
+  // La nuit, l'ombre est partout : un classement « à l'ombre » n'a plus de sens.
+  const nightShade = !isSun && phase !== 'day';
 
   return (
     <div className="absolute inset-0 overflow-y-auto pb-24 bg-gradient-to-b from-sun-50 via-shade-50 to-shade-100">
@@ -117,18 +129,41 @@ export function NowScreen({
         </div>
 
         <p className="mt-2 text-sm text-shade-500">
-          {daylightLeft ? (
+          {phase === 'day' ? (
             <>
               Le soleil quitte Lisbonne dans{' '}
               <span className="font-semibold text-shade-700">{formatGap(minutesToSunset)}</span>.
             </>
+          ) : phase === 'before' ? (
+            <>
+              Le soleil se lève à{' '}
+              <span className="font-semibold text-shade-700">{formatLisbonTime(sunrise)}</span>.
+            </>
           ) : (
-            <>Le soleil est couché sur Lisbonne. Voici où il revient en premier.</>
+            <>Le soleil est couché sur Lisbonne.{isSun && ' Voici où il revient en premier demain.'}</>
           )}
         </p>
 
         {/* --- la réponse --------------------------------------------------- */}
-        {pick ? (
+        {nightShade ? (
+          <div className="mt-6 rounded-3xl bg-white p-6 shadow-xl shadow-shade-900/10">
+            <p className="text-[10.5px] font-bold uppercase tracking-wider text-shade-400">Mode ombre</p>
+            <p className="mt-1.5 text-[1.4rem] font-bold leading-tight text-shade-900">
+              Il fait nuit : l'ombre est partout.
+            </p>
+            <p className="mt-2 text-sm text-shade-500">
+              Le soleil revient à{' '}
+              <span className="font-semibold text-shade-700">{formatLisbonTime(nextSunrise)}</span>. Le mode
+              ombre reprendra son sens à ce moment-là.
+            </p>
+            <button
+              onClick={() => onModeChange('SUN')}
+              className="mt-5 w-full rounded-2xl bg-shade-900 py-3.5 text-sm font-bold text-white active:scale-[0.98] transition-transform"
+            >
+              Voir où le soleil revient
+            </button>
+          </div>
+        ) : pick ? (
           <AnswerCard
             rec={pick}
             mode={mode}
@@ -153,7 +188,7 @@ export function NowScreen({
         )}
 
         {/* --- le filet, toujours visible ----------------------------------- */}
-        {alternatives.length > 0 && (
+        {!nightShade && alternatives.length > 0 && (
           <div className="mt-7">
             <h2 className="px-1 text-[10.5px] font-bold uppercase tracking-wider text-shade-400">
               Aussi {isSun ? 'au soleil' : "à l'ombre"}
@@ -176,13 +211,22 @@ export function NowScreen({
           <span className="font-semibold text-shade-500">64 lieux à Lisbonne. Tous vérifiés à pied.</span>
           <br />
           Pas 2 000 adresses aspirées d'une base.
-          {!locationGranted && (
+          {outsideLisbon ? (
             <>
               <br />
               <span className="text-shade-300">
-                Temps de marche depuis le centre — active ta position pour les tiens.
+                Tu n'es pas à Lisbonne : temps de marche depuis le centre.
               </span>
             </>
+          ) : (
+            !locationGranted && (
+              <>
+                <br />
+                <span className="text-shade-300">
+                  Temps de marche depuis le centre — active ta position pour les tiens.
+                </span>
+              </>
+            )
           )}
         </p>
       </div>
@@ -219,9 +263,13 @@ function AnswerCard({
   //
   // Mode Ombre exclu, et pas par prudence : dominer le quartier donne MOINS
   // d'ombre, pas plus. La même mesure y dirait l'inverse de la vérité.
+  //
+  // Et seulement quand le lieu EST au soleil : la nuit, « garde le soleil
+  // après les rues d'en bas » ne décrit rien.
   const relief = useMemo(
-    () => (isSun ? ReliefService.explain({ lat: rec.venue.latitude, lng: rec.venue.longitude }) : null),
-    [isSun, rec.venue.latitude, rec.venue.longitude]
+    () =>
+      isSun && inItNow ? ReliefService.explain({ lat: rec.venue.latitude, lng: rec.venue.longitude }) : null,
+    [isSun, inItNow, rec.venue.latitude, rec.venue.longitude]
   );
 
   return (
@@ -244,7 +292,16 @@ function AnswerCard({
       <div className="mt-5 flex items-center gap-3 rounded-2xl bg-sun-50 px-4 py-3.5">
         <SunDial percentage={exposure} />
         <div className="min-w-0">
-          {inItNow && leavesIn !== null ? (
+          {inItNow && leavesIn !== null && rec.lastsUntilSunset ? (
+            <>
+              <p className="text-[15px] font-bold leading-tight text-shade-900">
+                À l'ombre jusqu'au coucher du soleil
+              </p>
+              <p className="mt-0.5 text-xs text-shade-500">
+                {exposure} % d'ombre maintenant · encore {formatGap(leavesIn)}
+              </p>
+            </>
+          ) : inItNow && leavesIn !== null ? (
             <>
               <p className="text-[15px] font-bold leading-tight text-shade-900">
                 Perd {isSun ? 'le soleil' : "l'ombre"} dans {formatGap(leavesIn)}
@@ -253,6 +310,13 @@ function AnswerCard({
                 {exposure} % de {word} maintenant
                 {rec.sunWindowEnd ? ` · jusqu'à ${rec.sunWindowEnd}` : ''}
               </p>
+            </>
+          ) : arrivesIn !== null && rec.arrivesTomorrow ? (
+            <>
+              <p className="text-[15px] font-bold leading-tight text-shade-900">
+                Soleil demain dès {rec.sunWindowStart}
+              </p>
+              <p className="mt-0.5 text-xs text-shade-500">Dans {formatGap(arrivesIn)}</p>
             </>
           ) : arrivesIn !== null ? (
             <>
@@ -318,9 +382,13 @@ function AlternativeRow({
 
   const detail =
     leavesIn !== null
-      ? `${formatGap(leavesIn)} restantes`
+      ? rec.lastsUntilSunset
+        ? "jusqu'au coucher"
+        : `${formatGap(leavesIn)} restantes`
       : arrivesIn !== null
-        ? `dans ${formatGap(arrivesIn)}`
+        ? rec.arrivesTomorrow
+          ? `demain dès ${rec.sunWindowStart}`
+          : `dans ${formatGap(arrivesIn)}`
         : `${exposure} %`;
 
   return (

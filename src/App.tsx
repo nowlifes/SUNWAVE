@@ -51,6 +51,7 @@ export default function App() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [userLocation, setUserLocation] = useState<GeoPoint>(LISBON_CENTER);
   const [locationGranted, setLocationGranted] = useState(false);
+  const [outsideLisbon, setOutsideLisbon] = useState(false);
   const [locationRequested, setLocationRequested] = useState(false);
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
   const [mapCenter, setMapCenter] = useState<GeoPoint>(LISBON_CENTER);
@@ -84,6 +85,7 @@ export default function App() {
       LocationService.getCurrentLocation().then((loc) => {
         setUserLocation(loc.coords);
         setLocationGranted(loc.granted);
+        setOutsideLisbon(loc.outsideLisbon);
         if (loc.granted) {
           setMapCenter(loc.coords);
         }
@@ -91,9 +93,11 @@ export default function App() {
     }
   }, [onboardingComplete, locationRequested]);
 
-  // Refresh "now" time periodically when on map (only if close to now)
+  // Refresh "now" time periodically (only if close to now — a time picked on
+  // the map slider must not snap back). The answer screen shows a clock: it
+  // has to tick too.
   useEffect(() => {
-    if (screen !== 'map') return;
+    if (screen !== 'map' && screen !== 'now') return;
     const interval = setInterval(() => {
       setCurrentDate((prev) => {
         const diff = Math.abs(prev.getTime() - Date.now());
@@ -114,6 +118,7 @@ export default function App() {
     LocationService.getCurrentLocation().then((loc) => {
       setUserLocation(loc.coords);
       setLocationGranted(loc.granted);
+      setOutsideLisbon(loc.outsideLisbon);
       if (loc.granted) {
         setMapCenter(loc.coords);
       }
@@ -124,6 +129,7 @@ export default function App() {
     LocationService.getCurrentLocation().then((loc) => {
       setUserLocation(loc.coords);
       setLocationGranted(loc.granted);
+      setOutsideLisbon(loc.outsideLisbon);
       setMapCenter(loc.granted ? loc.coords : LISBON_CENTER);
       setMapZoom(15);
     });
@@ -216,6 +222,7 @@ export default function App() {
             currentDate={currentDate}
             userLocation={userLocation}
             locationGranted={locationGranted}
+            outsideLisbon={outsideLisbon}
             onModeChange={handleModeChange}
             onVenueSelect={handleVenueSelect}
             onGetDirections={handleGetDirections}

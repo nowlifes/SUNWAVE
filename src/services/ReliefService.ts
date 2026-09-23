@@ -19,6 +19,8 @@ import { TerrainService } from '@/services/TerrainService';
 // manque de texte, c'est le texte faux.
 // ---------------------------------------------------------------------------
 
+const NBSP = String.fromCharCode(0xa0);
+
 /** Rayons d'échantillonnage : « le quartier autour », pas la colline entière. */
 const RING_RADII_M = [200, 350, 500];
 const SAMPLES_PER_RING = 12;
@@ -79,7 +81,9 @@ class ReliefServiceClass {
     const metres = Math.round(prominence / 5) * 5;
 
     // Espace insécable : « 40 m » ne doit jamais se couper en fin de ligne.
-    const hauteur = `${metres} m`;
+    // Écrite par son code, pas en caractère littéral : invisible à la
+    // relecture, un espace normal retapé de bonne foi passerait inaperçu.
+    const hauteur = `${metres}${NBSP}m`;
 
     if (prominence >= COMMANDING_THRESHOLD_M) {
       return `Garde le soleil après les rues d'en bas — il est ${hauteur} au-dessus d'elles.`;

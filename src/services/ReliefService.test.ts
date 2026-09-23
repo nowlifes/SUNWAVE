@@ -42,10 +42,10 @@ describe('explain', () => {
     expect(metres % 5).toBe(0);
   });
 
-  // Le formateur transforme l'échappement ` ` en caractère littéral, donc
+  // Le formateur transforme l'échappement ` ` en caractère littéral, donc
   // invisible à la relecture : sans ce test, un espace normal retapé de bonne
   // foi passerait, et « 40 m » se couperait en fin de ligne comme avant.
   it('colle le nombre à son unité avec une espace insécable', () => {
-    expect(ReliefService.explain(SENHORA_DO_MONTE)).toContain(' m au-dessus');
+    expect(ReliefService.explain(SENHORA_DO_MONTE)).toContain(`${String.fromCharCode(0xa0)}m au-dessus`);
   });
 });

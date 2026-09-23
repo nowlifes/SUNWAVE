@@ -5,7 +5,7 @@ import { WeatherService } from './WeatherService';
 import { SunService } from './SunService';
 import { VenueSunService } from './VenueSunService';
 import { lisbonBuildings } from '@/data/lisbonBuildings';
-import { lisbonHour, lisbonMinute, lisbonMinutesOfDay, lisbonWeekday } from '@/utils/lisbonTime';
+import { formatLisbonTime, lisbonHour, lisbonMinutesOfDay, lisbonWeekday } from '@/utils/lisbonTime';
 
 // Reads through VenueSunService (real ShadowService physics against real
 // buildings, memoized per venue+day) using the explicit `date` this service
@@ -124,7 +124,7 @@ class RecommendationServiceClass {
     const walkTime = MapService.walkTimeMinutes(distanceM);
     const distanceScore = Math.max(0, 100 - (distanceM / 3000) * 100);
 
-    const { sunWindowStart, sunWindowEnd, sunWindowDurationMin, sunArrivesInMin, sunLeavesInMin } =
+    const { sunWindowStart, sunWindowEnd, sunWindowDurationMin, sunArrivesInMin, sunLeavesInMin, arrivesTomorrow, lastsUntilSunset } =
       this.computeSunWindow(venue, mode, hour, date);
 
     let timeRemainingScore = 50;
@@ -171,6 +171,8 @@ class RecommendationServiceClass {
       confidence: venue.confidence,
       sunArrivesInMin,
       sunLeavesInMin,
+      arrivesTomorrow,
+      lastsUntilSunset,
       isOpen,
     };
   }
@@ -186,18 +188,29 @@ class RecommendationServiceClass {
     sunWindowDurationMin: number;
     sunArrivesInMin: number | null;
     sunLeavesInMin: number | null;
+    arrivesTomorrow: boolean;
+    lastsUntilSunset: boolean;
   } {
     const exposure =
       mode === 'SUN'
         ? VenueSunService.getSunExposureByHour(venue, lisbonBuildings, date)
         : VenueSunService.getShadeExposureByHour(venue, lisbonBuildings, date);
     const threshold = mode === 'SUN' ? 40 : 50;
+    const nowMin = lisbonMinutesOfDay(date);
+
+    // L'ombre vaut 100 − soleil : la nuit, elle vaut donc 100 partout, et
+    // chaque lieu « gardait l'ombre jusqu'à 23:59 ». Après le coucher l'ombre
+    // n'est plus une information — c'est le coucher qui ferme la fenêtre.
+    const sunset = SunService.getSunset(date);
+    const sunsetMin = lisbonMinutesOfDay(sunset);
+    const lastHour =
+      mode === 'SUN' ? 23 : nowMin >= sunsetMin ? -1 : Math.floor((sunsetMin - 1) / 60);
+    const qualifies = (h: number) => h <= lastHour && exposure[h] >= threshold;
 
     let start: number | null = null;
     let end: number | null = null;
-
     for (let h = currentHour; h < 24; h++) {
-      if (exposure[h] >= threshold) {
+      if (qualifies(h)) {
         if (start === null) start = h;
         end = h;
       } else if (start !== null) {
@@ -205,39 +218,53 @@ class RecommendationServiceClass {
       }
     }
 
-    const nowMin = lisbonMinutesOfDay(date);
-
-    if (start === null) {
-      let nextStart: number | null = null;
-      for (let h = currentHour + 1; h < 24; h++) {
-        if (exposure[h] >= threshold) {
-          nextStart = h;
-          break;
+    if (start === null || end === null) {
+      // Plus rien aujourd'hui. En mode Soleil, le prochain est demain matin —
+      // la seule chose utile à dire à 23 h.
+      if (mode === 'SUN') {
+        const tomorrow = VenueSunService.getSunExposureByHour(
+          venue, lisbonBuildings, new Date(date.getTime() + 24 * 3600 * 1000)
+        );
+        const first = tomorrow.findIndex((e) => e >= threshold);
+        if (first >= 0) {
+          return {
+            sunWindowStart: `${String(first).padStart(2, '0')}:00`,
+            sunWindowEnd: null,
+            sunWindowDurationMin: 0,
+            sunArrivesInMin: 24 * 60 - nowMin + first * 60,
+            sunLeavesInMin: null,
+            arrivesTomorrow: true,
+            lastsUntilSunset: false,
+          };
         }
       }
       return {
         sunWindowStart: null,
         sunWindowEnd: null,
         sunWindowDurationMin: 0,
-        sunArrivesInMin: nextStart !== null ? nextStart * 60 - nowMin : null,
+        sunArrivesInMin: null,
         sunLeavesInMin: null,
+        arrivesTomorrow: false,
+        lastsUntilSunset: false,
       };
     }
 
-    const startStr = `${String(start).padStart(2, '0')}:00`;
-    const endStr = end !== null && end < 23 ? `${String(end + 1).padStart(2, '0')}:00` : '23:59';
-    const durationMin = ((end || 0) - currentHour) * 60 + (60 - lisbonMinute(date));
+    const lastsUntilSunset = mode === 'SHADE' && end === lastHour;
+    const endMin = lastsUntilSunset ? sunsetMin : (end + 1) * 60;
+    const endStr = lastsUntilSunset
+      ? formatLisbonTime(sunset)
+      : end < 23 ? `${String(end + 1).padStart(2, '0')}:00` : '23:59';
 
-    const currentlyExposed = exposure[currentHour] >= threshold;
-    const arrivesIn = !currentlyExposed && start !== null ? start * 60 - nowMin : null;
-    const leavesIn = currentlyExposed && end !== null ? (end + 1) * 60 - nowMin : null;
+    const currentlyExposed = start === currentHour;
 
     return {
-      sunWindowStart: startStr,
+      sunWindowStart: `${String(start).padStart(2, '0')}:00`,
       sunWindowEnd: endStr,
-      sunWindowDurationMin: Math.max(0, durationMin),
-      sunArrivesInMin: arrivesIn,
-      sunLeavesInMin: leavesIn,
+      sunWindowDurationMin: Math.max(0, endMin - Math.max(nowMin, start * 60)),
+      sunArrivesInMin: currentlyExposed ? null : start * 60 - nowMin,
+      sunLeavesInMin: currentlyExposed ? endMin - nowMin : null,
+      arrivesTomorrow: false,
+      lastsUntilSunset,
     };
   }
 

@@ -142,6 +142,10 @@ export interface Recommendation {
   confidence: Confidence;
   sunArrivesInMin: number | null;
   sunLeavesInMin: number | null;
+  /** `sunArrivesInMin` pointe sur le lendemain matin (rien de plus aujourd'hui). */
+  arrivesTomorrow: boolean;
+  /** Mode Ombre : l'ombre tient jusqu'au coucher du soleil, qui clôt la fenêtre. */
+  lastsUntilSunset: boolean;
   isOpen: boolean;
 }
 
@@ -155,6 +159,8 @@ export interface UserLocation {
   coords: GeoPoint;
   accuracy: number;
   granted: boolean;
+  /** Position GPS obtenue mais hors de Lisbonne : l'app mesure depuis le centre. */
+  outsideLisbon: boolean;
 }
 
 export interface WeatherData {

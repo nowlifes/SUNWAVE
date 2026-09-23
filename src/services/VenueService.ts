@@ -1,4 +1,4 @@
-import type { Venue, VenueCategory, GeoPoint } from '@/types';
+import type { Venue, VenueCategory } from '@/types';
 import { lisbonVenues } from '@/data/lisbonVenues';
 
 class VenueServiceClass {

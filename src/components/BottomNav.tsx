@@ -6,11 +6,11 @@ interface BottomNavProps {
 }
 
 const NAV_ITEMS: { screen: ScreenName; label: string; icon: string }[] = [
-  { screen: 'now', label: 'MAINTENANT', icon: 'sun' },
-  { screen: 'map', label: 'CARTE', icon: 'map' },
-  { screen: 'discover', label: 'DISCOVER', icon: 'compass' },
-  { screen: 'saved', label: 'SAVED', icon: 'bookmark' },
-  { screen: 'profile', label: 'PROFILE', icon: 'user' },
+  { screen: 'now', label: 'Maintenant', icon: 'sun' },
+  { screen: 'map', label: 'Carte', icon: 'map' },
+  { screen: 'discover', label: 'Explorer', icon: 'compass' },
+  { screen: 'saved', label: 'Favoris', icon: 'bookmark' },
+  { screen: 'profile', label: 'Profil', icon: 'user' },
 ];
 
 function NavIcon({ icon, active }: { icon: string; active: boolean }) {
@@ -65,17 +65,19 @@ function NavIcon({ icon, active }: { icon: string; active: boolean }) {
 export function BottomNav({ activeScreen, onScreenChange }: BottomNavProps) {
   return (
     <div className="absolute bottom-0 left-0 right-0 z-30 glass border-t border-shade-200/50">
-      <div className="flex items-center justify-around px-2 py-1.5 pb-[env(safe-area-inset-bottom)]">
+      <div className="flex items-center px-1 py-1.5 pb-[env(safe-area-inset-bottom)]">
         {NAV_ITEMS.map((item) => {
           const active = activeScreen === item.screen;
           return (
             <button
               key={item.screen}
               onClick={() => onScreenChange(item.screen)}
-              className="flex flex-col items-center gap-0.5 px-3 py-2 active:scale-90 transition-transform"
+              className="flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 active:scale-90 transition-transform"
             >
               <NavIcon icon={item.icon} active={active} />
-              <span className={`text-[9px] font-bold tracking-wider transition-colors ${active ? 'text-sun-500' : 'text-shade-400'}`}>
+              {/* Cinq onglets sur 320 px = 64 px chacun : libellés en casse
+                  normale, sans espacement, sinon « MAINTENANT » déborde. */}
+              <span className={`max-w-full truncate text-[10px] font-semibold transition-colors ${active ? 'text-sun-600' : 'text-shade-400'}`}>
                 {item.label}
               </span>
             </button>
