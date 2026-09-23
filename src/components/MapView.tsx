@@ -57,9 +57,25 @@ const MAP_STYLE: import('maplibre-gl').StyleSpecification = {
     },
   },
   layers: [
-    { id: 'base', type: 'raster', source: 'base', paint: { 'raster-opacity': 0.92 } },
+    { id: 'base', type: 'raster', source: 'base', paint: { 'raster-opacity': 0.92, 'raster-saturation': -0.2 } },
     { id: 'labels', type: 'raster', source: 'labels', paint: { 'raster-opacity': 0.7 }, minzoom: 13 },
   ],
+};
+
+// Les emprises, redessinées au-dessus des ombres. Chaque polygone d'ombre
+// contient l'emprise de son bâtiment : sans ce calque, ombre et bâtiment se
+// fondaient en une seule masse grise et l'ombre ne se lisait plus.
+const FOOTPRINTS = {
+  type: 'FeatureCollection' as const,
+  features: lisbonBuildings.map((building) => {
+    const coords = building.points.map((p) => [p.lng, p.lat]);
+    coords.push(coords[0]);
+    return {
+      type: 'Feature' as const,
+      properties: {},
+      geometry: { type: 'Polygon' as const, coordinates: [coords] },
+    };
+  }),
 };
 
 const OVERLAY_BOUNDS: [number, number][] = [
@@ -101,7 +117,21 @@ export function MapView({
       maxZoom: 18,
       minZoom: 11,
     });
-    map.on('load', () => setMapReady(true));
+    map.on('load', () => {
+      // Sous les libellés (sinon les noms de rues disparaissent sous le blanc),
+      // au-dessus des ombres ajoutées plus tard avec `beforeId: 'footprints'`.
+      map.addSource('footprints', { type: 'geojson', data: FOOTPRINTS });
+      map.addLayer(
+        {
+          id: 'footprints',
+          type: 'fill',
+          source: 'footprints',
+          paint: { 'fill-color': '#FFFFFF', 'fill-outline-color': '#C3CCD8' },
+        },
+        'labels'
+      );
+      setMapReady(true);
+    });
     map.on('moveend', () => {
       const c = map.getCenter();
       onMapCenterChange({ lat: c.lat, lng: c.lng });
@@ -156,12 +186,15 @@ export function MapView({
         type: 'geojson',
         data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [OVERLAY_BOUNDS] } },
       });
-      map.addLayer({
-        id: 'sun-overlay',
-        type: 'fill',
-        source: 'sun-overlay',
-        paint: { 'fill-color': overlayColor, 'fill-opacity': overlayOpacity },
-      });
+      map.addLayer(
+        {
+          id: 'sun-overlay',
+          type: 'fill',
+          source: 'sun-overlay',
+          paint: { 'fill-color': overlayColor, 'fill-opacity': overlayOpacity },
+        },
+        'footprints'
+      );
     }
 
     // Directional building shadow polygons
@@ -181,16 +214,20 @@ export function MapView({
         type: 'geojson',
         data: { type: 'FeatureCollection', features: shadowFeatures },
       });
-      map.addLayer({
-        id: 'building-shadows',
-        type: 'fill',
-        source: 'building-shadows',
-        // Les ombres viennent maintenant du vrai moteur physique (bâtiments OSM
-        // réels + SunService corrigé). À 0.08 elles étaient invisibles, ce qui
-        // rendait le calcul inutile à l'écran. Direction validée (composition 1) :
-        // l'ombre EST la réponse, donc elle doit se lire sans légende.
-        paint: { 'fill-color': '#2B3A4D', 'fill-opacity': mode === 'SHADE' ? 0.5 : 0.4 },
-      });
+      map.addLayer(
+        {
+          id: 'building-shadows',
+          type: 'fill',
+          source: 'building-shadows',
+          // L'ombre EST la réponse : elle doit se lire sans légende. Opaque et
+          // pas translucide — 11 000 polygones qui se chevauchent à 40 %
+          // s'empilaient en un gris lourd, plus sombre là où les ombres se
+          // croisent, sans rapport avec la réalité. Opaque, une ombre double
+          // a la même couleur qu'une ombre simple.
+          paint: { 'fill-color': '#A9BBD3', 'fill-opacity': 1, 'fill-antialias': false },
+        },
+        'footprints'
+      );
     }
   }, [mode, isDaytime, mapReady, sunPos, currentDate, mapCenter]);
 
