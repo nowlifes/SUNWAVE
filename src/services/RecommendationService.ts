@@ -13,12 +13,14 @@ import { formatLisbonTime, lisbonHour, lisbonMinutesOfDay, lisbonWeekday } from 
 // — see the architecture note in the research log. In the current UI this
 // resolves to the exact same values (TimeSlider never changes the day), but
 // it makes RecommendationService correct even if that ever changes.
-function sunExposureAt(venue: Venue, date: Date, hour: number): number {
-  return VenueSunService.getSunExposureByHour(venue, lisbonBuildings, date)[hour] ?? 0;
+function exposureByQuarter(venue: Venue, mode: SunMode, date: Date): number[] {
+  const sun = VenueSunService.getSunExposureByQuarter(venue, lisbonBuildings, date);
+  return mode === 'SUN' ? sun : sun.map((s) => 100 - s);
 }
 
-function shadeExposureAt(venue: Venue, date: Date, hour: number): number {
-  return VenueSunService.getShadeExposureByHour(venue, lisbonBuildings, date)[hour] ?? 0;
+/** Minutes depuis minuit → « HH:MM ». */
+function hhmm(min: number): string {
+  return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 }
 
 const CONFIDENCE_SCORE: Record<Confidence, number> = {
@@ -125,8 +127,12 @@ class RecommendationServiceClass {
     hour: number,
     weather: WeatherData
   ): Recommendation {
-    const sunPct = sunExposureAt(venue, date, hour);
-    const shadePct = shadeExposureAt(venue, date, hour);
+    // Le pourcentage « maintenant » vient de la même courbe que la fenêtre,
+    // sinon « perd le soleil dans 10 min » côtoie « 20 % de soleil ».
+    const sunPct = VenueSunService.getSunExposureByQuarter(venue, lisbonBuildings, date)[
+      Math.floor(lisbonMinutesOfDay(date) / 15)
+    ] ?? 0;
+    const shadePct = 100 - sunPct;
 
     const sunExposureScore = mode === 'SUN' ? sunPct : shadePct;
 
@@ -138,7 +144,7 @@ class RecommendationServiceClass {
     const distanceScore = Math.max(0, 100 - (distanceM / 3000) * 100);
 
     const { sunWindowStart, sunWindowEnd, sunWindowDurationMin, sunArrivesInMin, sunLeavesInMin, arrivesTomorrow, lastsUntilSunset } =
-      this.computeSunWindow(venue, mode, hour, date);
+      this.computeSunWindow(venue, mode, date);
 
     let timeRemainingScore = 50;
     if (sunWindowDurationMin > 0) {
@@ -193,7 +199,6 @@ class RecommendationServiceClass {
   private computeSunWindow(
     venue: Venue,
     mode: SunMode,
-    currentHour: number,
     date: Date
   ): {
     sunWindowStart: string | null;
@@ -204,28 +209,28 @@ class RecommendationServiceClass {
     arrivesTomorrow: boolean;
     lastsUntilSunset: boolean;
   } {
-    const exposure =
-      mode === 'SUN'
-        ? VenueSunService.getSunExposureByHour(venue, lisbonBuildings, date)
-        : VenueSunService.getShadeExposureByHour(venue, lisbonBuildings, date);
+    // Au quart d'heure, pas à l'heure : voir getSunExposureByQuarter.
+    const exposure = exposureByQuarter(venue, mode, date);
     const threshold = mode === 'SUN' ? 40 : 50;
     const nowMin = lisbonMinutesOfDay(date);
+    const nowQ = Math.floor(nowMin / 15);
 
     // L'ombre vaut 100 − soleil : la nuit, elle vaut donc 100 partout, et
     // chaque lieu « gardait l'ombre jusqu'à 23:59 ». Après le coucher l'ombre
     // n'est plus une information — c'est le coucher qui ferme la fenêtre.
     const sunset = SunService.getSunset(date);
     const sunsetMin = lisbonMinutesOfDay(sunset);
-    const lastHour =
-      mode === 'SUN' ? 23 : nowMin >= sunsetMin ? -1 : Math.floor((sunsetMin - 1) / 60);
-    const qualifies = (h: number) => h <= lastHour && exposure[h] >= threshold;
+    const sunriseMin = lisbonMinutesOfDay(SunService.getSunrise(date));
+    const lastQ =
+      mode === 'SUN' ? 95 : nowMin >= sunsetMin ? -1 : Math.floor((sunsetMin - 1) / 15);
+    const qualifies = (q: number) => q <= lastQ && exposure[q] >= threshold;
 
     let start: number | null = null;
     let end: number | null = null;
-    for (let h = currentHour; h < 24; h++) {
-      if (qualifies(h)) {
-        if (start === null) start = h;
-        end = h;
+    for (let q = nowQ; q < 96; q++) {
+      if (qualifies(q)) {
+        if (start === null) start = q;
+        end = q;
       } else if (start !== null) {
         break;
       }
@@ -235,16 +240,16 @@ class RecommendationServiceClass {
       // Plus rien aujourd'hui. En mode Soleil, le prochain est demain matin —
       // la seule chose utile à dire à 23 h.
       if (mode === 'SUN') {
-        const tomorrow = VenueSunService.getSunExposureByHour(
-          venue, lisbonBuildings, new Date(date.getTime() + 24 * 3600 * 1000)
-        );
+        const next = new Date(date.getTime() + 24 * 3600 * 1000);
+        const tomorrow = VenueSunService.getSunExposureByQuarter(venue, lisbonBuildings, next);
         const first = tomorrow.findIndex((e) => e >= threshold);
         if (first >= 0) {
+          const startMin = Math.max(first * 15, lisbonMinutesOfDay(SunService.getSunrise(next)));
           return {
-            sunWindowStart: `${String(first).padStart(2, '0')}:00`,
+            sunWindowStart: hhmm(startMin),
             sunWindowEnd: null,
             sunWindowDurationMin: 0,
-            sunArrivesInMin: 24 * 60 - nowMin + first * 60,
+            sunArrivesInMin: 24 * 60 - nowMin + startMin,
             sunLeavesInMin: null,
             arrivesTomorrow: true,
             lastsUntilSunset: false,
@@ -262,19 +267,25 @@ class RecommendationServiceClass {
       };
     }
 
-    const lastsUntilSunset = mode === 'SHADE' && end === lastHour;
-    const endMin = lastsUntilSunset ? sunsetMin : (end + 1) * 60;
-    const endStr = lastsUntilSunset
-      ? formatLisbonTime(sunset)
-      : end < 23 ? `${String(end + 1).padStart(2, '0')}:00` : '23:59';
+    // Un quart d'heure est échantillonné en son milieu (hh:07, hh:22…) : le
+    // coucher tombe presque toujours entre deux échantillons. Si c'est lui
+    // qui coupe la fenêtre — quart suivant échantillonné après le coucher, ou
+    // dernier quart qui le chevauche — la fenêtre finit au coucher, pas au
+    // quart d'heure rond d'avant ou d'après.
+    const lastsUntilSunset = mode === 'SHADE' && end === lastQ;
+    const rawEnd = (end + 1) * 15;
+    const cutBySunset = nowMin < sunsetMin && rawEnd - 15 < sunsetMin && sunsetMin <= rawEnd + 7;
+    const endMin = lastsUntilSunset || cutBySunset ? sunsetMin : rawEnd;
+    const startMin = mode === 'SUN' ? Math.max(start * 15, sunriseMin) : start * 15;
+    const endStr = endMin === sunsetMin ? formatLisbonTime(sunset) : endMin >= 24 * 60 ? '23:59' : hhmm(endMin);
 
-    const currentlyExposed = start === currentHour;
+    const currentlyExposed = start === nowQ;
 
     return {
-      sunWindowStart: `${String(start).padStart(2, '0')}:00`,
+      sunWindowStart: hhmm(startMin),
       sunWindowEnd: endStr,
-      sunWindowDurationMin: Math.max(0, endMin - Math.max(nowMin, start * 60)),
-      sunArrivesInMin: currentlyExposed ? null : start * 60 - nowMin,
+      sunWindowDurationMin: Math.max(0, endMin - Math.max(nowMin, startMin)),
+      sunArrivesInMin: currentlyExposed ? null : startMin - nowMin,
       sunLeavesInMin: currentlyExposed ? endMin - nowMin : null,
       arrivesTomorrow: false,
       lastsUntilSunset,

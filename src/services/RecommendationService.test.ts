@@ -41,7 +41,7 @@ describe('mode Soleil, la nuit', () => {
     // Lever vers 07:20 à Lisbonne fin septembre : entre 8 h et 11 h d'attente.
     expect(top.sunArrivesInMin).toBeGreaterThanOrEqual(8 * 60);
     expect(top.sunArrivesInMin).toBeLessThanOrEqual(11 * 60);
-    expect(top.sunWindowStart).toMatch(/^0[7-9]:00$|^1[01]:00$/);
+    expect(top.sunWindowStart).toMatch(/^(0[7-9]|1[01]):\d\d$/);
   });
 
   it('classe par premier soleil du lendemain', () => {
@@ -55,5 +55,40 @@ describe('mode Soleil, en journée', () => {
     const date = at('2026-09-23T14:30:00+01:00');
     const answers = RecommendationService.getAnswerList('SUN', LISBON, date, [], undefined, 6);
     for (const r of answers) expect(r.arrivesTomorrow).toBe(false);
+  });
+});
+
+describe('fenêtre de soleil au quart d\'heure', () => {
+  // Le moteur tournait à l'heure, échantillonnée à hh:30 : l'heure du coucher
+  // (19:25) tombait à 0, et tout lieu en plein ciel « perdait le soleil à
+  // 19:00 ». Sur la carte, 29 pastilles sur 49 disaient la même chose.
+  const date = at('2026-09-23T14:30:00+01:00');
+  const recs = RecommendationService.getRecommendations('SUN', LISBON, date, [], undefined, 100);
+  const sunny = recs.filter((r) => r.sunLeavesInMin !== null);
+  const sunset = SunService.getSunset(date);
+  const sunsetHHMM = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Lisbon', hour: '2-digit', minute: '2-digit',
+  }).format(sunset);
+  const minutesToSunset = Math.round((sunset.getTime() - date.getTime()) / 60000);
+
+  it('un lieu en plein ciel garde le soleil jusqu\'au coucher, pas jusqu\'à 19:00', () => {
+    expect(sunny.some((r) => r.sunWindowEnd === sunsetHHMM)).toBe(true);
+  });
+
+  it('ne promet jamais de soleil après le coucher', () => {
+    for (const r of sunny) expect(r.sunLeavesInMin!).toBeLessThanOrEqual(minutesToSunset);
+  });
+
+  it('les fins tombent au quart d\'heure, ou au coucher', () => {
+    for (const r of sunny) {
+      const m = Number(r.sunWindowEnd!.slice(3));
+      expect(r.sunWindowEnd === sunsetHHMM || m % 15 === 0).toBe(true);
+    }
+  });
+
+  it('les lieux ne finissent plus presque tous à la même heure', () => {
+    const counts = new Map<string, number>();
+    for (const r of sunny) counts.set(r.sunWindowEnd!, (counts.get(r.sunWindowEnd!) ?? 0) + 1);
+    expect(counts.size).toBeGreaterThan(5);
   });
 });

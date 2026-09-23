@@ -517,7 +517,24 @@ class ShadowServiceClass {
     heightBias: number = 0,
     altitudeOverride?: number
   ): number {
-    const testDate = setLisbonTime(date, hour, 30);
+    return this.computeSunExposureAt(
+      hour, 30, venueLat, venueLng, venueOrientation, buildings, date, heightBias, altitudeOverride
+    );
+  }
+
+  /** Même calcul, à une minute précise (heure de Lisbonne). */
+  computeSunExposureAt(
+    hour: number,
+    minute: number,
+    venueLat: number,
+    venueLng: number,
+    venueOrientation: number,
+    buildings: BuildingFootprint[],
+    date: Date,
+    heightBias: number = 0,
+    altitudeOverride?: number
+  ): number {
+    const testDate = setLisbonTime(date, hour, minute);
 
     if (!SunService.isDaytime(testDate, venueLat, venueLng)) return 0;
 

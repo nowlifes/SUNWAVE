@@ -140,6 +140,40 @@ class VenueSunServiceClass {
     return band;
   }
 
+  /** Cache des courbes au quart d'heure, même clé que `bandCache`. */
+  private quarterCache = new Map<string, number[]>();
+
+  /**
+   * Soleil au quart d'heure : 96 valeurs, la n-ième au milieu du quart
+   * [n×15, n×15+15[ (heure de Lisbonne).
+   *
+   * La courbe horaire, échantillonnée à hh:30, ne sait dire que « jusqu'à
+   * 19:00 » : l'heure du coucher (19:25) y vaut 0, et tous les lieux en plein
+   * ciel finissaient ensemble. Ce qui distingue deux terrasses, c'est le
+   * quart d'heure où un toit les rattrape — il faut le voir.
+   *
+   * Estimation centrale seulement : la fourchette reste horaire, c'est la
+   * durée annoncée qui a besoin de la précision.
+   */
+  getSunExposureByQuarter(venue: Venue, buildings: BuildingFootprint[], date: Date): number[] {
+    const target = this.targetOf(venue);
+    const key = `${target.id}|${this.dateKey(date)}`;
+    const cached = this.quarterCache.get(key);
+    if (cached) return cached;
+
+    const nearby = this.nearbyBuildings(target, buildings);
+    const curve: number[] = new Array(96);
+    for (let q = 0; q < 96; q++) {
+      curve[q] = ShadowService.computeSunExposureAt(
+        Math.floor(q / 4), (q % 4) * 15 + 7, target.lat, target.lng, target.orientationDeg,
+        nearby, date, 0, target.altitude
+      );
+    }
+    const out = ReportService.applyToCurve(target.id, curve);
+    this.quarterCache.set(key, out);
+    return out;
+  }
+
   /** Provenance mix of the heights that produced this target's figures — the
    *  buildings the engine actually tested, not the whole city. */
   heightProvenance(target: SunTarget, buildings: BuildingFootprint[]): HeightProvenance {
@@ -154,6 +188,9 @@ class VenueSunServiceClass {
   invalidateVenue(venueId: string): void {
     for (const key of [...this.bandCache.keys()]) {
       if (key.startsWith(`${venueId}|`)) this.bandCache.delete(key);
+    }
+    for (const key of [...this.quarterCache.keys()]) {
+      if (key.startsWith(`${venueId}|`)) this.quarterCache.delete(key);
     }
   }
 
