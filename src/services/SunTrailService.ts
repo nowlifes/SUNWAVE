@@ -33,8 +33,10 @@ export interface TrailStop {
   /** Marche depuis l'étape précédente (ou depuis la position de départ). */
   walkMin: number;
   arriveAt: Date;
-  /** Quand le soleil quitte ce lieu. */
+  /** Quand le soleil quitte ce lieu — ou quand il ferme, si c'est avant. */
   leaveAt: Date;
+  /** On part parce que le lieu ferme, pas parce que l'ombre arrive. */
+  closes: boolean;
 }
 
 export interface SunTrail {
@@ -45,12 +47,23 @@ export interface SunTrail {
 
 const MIN = 60000;
 
-/** Le lieu au soleil à `arriveAt`, et pour combien de temps — ou rien. */
+/** Le lieu au soleil à `arriveAt`, et pour combien de temps — ou rien.
+ *  On part quand le soleil part, ou quand le lieu ferme si c'est avant :
+ *  une étape qui dure au-delà de la fermeture envoie vers une porte close. */
 function stopAt(rec: Recommendation, from: GeoPoint, departAt: Date, walkMin: number): TrailStop | null {
   const arriveAt = new Date(departAt.getTime() + walkMin * MIN);
   const there = RecommendationService.getRecommendationFor(rec.venue, 'SUN', from, arriveAt);
-  if (!there.isOpen || there.sunLeavesInMin === null || there.sunLeavesInMin < MIN_STAY_MIN) return null;
-  return { rec: there, walkMin, arriveAt, leaveAt: new Date(arriveAt.getTime() + there.sunLeavesInMin * MIN) };
+  const untilClose = RecommendationService.minutesUntilClose(rec.venue, arriveAt);
+  if (untilClose === null || there.sunLeavesInMin === null) return null;
+  const stay = Math.min(there.sunLeavesInMin, untilClose);
+  if (stay < MIN_STAY_MIN) return null;
+  return {
+    rec: there,
+    walkMin,
+    arriveAt,
+    leaveAt: new Date(arriveAt.getTime() + stay * MIN),
+    closes: untilClose < there.sunLeavesInMin,
+  };
 }
 
 export const SunTrailService = {

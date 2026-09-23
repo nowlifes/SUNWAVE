@@ -60,3 +60,44 @@ describe('suivre le soleil', () => {
     expect(SunTrailService.plan(pick, LISBON, night)).toBeNull();
   });
 });
+
+describe('suivre le soleil, heures de fermeture', () => {
+  // Un parcours qui envoie à 17:49 vers un bar fermé à 17:00 ruine la
+  // confiance dans tout le reste. Vérifié sur TOUS les parcours possibles.
+  const closeOf = (venue: { openingHours: Record<number, { open: string; close: string } | null> }, d: Date) => {
+    const day = new Date(d.getTime() + 3600000).getUTCDay(); // Lisbonne = UTC+1 en septembre
+    const h = venue.openingHours[day];
+    if (!h) return null;
+    const [oh, om] = h.open.split(':').map(Number);
+    const [ch, cm] = h.close.split(':').map(Number);
+    let close = ch * 60 + cm;
+    if (close <= oh * 60 + om) close += 24 * 60;
+    const midnight = Date.parse('2026-09-23T00:00:00+01:00');
+    return new Date(midnight + close * 60000);
+  };
+
+  let total = 0;
+  const times: string[] = [];
+  for (let m = 10 * 60; m <= 18 * 60 + 30; m += 30) {
+    times.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
+  }
+  for (const t of times) {
+    it(`à ${t}, aucune étape ne dure après la fermeture`, () => {
+      const d = new Date(`2026-09-23T${t}:00+01:00`);
+      const picks = RecommendationService.getRecommendations('SUN', LISBON, d, [], undefined, 100)
+        .filter((r) => r.isOpen && r.sunLeavesInMin !== null);
+      for (const p of picks) {
+        const trail = SunTrailService.plan(p, LISBON, d);
+        for (const s of trail?.stops ?? []) {
+          const close = closeOf(s.rec.venue as never, d);
+          expect(close, s.rec.venue.name).not.toBeNull();
+          expect(s.leaveAt.getTime(), `${s.rec.venue.name} ferme à ${close!.toISOString()}`)
+            .toBeLessThanOrEqual(close!.getTime());
+          total++;
+        }
+      }
+    });
+  }
+
+  it('a bien vérifié des étapes', () => expect(total).toBeGreaterThan(0));
+});

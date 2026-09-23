@@ -293,9 +293,14 @@ class RecommendationServiceClass {
   }
 
   private checkOpen(venue: Venue, date: Date): boolean {
+    return this.minutesUntilClose(venue, date) !== null;
+  }
+
+  /** Minutes avant la fermeture, ou `null` si le lieu est fermé à `date`. */
+  minutesUntilClose(venue: Venue, date: Date): number | null {
     const day = lisbonWeekday(date);
     const hours = venue.openingHours[day];
-    if (!hours) return false;
+    if (!hours) return null;
 
     const nowMin = lisbonMinutesOfDay(date);
     const [openH, openM] = hours.open.split(':').map(Number);
@@ -304,7 +309,7 @@ class RecommendationServiceClass {
     let closeMin = closeH * 60 + closeM;
     if (closeMin <= openMin) closeMin += 24 * 60;
 
-    return nowMin >= openMin && nowMin <= closeMin;
+    return nowMin >= openMin && nowMin <= closeMin ? closeMin - nowMin : null;
   }
 
   getBestTime(venue: Venue, mode: SunMode, date: Date): { start: string; end: string } | null {

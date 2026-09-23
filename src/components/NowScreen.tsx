@@ -334,7 +334,12 @@ function SunTrailCard({ trail, onSelect }: { trail: SunTrail; onSelect: (venueId
       </p>
 
       <ol className="mt-4">
-        <TrailRow time={`jusqu'à ${formatLisbonTime(first.leaveAt)}`} name={first.rec.venue.name} muted />
+        <TrailRow
+          time={`jusqu'à ${formatLisbonTime(first.leaveAt)}`}
+          name={first.rec.venue.name}
+          detail={first.closes ? 'ferme' : undefined}
+          muted
+        />
         {next.map((stop) => (
           <li key={stop.rec.venue.id}>
             <p className="ml-[5px] border-l-2 border-dashed border-shade-200 py-1.5 pl-[17px] text-[11.5px] text-shade-400">
@@ -348,7 +353,7 @@ function SunTrailCard({ trail, onSelect }: { trail: SunTrail; onSelect: (venueId
                 as="div"
                 time={`${formatLisbonTime(stop.arriveAt)} – ${formatLisbonTime(stop.leaveAt)}`}
                 name={stop.rec.venue.name}
-                detail={categoryLabel(stop.rec.venue.category)}
+                detail={`${categoryLabel(stop.rec.venue.category)}${stop.closes ? ' · ferme' : ''}`}
               />
             </button>
           </li>
