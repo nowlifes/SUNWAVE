@@ -57,3 +57,35 @@ describe('position d\'un lieu', () => {
     expect(VenueService.getNeighborhood(ponto)).toBe('Almada');
   });
 });
+
+// Le même jardin figurait deux fois sous deux noms (Príncipe Real, Estrela).
+// Le doublon part, mais son id reste réservé : les ids suivent l'ordre du
+// fichier, et ils vivent déjà dans des favoris et des liens partagés.
+describe('doublons retirés', () => {
+  const names = VenueService.getVenuesByCategory([]).map((v) => v.name);
+
+  it('chaque jardin n\'apparaît qu\'une fois', () => {
+    expect(names).not.toContain('Praça do Príncipe Real');
+    expect(names).not.toContain('Estrela Park');
+    expect(names).toContain('Príncipe Real Garden');
+    expect(names).toContain('Jardim da Estrela');
+  });
+
+  it('un lien vers le doublon ouvre le lieu gardé', () => {
+    expect(VenueService.getVenueById('v_19')?.name).toBe('Príncipe Real Garden');
+    expect(VenueService.getVenueById('v_32')?.name).toBe('Jardim da Estrela');
+  });
+
+  it('les ids des autres lieux ne bougent pas', () => {
+    expect(VenueService.getVenueById('v_17')?.name).toBe('Príncipe Real Garden');
+    expect(VenueService.getVenueById('v_31')?.name).toBe('Jardim da Estrela');
+    expect(VenueService.getVenueById('v_64')).toBeDefined();
+  });
+});
+
+describe('canonicalId', () => {
+  it('ramène un doublon retiré au lieu gardé, laisse les autres', () => {
+    expect(VenueService.canonicalId('v_19')).toBe('v_17');
+    expect(VenueService.canonicalId('v_20')).toBe('v_20');
+  });
+});

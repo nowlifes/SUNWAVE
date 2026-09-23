@@ -1,5 +1,5 @@
 import type { Venue, VenueCategory } from '@/types';
-import { lisbonVenues } from '@/data/lisbonVenues';
+import { lisbonVenues, RETIRED_VENUE_IDS } from '@/data/lisbonVenues';
 
 class VenueServiceClass {
   private venues: Venue[] = lisbonVenues;
@@ -8,8 +8,14 @@ class VenueServiceClass {
     return this.venues;
   }
 
+  /** L'id du lieu gardé quand `id` désigne un doublon retiré. */
+  canonicalId(id: string): string {
+    return RETIRED_VENUE_IDS[id] ?? id;
+  }
+
   getVenueById(id: string): Venue | undefined {
-    return this.venues.find((v) => v.id === id);
+    const target = this.canonicalId(id);
+    return this.venues.find((v) => v.id === target);
   }
 
   getVenuesByCategory(categories: VenueCategory[]): Venue[] {

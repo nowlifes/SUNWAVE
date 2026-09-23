@@ -3,6 +3,7 @@ import type { GeoPoint, Recommendation, SunMode } from '@/types';
 import { RecommendationService } from '@/services/RecommendationService';
 import { ReliefService } from '@/services/ReliefService';
 import { SunService } from '@/services/SunService';
+import { VenueService } from '@/services/VenueService';
 import { SunTrailService, type SunTrail } from '@/services/SunTrailService';
 import { formatLisbonTime } from '@/utils/lisbonTime';
 import { categoryLabel, formatGap, statusCopy, statusShort } from '@/utils/copy';
@@ -34,6 +35,9 @@ interface NowScreenProps {
   onGetDirections: (venueId: string) => void;
   onOpenMap: () => void;
 }
+
+// Compté, pas écrit en dur : le chiffre suit les ajouts et les retraits.
+const VENUE_COUNT = VenueService.getVenuesByCategory([]).length;
 
 export function NowScreen({
   mode,
@@ -221,7 +225,7 @@ export function NowScreen({
 
         {/* --- la promesse que les gros ne peuvent structurellement pas tenir */}
         <p className="mt-8 px-1 text-center text-[11px] leading-relaxed text-shade-400">
-          <span className="font-semibold text-shade-500">64 lieux à Lisbonne. Tous vérifiés à pied.</span>
+          <span className="font-semibold text-shade-500">{VENUE_COUNT} lieux à Lisbonne. Tous vérifiés à pied.</span>
           <br />
           Pas 2 000 adresses aspirées d'une base.
           {outsideLisbon ? (

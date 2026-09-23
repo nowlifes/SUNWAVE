@@ -152,6 +152,22 @@ interface VenueSpec {
   description: string;
 }
 
+/**
+ * Un lieu retiré garde son numéro : les ids suivent l'ordre de ce fichier, et
+ * ils vivent déjà dans des favoris et des liens partagés (« ?lieu=v_42 »).
+ * Retirer sans réserver décalerait tous ceux d'après.
+ */
+function retired(): null {
+  ++idCounter;
+  return null;
+}
+
+/** Un lien ou un favori vers un doublon retiré ouvre le lieu gardé. */
+export const RETIRED_VENUE_IDS: Record<string, string> = {
+  v_19: 'v_17', // Praça do Príncipe Real → Príncipe Real Garden
+  v_32: 'v_31', // Estrela Park → Jardim da Estrela
+};
+
 function venue(spec: VenueSpec): Venue {
   const seed = ++idCounter;
   const id = `v_${String(seed).padStart(2, '0')}`;
@@ -213,7 +229,7 @@ function poly(
 // 64 Venues
 // ---------------------------------------------------------------------------
 
-export const lisbonVenues: Venue[] = [
+const entries: (Venue | null)[] = [
   // --- Chiado (38.7138, -9.1420) ---
   venue({
     name: 'Café Miradouro',
@@ -535,23 +551,8 @@ export const lisbonVenues: Venue[] = [
     description:
       'Bistrot de quartier apprécié avec quelques tables en terrasse qui se remplissent de soleil à midi.',
   }),
-  venue({
-    name: 'Praça do Príncipe Real',
-    category: 'square',
-    lat: 38.716257,
-    lng: -9.148723,
-    address: 'Praça do Príncipe Real, Príncipe Real',
-    rating: 4.5,
-    isOpen: true,
-    hours: alwaysOpen(),
-    hasOutdoor: true,
-    polygon: poly(38.716257, -9.148723, 24, 18, 180),
-    buildingHeight: 0,
-    confidence: 'HIGH',
-    sunProfile: 'square',
-    description:
-      "Place élégante entourée d'hôtels particuliers du XIXe siècle, où trône le célèbre cèdre.",
-  }),
+  // Doublon de Príncipe Real Garden (même jardin, même cèdre) : retiré.
+  retired(),
 
   // --- Alfama (38.7125, -9.1295) ---
   venue({
@@ -764,23 +765,8 @@ export const lisbonVenues: Venue[] = [
     description:
       'Jardin romantique du XIXe siècle avec bassins, palmiers et kiosque — une oasis de verdure entre soleil et ombre à Estrela.',
   }),
-  venue({
-    name: 'Estrela Park',
-    category: 'park',
-    lat: 38.714532,
-    lng: -9.159013,
-    address: 'Campo de Ourique, Estrela',
-    rating: 4.6,
-    isOpen: true,
-    hours: parkHours(),
-    hasOutdoor: true,
-    polygon: poly(38.714532, -9.159013, 26, 18, 180),
-    buildingHeight: 0,
-    confidence: 'HIGH',
-    sunProfile: 'park',
-    description:
-      "Parc à la française à côté de la Basílica da Estrela — de vastes pelouses qui cuisent au soleil l'après-midi.",
-  }),
+  // Doublon de Jardim da Estrela (même jardin, face à la basilique) : retiré.
+  retired(),
   venue({
     name: 'Os Lusiadas',
     category: 'restaurant',
@@ -1362,3 +1348,5 @@ export const lisbonVenues: Venue[] = [
       'Le légendaire bar-cabinet de curiosités de Lisbonne — uniquement en intérieur, pas de terrasse, un monde merveilleux et sombre.',
   }),
 ];
+
+export const lisbonVenues: Venue[] = entries.filter((v): v is Venue => v !== null);

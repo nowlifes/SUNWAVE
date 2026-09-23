@@ -63,7 +63,9 @@ export default function App() {
   const [mapCenter, setMapCenter] = useState<GeoPoint>(LISBON_CENTER);
   const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
   const [savedVenueIds, setSavedVenueIds] = useState<string[]>(() =>
-    loadFromStorage(STORAGE_KEYS.saved, [] as string[])
+    // Un favori sur un doublon retiré passe au lieu gardé — sinon son cœur
+    // resterait vide et on ne pourrait plus le retirer.
+    [...new Set(loadFromStorage(STORAGE_KEYS.saved, [] as string[]).map((id) => VenueService.canonicalId(id)))]
   );
   const [discoverCategory, setDiscoverCategory] = useState<DiscoverCategory | null>(null);
 
