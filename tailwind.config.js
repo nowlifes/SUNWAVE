@@ -16,6 +16,12 @@ export default {
           800: '#92400E',
           900: '#78350F',
         },
+        // Identité « Ciel vivant » : papier chaud, encre bleu nuit, braise.
+        paper: '#F7F3EC',
+        ink: '#0E2A47',
+        mute: '#5B6B7F',
+        line: '#E4E0D8',
+        ember: '#B45309',
         shade: {
           50: '#F8FAFC',
           100: '#F1F5F9',
@@ -30,7 +36,8 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Geist', 'system-ui', '-apple-system', 'sans-serif'],
+        serif: ['"Instrument Serif"', 'Georgia', 'serif'],
       },
       borderRadius: {
         '2.5xl': '1.25rem',

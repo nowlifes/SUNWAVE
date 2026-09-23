@@ -14,7 +14,7 @@ const NAV_ITEMS: { screen: ScreenName; label: string; icon: string }[] = [
 ];
 
 function NavIcon({ icon, active }: { icon: string; active: boolean }) {
-  const color = active ? '#F59E0B' : '#94A3B8';
+  const color = active ? '#B45309' : '#5B6B7F';
   const paths: Record<string, React.ReactNode> = {
     sun: (
       <>
@@ -77,7 +77,7 @@ export function BottomNav({ activeScreen, onScreenChange }: BottomNavProps) {
               <NavIcon icon={item.icon} active={active} />
               {/* Cinq onglets sur 320 px = 64 px chacun : libellés en casse
                   normale, sans espacement, sinon « MAINTENANT » déborde. */}
-              <span className={`max-w-full truncate text-[10px] font-semibold transition-colors ${active ? 'text-sun-600' : 'text-shade-400'}`}>
+              <span className={`max-w-full truncate text-[10px] font-semibold transition-colors ${active ? 'text-ember' : 'text-mute'}`}>
                 {item.label}
               </span>
             </button>

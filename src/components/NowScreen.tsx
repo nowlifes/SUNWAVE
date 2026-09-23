@@ -5,6 +5,8 @@ import { ReliefService } from '@/services/ReliefService';
 import { SunService } from '@/services/SunService';
 import { VenueService } from '@/services/VenueService';
 import { SunTrailService, type SunTrail } from '@/services/SunTrailService';
+import { DayRibbon } from './DayRibbon';
+import { SkyHeader } from './SkyHeader';
 import { formatLisbonTime } from '@/utils/lisbonTime';
 import { categoryLabel, formatGap, statusCopy, statusShort } from '@/utils/copy';
 import { inviteText, inviteUrl, shareInvite } from '@/utils/share';
@@ -36,6 +38,14 @@ interface NowScreenProps {
   onOpenMap: () => void;
   /** Mode choisi par l'app selon cette température, pas encore par la personne. */
   autoTemperature?: number | null;
+}
+
+/** La journée que montrent les bandes de lumière. */
+interface RibbonDay {
+  date: Date;
+  sunrise: Date;
+  sunset: Date;
+  hideNow: boolean;
 }
 
 // Compté, pas écrit en dur : le chiffre suit les ajouts et les retraits.
@@ -90,6 +100,13 @@ export function NowScreen({
     [phase, currentDate, sunrise]
   );
 
+  // La nuit, la réponse parle de demain : la bande de lumière aussi.
+  const ribbonDay = useMemo(() => {
+    if (phase !== 'after') return { date: currentDate, sunrise, sunset, hideNow: false };
+    const tomorrow = new Date(currentDate.getTime() + 24 * 3600 * 1000);
+    return { date: tomorrow, sunrise: nextSunrise, sunset: SunService.getSunset(tomorrow), hideNow: true };
+  }, [phase, currentDate, sunrise, sunset, nextSunrise]);
+
   // Le parcours suit le lieu affiché : « Autre chose » en change le départ.
   const trail = useMemo(
     () =>
@@ -125,50 +142,34 @@ export function NowScreen({
   // La nuit, l'ombre est partout : un classement « à l'ombre » n'a plus de sens.
   const nightShade = !isSun && phase !== 'day';
 
+
   return (
-    <div className="absolute inset-0 overflow-y-auto pb-24 bg-gradient-to-b from-sun-50 via-shade-50 to-shade-100">
-      <div className="px-5 pt-[calc(env(safe-area-inset-top)+1.5rem)]">
-        {/* --- l'heure, et ce qu'il reste de jour --------------------------- */}
-        <div className="flex items-start justify-between gap-3">
-          <h1 className="text-[2.6rem] leading-none font-bold tracking-tight text-shade-900 tabular-nums">
-            {formatLisbonTime(currentDate)}
-          </h1>
-          <button
-            onClick={() => onModeChange(isSun ? 'SHADE' : 'SUN')}
-            className="flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-[10.5px] font-bold uppercase tracking-wider shadow-sm backdrop-blur active:scale-95 transition-transform"
-          >
-            <span className={isSun ? 'text-sun-600' : 'text-shade-600'}>
-              {isSun ? 'Soleil' : 'Ombre'}
-            </span>
-            <span className="text-shade-400">· changer</span>
-          </button>
-        </div>
+    <div className="absolute inset-0 overflow-y-auto bg-paper pb-24">
+      {/* --- le ciel de cette minute, et ce qu'il reste de jour ---------------- */}
+      <SkyHeader date={currentDate} sunrise={sunrise} sunset={sunset} mode={mode} onModeChange={onModeChange}>
+        {phase === 'day' ? (
+          <>
+            Le soleil quitte Lisbonne dans <span className="font-semibold">{formatGap(minutesToSunset)}</span>.
+          </>
+        ) : phase === 'before' ? (
+          <>
+            Le soleil se lève à <span className="font-semibold">{formatLisbonTime(sunrise)}</span>.
+          </>
+        ) : (
+          <>Le soleil est couché sur Lisbonne.{isSun && ' Voici où il revient en premier demain.'}</>
+        )}
+      </SkyHeader>
 
-        <p className="mt-2 text-sm text-shade-500">
-          {phase === 'day' ? (
-            <>
-              Le soleil quitte Lisbonne dans{' '}
-              <span className="font-semibold text-shade-700">{formatGap(minutesToSunset)}</span>.
-            </>
-          ) : phase === 'before' ? (
-            <>
-              Le soleil se lève à{' '}
-              <span className="font-semibold text-shade-700">{formatLisbonTime(sunrise)}</span>.
-            </>
-          ) : (
-            <>Le soleil est couché sur Lisbonne.{isSun && ' Voici où il revient en premier demain.'}</>
-          )}
-        </p>
-
+      <div className="px-6">
         {/* Premier lancement : dire pourquoi soleil ou ombre, et offrir l'autre. */}
         {autoTemperature !== null && (
-          <div className="mt-3.5 flex items-center justify-between gap-2.5 rounded-2xl border border-sun-200 bg-white/75 py-2.5 pl-3.5 pr-3">
-            <p className="text-[13px] leading-snug text-shade-700">
+          <div className="mt-4 flex items-center justify-between gap-2.5 rounded-2xl border border-line bg-white/60 py-2 pl-3.5 pr-2">
+            <p className="text-[13px] leading-snug text-ink">
               Il fait {autoTemperature} °C : on te montre {isSun ? 'le soleil' : "l'ombre"}.
             </p>
             <button
               onClick={() => onModeChange(isSun ? 'SHADE' : 'SUN')}
-              className="min-h-9 shrink-0 rounded-xl bg-sun-50 px-2.5 text-[12.5px] font-bold text-sun-700 active:scale-95 transition-transform"
+              className="min-h-11 shrink-0 rounded-xl px-2.5 text-[12.5px] font-semibold text-ember active:scale-95 transition-transform"
             >
               {isSun ? "L'ombre plutôt ?" : 'Le soleil plutôt ?'}
             </button>
@@ -177,27 +178,25 @@ export function NowScreen({
 
         {/* --- la réponse --------------------------------------------------- */}
         {nightShade ? (
-          <div className="mt-6 rounded-3xl bg-white p-6 shadow-xl shadow-shade-900/10">
-            <p className="text-[10.5px] font-bold uppercase tracking-wider text-shade-400">Mode ombre</p>
-            <p className="mt-1.5 text-[1.4rem] font-bold leading-tight text-shade-900">
-              Il fait nuit : l'ombre est partout.
-            </p>
-            <p className="mt-2 text-sm text-shade-500">
-              Le soleil revient à{' '}
-              <span className="font-semibold text-shade-700">{formatLisbonTime(nextSunrise)}</span>. Le mode
+          <section className="mt-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-mute">Mode ombre</p>
+            <h2 className="mt-1.5 font-serif text-[2.2rem] leading-[1.05] text-ink">Il fait nuit : l'ombre est partout.</h2>
+            <p className="mt-2 text-sm text-mute">
+              Le soleil revient à <span className="font-semibold text-ink">{formatLisbonTime(nextSunrise)}</span>. Le mode
               ombre reprendra son sens à ce moment-là.
             </p>
             <button
               onClick={() => onModeChange('SUN')}
-              className="mt-5 w-full rounded-2xl bg-shade-900 py-3.5 text-sm font-bold text-white active:scale-[0.98] transition-transform"
+              className="mt-5 min-h-[50px] w-full rounded-[14px] bg-ink text-[15px] font-semibold text-white active:scale-[0.98] transition-transform"
             >
               Voir où le soleil revient
             </button>
-          </div>
+          </section>
         ) : pick ? (
           <AnswerCard
             rec={pick}
             mode={mode}
+            day={ribbonDay}
             onOpen={() => onVenueSelect(pick.venue.id)}
             onDirections={() => onGetDirections(pick.venue.id)}
             onSomethingElse={handleSomethingElse}
@@ -206,60 +205,55 @@ export function NowScreen({
             shareState={shareState}
           />
         ) : (
-          <div className="mt-6 rounded-3xl bg-white p-6 shadow-lg shadow-shade-900/5">
-            <p className="text-lg font-bold text-shade-900">Tout est fermé pour l'instant.</p>
-            <p className="mt-1.5 text-sm text-shade-500">
+          <section className="mt-6">
+            <h2 className="font-serif text-[2rem] leading-tight text-ink">Tout est fermé pour l'instant.</h2>
+            <p className="mt-1.5 text-sm text-mute">
               Ouvre la carte pour voir où tombe {isSun ? 'le soleil' : "l'ombre"} malgré tout.
             </p>
             <button
               onClick={onOpenMap}
-              className="mt-4 w-full rounded-2xl bg-shade-900 py-3 text-sm font-bold text-white active:scale-[0.98] transition-transform"
+              className="mt-4 min-h-[50px] w-full rounded-[14px] bg-ink text-[15px] font-semibold text-white active:scale-[0.98] transition-transform"
             >
               Voir la carte
             </button>
-          </div>
+          </section>
         )}
 
         {trail && <SunTrailCard trail={trail} onSelect={onVenueSelect} />}
 
         {/* --- le filet, toujours visible ----------------------------------- */}
         {!nightShade && alternatives.length > 0 && (
-          <div className="mt-7">
-            <h2 className="px-1 text-[10.5px] font-bold uppercase tracking-wider text-shade-400">
+          <section className="mt-7">
+            <h2 className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-mute">
               Aussi {isSun ? 'au soleil' : "à l'ombre"}
             </h2>
-            <div className="mt-2 space-y-2">
-              {alternatives.map((alt) => (
-                <AlternativeRow
-                  key={alt.venue.id}
-                  rec={alt}
-                  mode={mode}
-                  onSelect={() => onVenueSelect(alt.venue.id)}
-                />
-              ))}
-            </div>
-          </div>
+            {alternatives.map((alt) => (
+              <AlternativeRow
+                key={alt.venue.id}
+                rec={alt}
+                mode={mode}
+                day={ribbonDay}
+                onSelect={() => onVenueSelect(alt.venue.id)}
+              />
+            ))}
+          </section>
         )}
 
         {/* --- la promesse que les gros ne peuvent structurellement pas tenir */}
-        <p className="mt-8 px-1 text-center text-[11px] leading-relaxed text-shade-400">
-          <span className="font-semibold text-shade-500">{VENUE_COUNT} lieux à Lisbonne. Tous vérifiés à pied.</span>
+        <p className="mt-8 px-1 text-center text-[11.5px] leading-relaxed text-mute">
+          <span className="font-semibold text-ink">{VENUE_COUNT} lieux à Lisbonne. Tous vérifiés à pied.</span>
           <br />
           Pas 2 000 adresses aspirées d'une base.
           {outsideLisbon ? (
             <>
               <br />
-              <span className="text-shade-300">
-                Tu n'es pas à Lisbonne : temps de marche depuis le centre.
-              </span>
+              Tu n'es pas à Lisbonne : temps de marche depuis le centre.
             </>
           ) : (
             !locationGranted && (
               <>
                 <br />
-                <span className="text-shade-300">
-                  Temps de marche depuis le centre — active ta position pour les tiens.
-                </span>
+                Temps de marche depuis le centre — active ta position pour les tiens.
               </>
             )
           )}
@@ -274,6 +268,7 @@ export function NowScreen({
 function AnswerCard({
   rec,
   mode,
+  day,
   onOpen,
   onDirections,
   onSomethingElse,
@@ -283,6 +278,7 @@ function AnswerCard({
 }: {
   rec: Recommendation;
   mode: SunMode;
+  day: RibbonDay;
   onOpen: () => void;
   onDirections: () => void;
   onSomethingElse: () => void;
@@ -310,48 +306,47 @@ function AnswerCard({
   );
 
   return (
-    <div className="mt-6 rounded-3xl bg-white p-6 shadow-xl shadow-shade-900/10">
-      <div className="-mr-2.5 -mt-2.5 flex items-center justify-between gap-2">
-        <p className="text-[10.5px] font-bold uppercase tracking-wider text-sun-600">
+    <section className="mt-5">
+      <div className="-mr-2.5 flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ember">
           {inItNow ? `Va là pour ${isSun ? 'le soleil' : "l'ombre"}` : `Prochain ${isSun ? 'au soleil' : "à l'ombre"}`}
         </p>
         <button
           onClick={onShare}
           aria-label="Inviter quelqu'un"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-shade-400 active:scale-90 active:bg-shade-50 transition-transform"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-mute active:scale-90 active:bg-line/60 transition-transform"
         >
           <ShareIcon />
         </button>
       </div>
 
-      <button onClick={onOpen} className="mt-1.5 block text-left active:opacity-70 transition-opacity">
-        <h2 className="text-[1.7rem] font-bold leading-tight tracking-tight text-shade-900">
-          {rec.venue.name}
-        </h2>
+      <button onClick={onOpen} className="block text-left active:opacity-70 transition-opacity">
+        <h2 className="font-serif text-[2.4rem] leading-[1.02] text-ink [text-wrap:pretty]">{rec.venue.name}</h2>
       </button>
 
-      <p className="mt-1 text-sm text-shade-500">
-        {categoryLabel(rec.venue.category)} · {rec.walkTimeMin} min à pied
+      <p className="mt-2 text-sm text-mute">
+        {categoryLabel(rec.venue.category)} · {VenueService.getNeighborhood(rec.venue)} · {rec.walkTimeMin} min à pied
       </p>
 
-      {/* Le compte à rebours — le chiffre qu'aucune autre app ne peut imprimer. */}
-      <div className="mt-5 flex items-center gap-3 rounded-2xl bg-sun-50 px-4 py-3.5">
-        <SunDial percentage={exposure} />
-        <div className="min-w-0">
-          <p className="text-[15px] font-bold leading-tight text-shade-900">{status.title}</p>
-          <p className="mt-0.5 text-xs text-shade-500">{status.detail}</p>
-        </div>
+      {/* Le compte à rebours — le chiffre qu'aucune autre app ne peut imprimer —
+          et la journée entière du lieu, d'un coup d'œil. */}
+      <p className="mt-5 text-[15px] leading-snug text-ink">
+        <span className="font-semibold">{status.title}</span>
+        <span className="block text-[13px] text-mute">{status.detail}</span>
+      </p>
+      <div className="mt-3">
+        <DayRibbon venue={rec.venue} mode={mode} {...day} />
       </div>
 
       {relief && (
-        <p className="mt-3.5 flex items-start gap-2 px-0.5 text-[12.5px] leading-snug text-shade-500">
+        <p className="mt-3.5 flex items-start gap-2 text-[12.5px] leading-snug text-mute">
           <ReliefIcon />
           <span>{relief}</span>
         </p>
       )}
 
       {shareState !== 'idle' && (
-        <p role="status" className="mt-3.5 text-center text-[12.5px] font-semibold text-shade-600">
+        <p role="status" className="mt-3.5 text-center text-[12.5px] font-semibold text-ink">
           {shareState === 'copied'
             ? "Invitation copiée — colle-la dans ta conversation."
             : "Copie impossible sur cet appareil."}
@@ -361,20 +356,20 @@ function AnswerCard({
       <div className="mt-5 flex gap-2.5">
         <button
           onClick={onDirections}
-          className="flex-1 rounded-2xl bg-shade-900 py-3.5 text-sm font-bold text-white active:scale-[0.98] transition-transform"
+          className="min-h-[50px] flex-1 rounded-[14px] bg-ink text-[15px] font-semibold text-white active:scale-[0.98] transition-transform"
         >
           M'y emmener
         </button>
         {hasAlternatives && (
           <button
             onClick={onSomethingElse}
-            className="rounded-2xl border border-shade-200 bg-white px-5 py-3.5 text-sm font-bold text-shade-600 active:scale-[0.98] transition-transform"
+            className="min-h-[50px] rounded-[14px] border border-[#D5CEC2] px-5 text-[15px] font-semibold text-ink active:scale-[0.98] transition-transform"
           >
             Autre chose
           </button>
         )}
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -386,12 +381,12 @@ function SunTrailCard({ trail, onSelect }: { trail: SunTrail; onSelect: (venueId
   const last = trail.stops[trail.stops.length - 1];
 
   return (
-    <div className="mt-4 rounded-3xl bg-white/80 p-5 shadow-sm backdrop-blur">
-      <p className="text-[10.5px] font-bold uppercase tracking-wider text-sun-600">Suivre le soleil</p>
-      <h2 className="mt-1 text-[1.15rem] font-bold leading-tight text-shade-900">
+    <div className="mt-4 rounded-2xl border border-line bg-white/60 p-5">
+      <p className="text-[10.5px] font-bold uppercase tracking-wider text-ember">Suivre le soleil</p>
+      <h2 className="mt-1 font-serif text-[1.6rem] leading-tight text-ink">
         Et après {formatLisbonTime(first.leaveAt)} ?
       </h2>
-      <p className="mt-0.5 text-[13px] text-shade-500">
+      <p className="mt-0.5 text-[13px] text-mute">
         {trail.untilSunset
           ? `Au soleil jusqu'au coucher, à ${formatLisbonTime(last.leaveAt)}.`
           : `Au soleil jusqu'à ${formatLisbonTime(last.leaveAt)}.`}
@@ -406,7 +401,7 @@ function SunTrailCard({ trail, onSelect }: { trail: SunTrail; onSelect: (venueId
         />
         {next.map((stop) => (
           <li key={stop.rec.venue.id}>
-            <p className="ml-[5px] border-l-2 border-dashed border-shade-200 py-1.5 pl-[17px] text-[11.5px] text-shade-400">
+            <p className="ml-[5px] border-l-2 border-dashed border-line py-1.5 pl-[17px] text-[11.5px] text-mute">
               {stop.walkMin} min à pied
             </p>
             <button
@@ -445,10 +440,10 @@ function TrailRow({
     <Tag className="flex items-start gap-3">
       <span className={`mt-1 h-3 w-3 shrink-0 rounded-full ${muted ? 'bg-sun-200' : 'bg-sun-500'}`} />
       <span className="min-w-0 flex-1">
-        <span className={`block truncate text-sm font-semibold ${muted ? 'text-shade-500' : 'text-shade-800'}`}>
+        <span className={`block truncate text-sm font-semibold ${muted ? 'text-mute' : 'text-ink'}`}>
           {name}
         </span>
-        <span className="block text-xs tabular-nums text-shade-400">
+        <span className="block text-xs tabular-nums text-mute">
           {time}
           {detail && ` · ${detail}`}
         </span>
@@ -457,35 +452,32 @@ function TrailRow({
   );
 }
 
+
 // ---------------------------------------------------------------------------
 
 function AlternativeRow({
   rec,
   mode,
+  day,
   onSelect,
 }: {
   rec: Recommendation;
   mode: SunMode;
+  day: RibbonDay;
   onSelect: () => void;
 }) {
-  const exposure = mode === 'SUN' ? rec.sunPercentage : rec.shadePercentage;
-  const detail = statusShort(rec, mode);
-
   return (
     <button
       onClick={onSelect}
-      className="flex w-full items-center gap-3 rounded-2xl bg-white/80 px-4 py-3 text-left shadow-sm backdrop-blur active:scale-[0.99] transition-transform"
+      className="flex min-h-14 w-full items-center gap-3.5 border-t border-line px-1 py-2.5 text-left active:opacity-70 transition-opacity"
     >
-      <SunDial percentage={exposure} small />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-shade-800">{rec.venue.name}</p>
-        <p className="text-xs text-shade-400">
-          {rec.walkTimeMin} min à pied · {detail}
+        <p className="truncate text-[15px] font-semibold text-ink">{rec.venue.name}</p>
+        <p className="text-[12.5px] text-mute">
+          {rec.walkTimeMin} min à pied · {statusShort(rec, mode)}
         </p>
       </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="9 18 15 12 9 6" />
-      </svg>
+      <DayRibbon venue={rec.venue} mode={mode} {...day} size="mini" />
     </button>
   );
 }
@@ -511,7 +503,7 @@ function ReliefIcon() {
       height="13"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#94A3B8"
+      stroke="#5B6B7F"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -519,31 +511,6 @@ function ReliefIcon() {
       aria-hidden="true"
     >
       <path d="M3 20h18L14 7l-4 7-2.5-3z" />
-    </svg>
-  );
-}
-
-/** Un anneau rempli — ce qu'il reste de ciel à ce lieu. */
-function SunDial({ percentage, small = false }: { percentage: number; small?: boolean }) {
-  const size = small ? 32 : 44;
-  const stroke = small ? 3 : 4;
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const filled = Math.max(0, Math.min(100, percentage)) / 100;
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0 -rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#FFEDD5" strokeWidth={stroke} />
-      <circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        fill="none"
-        stroke="#F59E0B"
-        strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeDasharray={`${circumference * filled} ${circumference}`}
-      />
     </svg>
   );
 }
