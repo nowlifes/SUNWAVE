@@ -148,8 +148,14 @@ class RecommendationServiceClass {
       this.computeSunWindow(venue, mode, date);
 
     // Sous forte chaleur, une ombre qui tombe en plein après-midi ne vaut pas
-    // une ombre qui tient : la durée compte double, jusqu'à 4 h au lieu de 2.
-    // Plafond 240 min = médiane des ombres ouvertes un 15 juillet à 13 h.
+    // une ombre qui tient : la durée pèse plus que l'ombre de l'instant,
+    // jusqu'à 4 h au lieu de 2. Plafond 240 min = médiane des ombres ouvertes
+    // un 15 juillet à 13 h. Sondé ce jour-là de 12 h à 16 h, depuis Lisbonne,
+    // Cais do Sodré et Caparica : les durées font deux paquets, ≤ 150 min ou
+    // ≥ 300. À 0.30/0.35, Café Janis (100 %, 75 min) passait encore devant
+    // Comoba (50 %, jusqu'au coucher) de 800 m de distance ; à 0.35/0.30,
+    // une ombre de 50 % qui tient 4 h bat une ombre pleine d'1 h 15 à distance
+    // égale, avec 9 points de marge.
     const heat = mode === 'SHADE' && weather.temperature >= HOT_THRESHOLD_C;
     const fullWindowMin = heat ? 240 : 120;
     let timeRemainingScore = 50;
@@ -162,16 +168,22 @@ class RecommendationServiceClass {
 
     const outdoorScore = venue.hasOutdoorArea ? 100 : 30;
 
-    const confidenceScore = CONFIDENCE_SCORE[venue.confidence];
+    // L'ombre ne vient que des bâtiments : si aucune hauteur n'est mesurée
+    // autour du lieu, son ombre est une supposition, quelle que soit la
+    // confiance saisie pour le lieu lui-même.
+    const heights = venue.heightProvenance;
+    const confidence: Confidence =
+      mode === 'SHADE' && heights.total > 0 && heights.estimated === heights.total ? 'LOW' : venue.confidence;
+    const confidenceScore = CONFIDENCE_SCORE[confidence];
 
     const weatherScore = WeatherService.getOutdoorScore(weather, mode === 'SHADE');
 
     const isOpen = this.checkOpen(venue, date);
 
     const sunMatch = Math.round(
-      sunExposureScore * (heat ? 0.35 : 0.45) +
+      sunExposureScore * (heat ? 0.30 : 0.45) +
       distanceScore * (heat ? 0.15 : 0.20) +
-      timeRemainingScore * (heat ? 0.30 : 0.15) +
+      timeRemainingScore * (heat ? 0.35 : 0.15) +
       outdoorScore * 0.10 +
       confidenceScore * 0.10
     );
@@ -193,7 +205,7 @@ class RecommendationServiceClass {
       sunWindowStart,
       sunWindowEnd,
       sunWindowDurationMin,
-      confidence: venue.confidence,
+      confidence,
       sunArrivesInMin,
       sunLeavesInMin,
       arrivesTomorrow,

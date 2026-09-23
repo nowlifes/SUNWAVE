@@ -135,7 +135,33 @@ describe('mode Ombre sous forte chaleur', () => {
     });
   });
 
+  // Comoba replacé sur sa rue, le cas réel : Café Janis, 100 % d'ombre pour
+  // 1 h 15, passait devant Dear Breakfast (60 %) et Comoba (50 %), à l'ombre
+  // jusqu'au coucher — parce qu'il est plus près. À 31 °C, une ombre qui
+  // lâche à 14 h 15 remet au soleil au pire moment.
   it('en tête : une ombre qui tient tout l\'après-midi', () => {
     expect(answers[0].sunLeavesInMin).toBeGreaterThanOrEqual(240);
+  });
+});
+
+describe('mode Ombre et hauteurs estimées', () => {
+  // L'ombre ne vient que des bâtiments. Quand aucune de leurs hauteurs n'est
+  // mesurée autour d'un lieu, son ombre est une supposition : elle passe
+  // derrière une ombre calculée sur des hauteurs relevées.
+  const date = at('2026-07-15T15:00:00+01:00');
+  const find = (mode: 'SUN' | 'SHADE', name: string) =>
+    RecommendationService.getRecommendations(mode, LISBON, date, [], undefined, 100).find((r) => r.venue.name === name)!;
+
+  it('toutes les hauteurs estimées : confiance faible en mode Ombre', () => {
+    expect(find('SHADE', 'Rio Maravilha').confidence).toBe('LOW');
+    expect(find('SHADE', 'Biblioteca LX').confidence).toBe('LOW');
+  });
+
+  it('hauteurs en partie mesurées : la confiance du lieu reste', () => {
+    expect(find('SHADE', 'Copenhagen Coffee Lab').confidence).toBe(find('SHADE', 'Copenhagen Coffee Lab').venue.confidence);
+  });
+
+  it('le mode Soleil garde la confiance du lieu', () => {
+    expect(find('SUN', 'Rio Maravilha').confidence).toBe('HIGH');
   });
 });
