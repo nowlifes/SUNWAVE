@@ -34,6 +34,8 @@ interface NowScreenProps {
   onVenueSelect: (venueId: string) => void;
   onGetDirections: (venueId: string) => void;
   onOpenMap: () => void;
+  /** Mode choisi par l'app selon cette température, pas encore par la personne. */
+  autoTemperature?: number | null;
 }
 
 // Compté, pas écrit en dur : le chiffre suit les ajouts et les retraits.
@@ -49,6 +51,7 @@ export function NowScreen({
   onVenueSelect,
   onGetDirections,
   onOpenMap,
+  autoTemperature = null,
 }: NowScreenProps) {
   // « Autre chose » descend la liste au lieu de renvoyer à la carte : un
   // premier choix qui ne plaît pas ne doit jamais être une impasse. C'est ce
@@ -156,6 +159,21 @@ export function NowScreen({
             <>Le soleil est couché sur Lisbonne.{isSun && ' Voici où il revient en premier demain.'}</>
           )}
         </p>
+
+        {/* Premier lancement : dire pourquoi soleil ou ombre, et offrir l'autre. */}
+        {autoTemperature !== null && (
+          <div className="mt-3.5 flex items-center justify-between gap-2.5 rounded-2xl border border-sun-200 bg-white/75 py-2.5 pl-3.5 pr-3">
+            <p className="text-[13px] leading-snug text-shade-700">
+              Il fait {autoTemperature} °C : on te montre {isSun ? 'le soleil' : "l'ombre"}.
+            </p>
+            <button
+              onClick={() => onModeChange(isSun ? 'SHADE' : 'SUN')}
+              className="min-h-9 shrink-0 rounded-xl bg-sun-50 px-2.5 text-[12.5px] font-bold text-sun-700 active:scale-95 transition-transform"
+            >
+              {isSun ? "L'ombre plutôt ?" : 'Le soleil plutôt ?'}
+            </button>
+          </div>
+        )}
 
         {/* --- la réponse --------------------------------------------------- */}
         {nightShade ? (

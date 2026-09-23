@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { SunMode, Venue, GeoPoint, ScreenName, DiscoverCategory } from '@/types';
 import { LocationService } from '@/services/LocationService';
 import { VenueService } from '@/services/VenueService';
+import { WeatherService } from '@/services/WeatherService';
+import { autoMode } from '@/utils/autoMode';
 import { venueIdFromUrl } from '@/utils/share';
 
-import { Onboarding } from '@/components/Onboarding';
 import { NowScreen } from '@/components/NowScreen';
 import { MapScreen } from '@/components/MapScreen';
 import { DiscoverScreen, DiscoverResults } from '@/components/DiscoverScreen';
@@ -17,7 +18,9 @@ const LISBON_CENTER: GeoPoint = { lat: 38.7223, lng: -9.1393 };
 const DEFAULT_ZOOM = 14;
 
 const STORAGE_KEYS = {
+  // Posé par l'ancien écran « Soleil ou ombre ? » : ceux qui l'ont vu ont choisi.
   onboarding: 'sun_onboarding_complete',
+  modeChosen: 'sun_mode_chosen',
   mode: 'sun_mode',
   saved: 'sun_saved_venues',
 };
@@ -48,9 +51,13 @@ export default function App() {
     const id = venueIdFromUrl(window.location.href);
     return id && VenueService.getVenueById(id) ? id : null;
   });
-  const [onboardingComplete, setOnboardingComplete] = useState(
-    () => invitedVenueId !== null || loadFromStorage(STORAGE_KEYS.onboarding, false)
+  // Pas de question au premier lancement : l'app ouvre sur la réponse, en
+  // soleil ou en ombre selon la chaleur, jusqu'à ce que la personne choisisse.
+  const [modeChosen, setModeChosen] = useState(
+    () => loadFromStorage(STORAGE_KEYS.modeChosen, false) || loadFromStorage(STORAGE_KEYS.onboarding, false)
   );
+  // La température qui a fait le choix — affichée tant qu'il n'est pas le sien.
+  const [autoTemperature, setAutoTemperature] = useState<number | null>(null);
   // L'app ouvre sur la réponse, pas sur la carte : voir NowScreen.
   const [screen, setScreen] = useState<ScreenName>('now');
   const [mode, setMode] = useState<SunMode>(() => loadFromStorage(STORAGE_KEYS.mode, 'SUN'));
@@ -77,9 +84,23 @@ export default function App() {
   }, [invitedVenueId]);
   useEffect(() => saveToStorage(STORAGE_KEYS.saved, savedVenueIds), [savedVenueIds]);
 
-  // Auto-request location when entering map after onboarding
+  // Pas pour un invité : l'invitation parle du soleil qu'on lui a promis.
   useEffect(() => {
-    if (onboardingComplete && !locationRequested) {
+    if (modeChosen || invitedVenueId) return;
+    let cancelled = false;
+    WeatherService.refreshWeather().then((w) => {
+      if (cancelled || !WeatherService.isLive(w)) return;
+      setMode(autoMode(w.temperature));
+      setAutoTemperature(w.temperature);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [modeChosen, invitedVenueId]);
+
+  // Position demandée dès l'ouverture : la réponse en dépend (temps de marche).
+  useEffect(() => {
+    if (!locationRequested) {
       setLocationRequested(true);
       LocationService.getCurrentLocation().then((loc) => {
         setUserLocation(loc.coords);
@@ -90,7 +111,7 @@ export default function App() {
         }
       });
     }
-  }, [onboardingComplete, locationRequested]);
+  }, [locationRequested]);
 
   // Refresh "now" time periodically (only if close to now — a time picked on
   // the map slider must not snap back). The answer screen shows a clock: it
@@ -106,23 +127,6 @@ export default function App() {
     }, 60000);
     return () => clearInterval(interval);
   }, [screen]);
-
-  const handleOnboardingComplete = useCallback((selectedMode: SunMode) => {
-    setMode(selectedMode);
-    setOnboardingComplete(true);
-    saveToStorage(STORAGE_KEYS.onboarding, true);
-  }, []);
-
-  const handleEnableLocation = useCallback(() => {
-    LocationService.getCurrentLocation().then((loc) => {
-      setUserLocation(loc.coords);
-      setLocationGranted(loc.granted);
-      setOutsideLisbon(loc.outsideLisbon);
-      if (loc.granted) {
-        setMapCenter(loc.coords);
-      }
-    });
-  }, []);
 
   const handleRecenter = useCallback(() => {
     LocationService.getCurrentLocation().then((loc) => {
@@ -151,6 +155,9 @@ export default function App() {
 
   const handleModeChange = useCallback((newMode: SunMode) => {
     setMode(newMode);
+    setModeChosen(true);
+    setAutoTemperature(null);
+    saveToStorage(STORAGE_KEYS.modeChosen, true);
   }, []);
 
   const handleGetDirections = useCallback((venueId: string) => {
@@ -201,15 +208,6 @@ export default function App() {
     return 'Lisbonne, Portugal';
   }, [locationGranted]);
 
-  if (!onboardingComplete) {
-    return (
-      <Onboarding
-        onComplete={handleOnboardingComplete}
-        onEnableLocation={handleEnableLocation}
-      />
-    );
-  }
-
   return (
     <div className="relative w-full h-screen overflow-hidden bg-shade-100 flex items-center justify-center">
       {/* Mobile container */}
@@ -222,6 +220,7 @@ export default function App() {
             userLocation={userLocation}
             locationGranted={locationGranted}
             outsideLisbon={outsideLisbon}
+            autoTemperature={autoTemperature}
             onModeChange={handleModeChange}
             onVenueSelect={handleVenueSelect}
             onGetDirections={handleGetDirections}

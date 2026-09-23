@@ -74,6 +74,12 @@ class WeatherServiceClass {
   private cacheTimestamp = 0;
   private inFlight: Promise<WeatherData> | null = null;
 
+  /** Vraie mesure, pas l'estimation de repli : on n'affiche pas
+   *  « il fait 21 °C » quand le réseau n'a rien répondu. */
+  isLive(weather: WeatherData): boolean {
+    return weather !== FALLBACK_WEATHER;
+  }
+
   /** Synchronous — always returns instantly (cache or fallback). Kicks off a
    *  background refresh if the cache is missing/stale, never blocks. */
   getCurrentWeather(): WeatherData {
