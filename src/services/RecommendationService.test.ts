@@ -92,3 +92,25 @@ describe('fenêtre de soleil au quart d\'heure', () => {
     expect(counts.size).toBeGreaterThan(5);
   });
 });
+
+describe('mode Soleil', () => {
+  // La fenêtre peut se fermer sur un obstacle ou sur le coucher : la carte ne
+  // dit pas la même chose dans les deux cas. Mesuré le 23/09 à 17:45 :
+  // Praça do Comércio tient jusqu'au coucher, Praça da Figueira passe à
+  // l'ombre à 19:15.
+  const date = at('2026-09-23T17:45:00+01:00');
+  const recs = RecommendationService.getRecommendations('SUN', LISBON, date, [], undefined, 100);
+  const byName = (n: string) => recs.find((r) => r.venue.name === n)!;
+
+  it('sait quand c\'est le coucher qui ferme la fenêtre', () => {
+    expect(byName('Praça do Comércio').endsAtSunset).toBe(true);
+    expect(byName('Praça da Figueira').endsAtSunset).toBe(false);
+  });
+
+  it('ne prétend jamais au coucher une fenêtre qui finit avant', () => {
+    const sunsetMin = Math.round((SunService.getSunset(date).getTime() - date.getTime()) / 60000);
+    for (const r of recs) {
+      if (r.sunLeavesInMin !== null && r.sunLeavesInMin < sunsetMin) expect(r.endsAtSunset, r.venue.name).toBe(false);
+    }
+  });
+});

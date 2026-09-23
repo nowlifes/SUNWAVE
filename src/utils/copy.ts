@@ -55,6 +55,15 @@ export function statusCopy(rec: Recommendation, mode: SunMode): StatusCopy {
       detail: `${exposure} % ${de} maintenant · encore ${formatGap(rec.sunLeavesInMin)}`,
     };
   }
+  // Rien ne cache le soleil d'ici le coucher : « perd le soleil dans 1h 47m »
+  // ferait guetter un immeuble. Seule la carte le dit — les pastilles gardent
+  // le temps restant.
+  if (isSun && rec.sunLeavesInMin !== null && rec.endsAtSunset) {
+    return {
+      title: "Au soleil jusqu'au coucher",
+      detail: `${exposure} % de soleil maintenant · dernier rayon à ${rec.sunWindowEnd}`,
+    };
+  }
   if (rec.sunLeavesInMin !== null) {
     return {
       title: `Perd ${le} dans ${formatGap(rec.sunLeavesInMin)}`,

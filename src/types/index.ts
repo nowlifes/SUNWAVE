@@ -146,6 +146,8 @@ export interface Recommendation {
   arrivesTomorrow: boolean;
   /** Mode Ombre : l'ombre tient jusqu'au coucher du soleil, qui clôt la fenêtre. */
   lastsUntilSunset: boolean;
+  /** La fenêtre se ferme au coucher du soleil, pas sur un obstacle. */
+  endsAtSunset: boolean;
   isOpen: boolean;
 }
 

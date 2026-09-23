@@ -8,7 +8,7 @@ function rec(name: string, over: Partial<Recommendation> = {}): Recommendation {
     venue: { id: name.toLowerCase().replace(/\W+/g, '-'), name, category: 'bar' } as Recommendation['venue'],
     sunMatch: 80, sunPercentage: 92, shadePercentage: 8, walkTimeMin: 8, distanceM: 600,
     sunWindowStart: '14:30', sunWindowEnd: '17:45', sunWindowDurationMin: 195, confidence: 'HIGH',
-    sunArrivesInMin: null, sunLeavesInMin: 195, arrivesTomorrow: false, lastsUntilSunset: false, isOpen: true,
+    sunArrivesInMin: null, sunLeavesInMin: 195, arrivesTomorrow: false, lastsUntilSunset: false, endsAtSunset: false, isOpen: true,
     ...over,
   };
 }

@@ -143,7 +143,7 @@ class RecommendationServiceClass {
     const walkTime = MapService.walkTimeMinutes(distanceM);
     const distanceScore = Math.max(0, 100 - (distanceM / 3000) * 100);
 
-    const { sunWindowStart, sunWindowEnd, sunWindowDurationMin, sunArrivesInMin, sunLeavesInMin, arrivesTomorrow, lastsUntilSunset } =
+    const { sunWindowStart, sunWindowEnd, sunWindowDurationMin, sunArrivesInMin, sunLeavesInMin, arrivesTomorrow, lastsUntilSunset, endsAtSunset } =
       this.computeSunWindow(venue, mode, date);
 
     let timeRemainingScore = 50;
@@ -192,6 +192,7 @@ class RecommendationServiceClass {
       sunLeavesInMin,
       arrivesTomorrow,
       lastsUntilSunset,
+      endsAtSunset,
       isOpen,
     };
   }
@@ -208,6 +209,7 @@ class RecommendationServiceClass {
     sunLeavesInMin: number | null;
     arrivesTomorrow: boolean;
     lastsUntilSunset: boolean;
+    endsAtSunset: boolean;
   } {
     // Au quart d'heure, pas à l'heure : voir getSunExposureByQuarter.
     const exposure = exposureByQuarter(venue, mode, date);
@@ -253,6 +255,7 @@ class RecommendationServiceClass {
             sunLeavesInMin: null,
             arrivesTomorrow: true,
             lastsUntilSunset: false,
+            endsAtSunset: false,
           };
         }
       }
@@ -264,6 +267,7 @@ class RecommendationServiceClass {
         sunLeavesInMin: null,
         arrivesTomorrow: false,
         lastsUntilSunset: false,
+        endsAtSunset: false,
       };
     }
 
@@ -289,6 +293,7 @@ class RecommendationServiceClass {
       sunLeavesInMin: currentlyExposed ? endMin - nowMin : null,
       arrivesTomorrow: false,
       lastsUntilSunset,
+      endsAtSunset: endMin === sunsetMin,
     };
   }
 

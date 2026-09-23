@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Recommendation } from '@/types';
-import { categoryLabel, formatGap, markerLabel, statusCopy } from './copy';
+import { categoryLabel, formatGap, markerLabel, statusCopy, statusShort } from './copy';
 
 // Une seule source pour les phrases de statut : la fiche détail disait
 // « Sunny for 5H » quand l'accueil disait « Perd le soleil dans 4h 30m ».
@@ -21,6 +21,7 @@ function rec(over: Partial<Recommendation>): Recommendation {
     sunLeavesInMin: 270,
     arrivesTomorrow: false,
     lastsUntilSunset: false,
+    endsAtSunset: false,
     isOpen: true,
     ...over,
   };
@@ -32,6 +33,22 @@ describe('statusCopy', () => {
       title: 'Perd le soleil dans 4h 30m',
       detail: "92 % de soleil maintenant · jusqu'à 19:00",
     });
+  });
+
+  // À 17:45 l'accueil proposait une place au soleil jusqu'au coucher et
+  // titrait « Perd le soleil dans 1h 47m » : on attendait un immeuble, c'était
+  // le coucher. Rien ne cache le soleil d'ici là — la carte doit le dire.
+  it('soleil jusqu\'au coucher : le dernier rayon, pas « perd le soleil »', () => {
+    const r = rec({ sunPercentage: 72, sunLeavesInMin: 107, sunWindowEnd: '19:32', endsAtSunset: true });
+    expect(statusCopy(r, 'SUN')).toEqual({
+      title: "Au soleil jusqu'au coucher",
+      detail: '72 % de soleil maintenant · dernier rayon à 19:32',
+    });
+  });
+
+  it('les pastilles gardent le temps restant, même jusqu\'au coucher', () => {
+    const r = rec({ sunLeavesInMin: 107, sunWindowEnd: '19:32', endsAtSunset: true });
+    expect(statusShort(r, 'SUN')).toBe('encore 1h 47m');
   });
 
   it('ombre jusqu\'au coucher : pas de compte à rebours vers minuit', () => {
