@@ -230,7 +230,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-mixed',
     description:
-      'Charming café terrace overlooking the Misericórdia, a sunny mid-morning spot in the heart of Chiado.',
+      'Terrasse de café charmante donnant sur la Misericórdia, ensoleillée en milieu de matinée, en plein cœur du Chiado.',
   }),
   venue({
     name: 'Hello, Kristof',
@@ -247,7 +247,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-dense',
     description:
-      'Cozy specialty coffee bar on the Bairro Alto slope, shaded by tall neighbours in the early afternoon.',
+      "Bar à café de spécialité douillet sur la pente du Bairro Alto, à l'ombre des immeubles voisins en début d'après-midi.",
   }),
   venue({
     name: 'Dear Breakfast',
@@ -264,7 +264,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-dense',
     description:
-      'Popular all-day brunch café in the Baixa grid, indoor seating with a small step-out balcony.',
+      'Café brunch prisé toute la journée dans le quadrillage de la Baixa, salle intérieure avec un petit balcon.',
   }),
   venue({
     name: 'Taberna da Rua das Flores',
@@ -281,7 +281,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-mixed',
     description:
-      'Historic tavern on a pedestrian street, tiny outdoor stools that catch afternoon sun between the buildings.',
+      "Taverne historique sur une rue piétonne, quelques tabourets en terrasse qui attrapent le soleil de l'après-midi entre les immeubles.",
   }),
   venue({
     name: 'Sea Me',
@@ -298,7 +298,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-mixed',
     description:
-      'Modern Portuguese-Japanese fusion seafood in Bairro Alto with a lively sidewalk terrace.',
+      'Cuisine fusion portugaise-japonaise de fruits de mer dans le Bairro Alto, avec une terrasse animée sur le trottoir.',
   }),
   venue({
     name: 'Bairro do Avillez',
@@ -315,7 +315,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-dense',
     description:
-      "José Avillez's flagship gastronomic complex — indoor only, no outdoor seating.",
+      'Le complexe gastronomique phare de José Avillez — uniquement en intérieur, pas de terrasse.',
   }),
 
   // --- Baixa (38.7118, -9.1375) ---
@@ -342,7 +342,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-dense',
     description:
-      'Lisbon’s celebrated food hall inside the Mercado da Ribeira — indoor counters, no outdoor area.',
+      "La célèbre halle gourmande de Lisbonne, dans le Mercado da Ribeira — comptoirs en intérieur, pas d'espace extérieur.",
   }),
   venue({
     name: 'A Cevicheria',
@@ -359,7 +359,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-dense',
     description:
-      'Peruvian ceviche counter under a giant octopus, tucked into the narrow Baixa grid.',
+      'Comptoir de ceviche péruvien sous un poulpe géant, niché dans les ruelles étroites de la Baixa.',
   }),
   venue({
     name: 'Copenhagen Coffee Lab',
@@ -376,7 +376,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-dense',
     description:
-      'Nordic roastery on a busy Baixa corner; a slim outdoor bench facing east that warms up mid-morning.',
+      "Torréfacteur nordique à l'angle d'une rue animée de la Baixa ; un petit banc en terrasse orienté à l'est qui se réchauffe en milieu de matinée.",
   }),
   venue({
     name: 'Praça do Comércio',
@@ -393,7 +393,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'square',
     description:
-      'Lisbon’s grand riverside square — vast open plaza with a south-facing arcaded waterfront.',
+      'La grande place de Lisbonne au bord du fleuve — vaste esplanade ouverte avec des arcades exposées au sud.',
   }),
   venue({
     name: 'Praça da Figueira',
@@ -410,7 +410,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'square',
     description:
-      'Lively Baixa square ringed by pastel buildings, with café terraces along the south edge.',
+      "Place animée de la Baixa entourée d'immeubles pastel, avec des terrasses de café le long du côté sud.",
   }),
   venue({
     name: 'Rossio Square',
@@ -427,7 +427,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'square',
     description:
-      'Wave-paved Rossio square with fountains and kiosks, a sun-trap between the Baixa blocks.',
+      'La place du Rossio et ses pavés en vagues, ses fontaines et ses kiosques, un piège à soleil entre les immeubles de la Baixa.',
   }),
 
   // --- Bairro Alto (38.7155, -9.1445) ---
@@ -446,7 +446,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-mixed',
     description:
-      'Former brothel turned cocktail bar with a sidewalk drinking spot facing the river breeze.',
+      'Ancienne maison close transformée en bar à cocktails, avec un coin en terrasse face à la brise du fleuve.',
   }),
   venue({
     name: 'Red Frog',
@@ -463,7 +463,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-dense',
     description:
-      'Speakeasy cocktail bar down a Bairro Alto lane — intimate, indoor-only.',
+      'Bar à cocktails caché dans une ruelle du Bairro Alto — intimiste, uniquement en intérieur.',
   }),
   venue({
     name: 'The Decadente',
@@ -480,7 +480,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-dense',
     description:
-      'Hotel bar with a small rear terrace that catches late-afternoon light over the rooftops.',
+      "Bar d'hôtel avec une petite terrasse arrière qui capte la lumière de fin d'après-midi au-dessus des toits.",
   }),
   venue({
     name: 'Largo do Carmo',
@@ -497,7 +497,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'square',
     description:
-      'Pedestrian square by the Carmo convent ruins — leafy, partially shaded, a favourite sunset café spot.',
+      'Place piétonne près des ruines du couvent do Carmo — verdoyante, partiellement ombragée, un spot de café prisé au coucher du soleil.',
   }),
 
   // --- Príncipe Real (38.7170, -9.1480) ---
@@ -516,7 +516,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'park',
     description:
-      'Tree-shaded garden on the Príncipe Real plateau with a cedar canopy and kiosk terrace.',
+      "Jardin ombragé d'arbres sur le plateau du Príncipe Real, avec un cèdre majestueux et une terrasse de kiosque.",
   }),
   venue({
     name: 'Cantinho das Gáveas',
@@ -533,7 +533,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-mixed',
     description:
-      'Beloved neighbourhood bistro with a few street tables that fill with sun at lunchtime.',
+      'Bistrot de quartier apprécié avec quelques tables en terrasse qui se remplissent de soleil à midi.',
   }),
   venue({
     name: 'Praça do Príncipe Real',
@@ -550,7 +550,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'square',
     description:
-      'Elegant square encircled by 19th-century mansions, home to the famous cedar tree.',
+      "Place élégante entourée d'hôtels particuliers du XIXe siècle, où trône le célèbre cèdre.",
   }),
 
   // --- Alfama (38.7125, -9.1295) ---
@@ -569,7 +569,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'viewpoint',
     description:
-      'Iconic Alfama terrace with sweeping views over the Tagus and the red-tile roofs — fully sun-exposed.',
+      "Terrasse emblématique de l'Alfama avec une vue panoramique sur le Tage et les toits de tuiles rouges — entièrement au soleil.",
   }),
   venue({
     name: 'Miradouro de Santa Luzia',
@@ -586,7 +586,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'viewpoint',
     description:
-      'Wisteria-draped viewpoint just below Portas do Sol; morning sun, afternoon pergola shade.',
+      "Belvédère drapé de glycines juste en contrebas de Portas do Sol ; soleil le matin, ombre de la pergola l'après-midi.",
   }),
   venue({
     name: 'Café da Garagem',
@@ -603,7 +603,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-open',
     description:
-      'Bohemian café above a parking garage with a balcony terrace facing the river — a sunrise favourite.',
+      "Café bohème au-dessus d'un parking, avec une terrasse en balcon face au fleuve — idéal au lever du soleil.",
   }),
   venue({
     name: 'Faz Figura',
@@ -620,7 +620,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-mixed',
     description:
-      'Traditional Portuguese kitchen in the Alfama lanes, a tiny outdoor table on the cobbled slope.',
+      "Cuisine portugaise traditionnelle dans les ruelles de l'Alfama, une petite table en terrasse sur la pente pavée.",
   }),
 
   // --- Cais do Sodré (38.7068, -9.1450) ---
@@ -639,7 +639,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-mixed',
     description:
-      'Indian-inspired cocktail bar with a leafy back patio that gets afternoon rays between the walls.',
+      "Bar à cocktails d'inspiration indienne avec un patio arrière verdoyant qui reçoit le soleil l'après-midi entre les murs.",
   }),
   venue({
     name: 'Comoba',
@@ -656,7 +656,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-mixed',
     description:
-      'Australian-run brunch spot with a pavement terrace — bright and sunny from late morning.',
+      'Spot brunch tenu par des Australiens, avec une terrasse sur trottoir — lumineux et ensoleillé dès la fin de matinée.',
   }),
   venue({
     name: 'Cervejaria Ramiro',
@@ -673,7 +673,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'indoor-shaded',
     description:
-      "Lisbon's legendary seafood house — a bustling indoor cervejaria, no outdoor seating.",
+      'La légendaire maison de fruits de mer de Lisbonne — une cervejaria animée en intérieur, pas de terrasse.',
   }),
   venue({
     name: 'Pensão Amor Santos',
@@ -690,7 +690,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'LOW',
     sunProfile: 'street-mixed',
     description:
-      'Closed sibling of the Cais do Sodré cocktail bar — a small Santos patio awaiting reopening.',
+      'Petit frère fermé du bar à cocktails de Cais do Sodré — un petit patio à Santos qui attend sa réouverture.',
   }),
 
   // --- Santa Catarina (38.7105, -9.1465) ---
@@ -709,7 +709,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'viewpoint',
     description:
-      'Riverside viewpoint with the famous "No. 4" kiosk — open to the sun all afternoon with river views.',
+      "Belvédère au bord du fleuve avec le célèbre kiosque « No. 4 » — en plein soleil tout l'après-midi, avec vue sur le Tage.",
   }),
   venue({
     name: 'Wish Slow',
@@ -726,7 +726,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-open',
     description:
-      'Healthy brunch café steps from the viewpoint — a small terrace that gets full midday sun.',
+      'Café brunch healthy à deux pas du belvédère — une petite terrasse en plein soleil à midi.',
   }),
   venue({
     name: 'House of Wonders',
@@ -743,7 +743,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-mixed',
     description:
-      'Quirky vegetarian café with a rooftop nook — east-facing, morning sun, shaded by afternoon.',
+      "Café végétarien atypique avec un coin sur le toit — orienté est, soleil le matin, à l'ombre l'après-midi.",
   }),
 
   // --- Estrela / Lapa (38.7145, -9.1550) ---
@@ -762,7 +762,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'park',
     description:
-      'Romantic 19th-century garden with ponds, palms and a kiosk — a green sun-and-shade oasis in Estrela.',
+      'Jardin romantique du XIXe siècle avec bassins, palmiers et kiosque — une oasis de verdure entre soleil et ombre à Estrela.',
   }),
   venue({
     name: 'Estrela Park',
@@ -779,7 +779,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'park',
     description:
-      'Formal park beside the Basílica da Estrela — wide lawns that bake in the afternoon sun.',
+      "Parc à la française à côté de la Basílica da Estrela — de vastes pelouses qui cuisent au soleil l'après-midi.",
   }),
   venue({
     name: 'Os Lusiadas',
@@ -796,7 +796,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-mixed',
     description:
-      'Quiet Lapa restaurant with a south-facing patio — dappled sun through the plane trees at lunch.',
+      'Restaurant tranquille de Lapa avec un patio exposé au sud — soleil tacheté à travers les platanes à midi.',
   }),
   venue({
     name: 'The Mill',
@@ -813,7 +813,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-mixed',
     description:
-      'Specialty coffee shop on the Lapa ridge — east-facing window counter warms up by mid-morning.',
+      'Café de spécialité sur les hauteurs de Lapa — le comptoir en vitrine, orienté est, se réchauffe en milieu de matinée.',
   }),
 
   // --- Santos (38.7070, -9.1510) ---
@@ -832,7 +832,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-open',
     description:
-      'Plant-filled brunch café in Santos — a sunny street terrace popular with freelancers.',
+      'Café brunch rempli de plantes à Santos — une terrasse ensoleillée sur rue, prisée des freelances.',
   }),
   venue({
     name: 'LX Factory Bar',
@@ -849,7 +849,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-open',
     description:
-      'Industrial-chic bar inside the LX Factory complex — a courtyard that holds the sun until dusk.',
+      "Bar chic et industriel au sein du complexe LX Factory — une cour qui garde le soleil jusqu'au crépuscule.",
   }),
   venue({
     name: 'Rio Maravilha',
@@ -866,7 +866,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'rooftop',
     description:
-      'Open-air rooftop bar atop the LX Factory building — panoramic river and 25 de Abril bridge views, fully exposed.',
+      'Bar sur le toit à ciel ouvert au sommet du bâtiment LX Factory — vue panoramique sur le fleuve et le pont du 25 de Abril, entièrement au soleil.',
   }),
 
   // --- Avenida da Liberdade (38.7190, -9.1435) ---
@@ -885,7 +885,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-mixed',
     description:
-      'Specialty espresso bar one street off the Avenida — east-facing bench, bright mornings.',
+      "Bar à espresso de spécialité à une rue de l'Avenida — banc orienté est, matinées lumineuses.",
   }),
   venue({
     name: 'Avenida Café',
@@ -902,7 +902,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-open',
     description:
-      'Classic café kiosk under the Avenida’s plane trees — dappled shade with sunny patches all day.',
+      "Kiosque-café classique sous les platanes de l'Avenida — ombre tachetée avec des taches de soleil toute la journée.",
   }),
   venue({
     name: 'Saldanha Grill',
@@ -919,7 +919,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-mixed',
     description:
-      'Neighbourhood steakhouse with a sidewalk table row — sunny from noon until the buildings shade it at 18:00.',
+      "Grill de quartier avec une rangée de tables sur le trottoir — au soleil de midi jusqu'à ce que les immeubles l'ombragent à 18h.",
   }),
 
   // --- Saldanha (38.7235, -9.1450) ---
@@ -938,7 +938,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'LOW',
     sunProfile: 'indoor-shaded',
     description:
-      'Hidden cocktail lounge in the Saldanha backstreets — dark interior, no terrace.',
+      'Lounge à cocktails caché dans les petites rues de Saldanha — intérieur sombre, pas de terrasse.',
   }),
 
   // --- Graça (38.7140, -9.1335) ---
@@ -957,7 +957,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'viewpoint',
     description:
-      'Lisbon’s highest viewpoint — a sun-drenched terrace with 360° views, the best sunset spot in the city.',
+      'Le point de vue le plus haut de Lisbonne — une terrasse baignée de soleil avec une vue à 360°, le meilleur spot pour le coucher du soleil en ville.',
   }),
   venue({
     name: 'Miradouro da Graça',
@@ -974,7 +974,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'viewpoint',
     description:
-      'Shaded pine terrace by the Graça church — morning sun, pine-shade afternoons, sunset glow over the castle.',
+      "Terrasse ombragée de pins près de l'église de Graça — soleil le matin, ombre des pins l'après-midi, lueur du coucher de soleil sur le château.",
   }),
   venue({
     name: 'Topo Martim Moniz',
@@ -991,7 +991,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'rooftop',
     description:
-      'Rooftop bar atop the Martim Moniz shopping centre — fully open sky, sunset views toward the castle hill.',
+      'Bar sur le toit du centre commercial de Martim Moniz — ciel totalement dégagé, vue sur le coucher de soleil vers la colline du château.',
   }),
   venue({
     name: '8a Colina',
@@ -1008,7 +1008,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-open',
     description:
-      'Neighbourhood table on the Graça slope — a south-facing terrace with afternoon sun over the rooftops.',
+      "Table de quartier sur la pente de Graça — une terrasse exposée au sud, au soleil l'après-midi au-dessus des toits.",
   }),
 
   // --- Belém (38.6975, -9.2050) ---
@@ -1035,7 +1035,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-open',
     description:
-      'The original custard-tart bakery since 1837 — a small street-side terrace in the Belém grid.',
+      'La pâtisserie originale des pastéis de nata depuis 1837 — une petite terrasse sur rue dans le quadrillage de Belém.',
   }),
   venue({
     name: 'Praça do Império',
@@ -1052,7 +1052,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'square',
     description:
-      'Vast formal square between the Jerónimos Monastery and the gardens — wide open, little shade.',
+      "Vaste place à la française entre le monastère des Jerónimos et les jardins — grand espace dégagé, peu d'ombre.",
   }),
   venue({
     name: 'Belém Riverside',
@@ -1069,7 +1069,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'viewpoint',
     description:
-      'Open riverside promenade by the Belém Tower — unobstructed sun and river breeze all afternoon.',
+      "Promenade ouverte au bord du fleuve près de la tour de Belém — soleil dégagé et brise du Tage tout l'après-midi.",
   }),
   venue({
     name: 'Choupana',
@@ -1086,7 +1086,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'LOW',
     sunProfile: 'street-open',
     description:
-      'Small Portuguese tasca near Pastéis de Belém — a couple of sunny street tables under an awning.',
+      'Petite tasca portugaise près de Pastéis de Belém — quelques tables ensoleillées en terrasse sous un auvent.',
   }),
 
   // --- Costa da Caparica beaches (38.6450, -9.2300) ---
@@ -1105,7 +1105,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'beach',
     description:
-      'The long sandy town beach of Costa da Caparica — fully sun-exposed Atlantic shore with beach bars.',
+      'La longue plage de sable de Costa da Caparica — un rivage atlantique entièrement exposé au soleil, avec ses bars de plage.',
   }),
   venue({
     name: 'Praia do Tamariz',
@@ -1122,7 +1122,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'beach',
     description:
-      'Sheltered cove beach south of Caparica — open to the sun with cliff backdrop to the north.',
+      'Crique abritée au sud de Caparica — en plein soleil, avec des falaises en toile de fond côté nord.',
   }),
   venue({
     name: 'Praia de São Pedro',
@@ -1139,7 +1139,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'beach',
     description:
-      'Family beach at the northern end of the Caparica coast — wide sand, full sun from morning to evening.',
+      "Plage familiale à l'extrémité nord de la côte de Caparica — large étendue de sable, plein soleil du matin au soir.",
   }),
   venue({
     name: 'Praia de Carcavelos',
@@ -1156,7 +1156,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'beach',
     description:
-      "Lisbon's closest surf beach west of the city — a long open bay with near-constant sun and a fort café.",
+      "La plage de surf la plus proche de Lisbonne, à l'ouest de la ville — une longue baie ouverte avec un soleil quasi constant et un café dans le fort.",
   }),
 
   // --- Rooftops & high spots ---
@@ -1175,7 +1175,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'rooftop',
     description:
-      'Hidden rooftop atop a multi-storey car park in Bairro Alto — open sky, sunset views over the river.',
+      "Toit caché au sommet d'un parking à étages dans le Bairro Alto — ciel dégagé, vue sur le coucher de soleil au-dessus du fleuve.",
   }),
   venue({
     name: 'Memmo Rooftop',
@@ -1192,7 +1192,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'rooftop',
     description:
-      'Boutique hotel rooftop in Alfama — infinity-edge pool terrace with full sun and Tagus views.',
+      "Toit d'un hôtel-boutique dans l'Alfama — terrasse avec piscine à débordement, plein soleil et vue sur le Tage.",
   }),
   venue({
     name: 'Santa Justa',
@@ -1217,7 +1217,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'rooftop',
     description:
-      'Viewing platform atop the Santa Justa lift — 45 m up, completely exposed, panoramic Baixa views.',
+      "Plateforme d'observation au sommet de l'ascenseur de Santa Justa — 45 m de haut, entièrement exposée, vue panoramique sur la Baixa.",
   }),
 
   // --- Parque Eduardo VII & Av. Liberdade parks ---
@@ -1236,7 +1236,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'park',
     description:
-      'Lisbon’s grand formal park — terraced hedges and a long lawned slope facing down to the river, full sun.',
+      'Le grand parc à la française de Lisbonne — haies en terrasses et longue pelouse en pente vers le fleuve, plein soleil.',
   }),
   venue({
     name: 'Jardim da São Pedro de Alcântara',
@@ -1253,7 +1253,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'park',
     description:
-      'Tiered garden on the Bairro Alto escarpment with a viewpoint over the Baixa — pergola shade, sunny benches.',
+      "Jardin en terrasses sur l'escarpement du Bairro Alto, avec un point de vue sur la Baixa — ombre de pergola, bancs ensoleillés.",
   }),
   venue({
     name: 'Tapada das Mercês',
@@ -1270,7 +1270,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'park',
     description:
-      'Quiet wooded pocket park near Estrela — dense canopy, sunny only in the central clearing.',
+      "Petit parc boisé tranquille près d'Estrela — canopée dense, soleil seulement dans la clairière centrale.",
   }),
 
   // --- More restaurants & bars to round out 64 ---
@@ -1289,7 +1289,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-mixed',
     description:
-      'Casual grill house on the Bairro Alto ridge — a few street tables that see afternoon sun.',
+      "Grill décontracté sur les hauteurs du Bairro Alto — quelques tables en terrasse qui voient le soleil l'après-midi.",
   }),
   venue({
     name: 'Ponto Final',
@@ -1306,7 +1306,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-open',
     description:
-      "Iconic riverside terrace — afternoon sun, golden-hour cocktails and the city's most photographed sunset.",
+      "Terrasse emblématique au bord du fleuve — soleil l'après-midi, cocktails à l'heure dorée et le coucher de soleil le plus photographié de la ville.",
   }),
   venue({
     name: 'Café Janis',
@@ -1323,7 +1323,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'HIGH',
     sunProfile: 'street-mixed',
     description:
-      'Parisian-style bistro-café in Príncipe Real — a sunny pavement terrace popular for weekend brunch.',
+      'Bistrot-café de style parisien dans le Príncipe Real — une terrasse ensoleillée sur trottoir, prisée pour le brunch du week-end.',
   }),
   venue({
     name: 'Biblioteca LX',
@@ -1340,7 +1340,7 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'street-open',
     description:
-      'Bookshop-café inside the LX Factory — a courtyard terrace that catches midday sun against the brick walls.',
+      'Café-librairie au sein de la LX Factory — une terrasse en cour intérieure qui attrape le soleil de midi contre les murs de brique.',
   }),
   venue({
     name: 'Pavilhão Chinês',
@@ -1357,6 +1357,6 @@ export const lisbonVenues: Venue[] = [
     confidence: 'MEDIUM',
     sunProfile: 'indoor-shaded',
     description:
-      "Lisbon's legendary cabinet-of-curiosities bar — indoor only, no terrace, a dark wonderland.",
+      'Le légendaire bar-cabinet de curiosités de Lisbonne — uniquement en intérieur, pas de terrasse, un monde merveilleux et sombre.',
   }),
 ];
