@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
-import { Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl';
+import { Map as MapLibreMap, Marker, LngLatBounds, setWorkerUrl } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 // maplibre 6 construit l'URL de son worker à l'exécution (`new URL(nom, base)`),
 // que Vite ne peut pas détecter : le fichier n'était pas émis et répondait 404
@@ -13,6 +13,7 @@ import { SunService } from '@/services/SunService';
 import { ShadowService } from '@/services/ShadowService';
 import { lisbonBuildings } from '@/data/lisbonBuildings';
 import { lisbonHour } from '@/utils/lisbonTime';
+import { markerLabel } from '@/utils/copy';
 
 setWorkerUrl(maplibreWorkerUrl);
 
@@ -77,6 +78,13 @@ const FOOTPRINTS = {
     };
   }),
 };
+
+// La carte s'ouvrait sur le centre géographique de Lisbonne, où presque aucun
+// lieu ne tombe : deux pastilles à l'écran. On cadre une fois par session sur
+// les meilleurs lieux ; ensuite, c'est l'utilisateur qui décide où il regarde.
+let framedOnce = false;
+// Marges de cadrage : en-tête + filtres en haut, fiche + curseur en bas.
+const FRAME_PADDING = { top: 200, bottom: 270, left: 40, right: 40 };
 
 const OVERLAY_BOUNDS: [number, number][] = [
   [-9.35, 38.78], [-9.35, 38.62], [-8.95, 38.62], [-8.95, 38.78], [-9.35, 38.78],
@@ -231,6 +239,17 @@ export function MapView({
     }
   }, [mode, isDaytime, mapReady, sunPos, currentDate, mapCenter]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || framedOnce) return;
+    // Position réelle ou lieu choisi : c'est là qu'il faut regarder, pas ailleurs.
+    if (locationGranted || selectedVenueId || recommendations.length === 0) return;
+    framedOnce = true;
+    const bounds = new LngLatBounds();
+    for (const r of recommendations.slice(0, 8)) bounds.extend([r.venue.longitude, r.venue.latitude]);
+    map.fitBounds(bounds, { padding: FRAME_PADDING, maxZoom: 16, duration: 0 });
+  }, [mapReady, locationGranted, selectedVenueId, recommendations]);
+
   // Venue markers — smaller, fewer, cleaner hierarchy
   useEffect(() => {
     if (!mapRef.current || !mapReady) return;
@@ -262,7 +281,8 @@ export function MapView({
     // unreadable static. Greedily keep a marker only if its centre clears
     // every marker already placed (highest score / selected first), instead
     // of drawing all 10 on top of each other.
-    const MIN_MARKER_GAP_PX = 40;
+    // Pastilles en gélule (« ☀ 3h40 ») : plus larges que les anciens ronds.
+    const MIN_MARKER_GAP_PX = 56;
     const placedPx: { x: number; y: number }[] = [];
     // In full sun (or full shade) many venues tie for the exact top score —
     // this exemption is for THE single best-match badge shown in the sheet
@@ -286,19 +306,19 @@ export function MapView({
 
       const sunPct = v.sunExposureByHour[hour] || 0;
       const shadePct = v.shadeExposureByHour[hour] || 0;
-      const displayPct = mode === 'SUN' ? sunPct : shadePct;
+      const label = rec ? markerLabel(rec, mode) : `${mode === 'SUN' ? sunPct : shadePct} %`;
 
       const el = document.createElement('div');
       el.style.cursor = 'pointer';
       el.style.transition = 'transform 250ms cubic-bezier(0.22,1,0.36,1)';
 
-      const size = isSelected ? 46 : isTop ? 44 : 32;
-      const fontSize = isSelected ? 13 : isTop ? 12 : 10;
+      const height = isSelected ? 32 : isTop ? 30 : 24;
+      const fontSize = isSelected ? 13 : isTop ? 12 : 10.5;
       const glow = isTop
         ? `box-shadow: 0 0 0 5px ${mode === 'SUN' ? 'rgba(251,191,36,0.25)' : 'rgba(100,116,139,0.25)'}, 0 2px 8px rgba(0,0,0,0.12);`
         : 'box-shadow: 0 1px 4px rgba(0,0,0,0.1);';
 
-      el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:50%;background:white;border:2px solid ${borderColor};${glow}font-size:${fontSize}px;font-weight:700;color:${textColor};font-family:Inter,sans-serif;">${displayPct}%</div>`;
+      el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:${height}px;padding:0 ${isTop || isSelected ? 10 : 8}px;border-radius:999px;background:white;border:2px solid ${borderColor};${glow}font-size:${fontSize}px;font-weight:700;color:${textColor};font-family:Inter,sans-serif;white-space:nowrap;">${label}</div>`;
 
       el.addEventListener('click', (e) => { e.stopPropagation(); onVenueSelect(v.id); });
 

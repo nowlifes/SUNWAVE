@@ -87,3 +87,32 @@ export function statusShort(rec: Recommendation, mode: SunMode): string {
   }
   return `${exposure} %`;
 }
+
+/** « 3h40 », « 2h », « 34 min » — là où la place manque (pastille de carte). */
+function compactGap(minutes: number): string {
+  const min = Math.max(0, Math.round(minutes));
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
+}
+
+/** « 16:00 » → « 16h », « 09:00 » → « 9h ». */
+function hourLabel(hhmm: string | null): string {
+  if (!hhmm) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`;
+}
+
+/** La pastille de carte : ce qui distingue un lieu de ses voisins. En plein
+ *  ciel ils partagent tous le même pourcentage ; pas la même durée. */
+export function markerLabel(rec: Recommendation, mode: SunMode): string {
+  if (rec.sunLeavesInMin !== null) {
+    const gap = compactGap(rec.sunLeavesInMin);
+    return mode === 'SUN' ? `☀ ${gap}` : gap;
+  }
+  if (rec.sunArrivesInMin !== null) {
+    return rec.arrivesTomorrow ? `demain ${hourLabel(rec.sunWindowStart)}` : `dès ${hourLabel(rec.sunWindowStart)}`;
+  }
+  return `${mode === 'SUN' ? rec.sunPercentage : rec.shadePercentage} %`;
+}

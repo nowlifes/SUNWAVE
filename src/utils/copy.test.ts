@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Recommendation } from '@/types';
-import { categoryLabel, formatGap, statusCopy } from './copy';
+import { categoryLabel, formatGap, markerLabel, statusCopy } from './copy';
 
 // Une seule source pour les phrases de statut : la fiche détail disait
 // « Sunny for 5H » quand l'accueil disait « Perd le soleil dans 4h 30m ».
@@ -76,5 +76,36 @@ describe('categoryLabel', () => {
       expect(categoryLabel(c)).not.toBe(c);
     }
     expect(categoryLabel('viewpoint')).toBe('Belvédère');
+  });
+});
+
+// La pastille de carte affichait « 88 % » sur tous les lieux en plein ciel :
+// un chiffre identique partout ne départage rien. Elle dit ce qui les
+// distingue — combien de temps ça dure, ou quand ça commence.
+describe('markerLabel', () => {
+  it('au soleil : le temps qu\'il reste, compact', () => {
+    expect(markerLabel(rec({ sunLeavesInMin: 220 }), 'SUN')).toBe('☀ 3h40');
+    expect(markerLabel(rec({ sunLeavesInMin: 120 }), 'SUN')).toBe('☀ 2h');
+    expect(markerLabel(rec({ sunLeavesInMin: 34 }), 'SUN')).toBe('☀ 34 min');
+  });
+
+  it('à l\'ombre : même chose, sans le soleil', () => {
+    const r = rec({ shadePercentage: 100, lastsUntilSunset: true, sunLeavesInMin: 302 });
+    expect(markerLabel(r, 'SHADE')).toBe('5h02');
+  });
+
+  it('plus tard aujourd\'hui : l\'heure d\'arrivée', () => {
+    const r = rec({ sunLeavesInMin: null, sunArrivesInMin: 90, sunWindowStart: '16:00' });
+    expect(markerLabel(r, 'SUN')).toBe('dès 16h');
+  });
+
+  it('demain : le dit', () => {
+    const r = rec({ sunLeavesInMin: null, sunArrivesInMin: 525, arrivesTomorrow: true, sunWindowStart: '09:00' });
+    expect(markerLabel(r, 'SUN')).toBe('demain 9h');
+  });
+
+  it('rien de prévu : le pourcentage', () => {
+    const r = rec({ sunPercentage: 20, sunLeavesInMin: null, sunArrivesInMin: null });
+    expect(markerLabel(r, 'SUN')).toBe('20 %');
   });
 });
