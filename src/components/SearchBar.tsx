@@ -7,7 +7,7 @@ interface SearchBarProps {
   placeholder?: string;
 }
 
-export function SearchBar({ onSelectVenue, placeholder = 'Search a place' }: SearchBarProps) {
+export function SearchBar({ onSelectVenue, placeholder = 'Chercher un lieu' }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Venue[]>([]);
   const [focused, setFocused] = useState(false);

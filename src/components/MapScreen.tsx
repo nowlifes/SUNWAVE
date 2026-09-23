@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import type { Venue, SunMode, VenueCategory, GeoPoint, Recommendation, WeatherData } from '@/types';
+import type { Venue, SunMode, VenueCategory, GeoPoint, WeatherData } from '@/types';
 import { MapView } from './MapView';
 import { TimeSlider } from './TimeSlider';
 import { BestMatchSheet } from './BestMatchSheet';
@@ -29,12 +29,12 @@ interface MapScreenProps {
 }
 
 const FILTER_CATEGORIES: { value: VenueCategory | 'all'; label: string }[] = [
-  { value: 'all', label: 'All' },
+  { value: 'all', label: 'Tout' },
   { value: 'cafe', label: 'Cafés' },
-  { value: 'bar', label: 'Drinks' },
+  { value: 'bar', label: 'Bars' },
   { value: 'restaurant', label: 'Restaurants' },
-  { value: 'park', label: 'Parks' },
-  { value: 'beach', label: 'Beaches' },
+  { value: 'park', label: 'Parcs' },
+  { value: 'beach', label: 'Plages' },
   { value: 'rooftop', label: 'Rooftops' },
 ];
 
@@ -126,10 +126,10 @@ export function MapScreen({
           {/* Compact header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-sm">
-              <span className="text-xs font-bold text-shade-700">Lisbon</span>
+              <span className="text-xs font-bold text-shade-700">Lisbonne</span>
               <span className="text-shade-300 text-xs">·</span>
               <span className="text-xs font-medium text-shade-500">
-                {Math.abs(currentDate.getTime() - Date.now()) < 90000 ? 'Now' : formatLisbonTime(currentDate)}
+                {Math.abs(currentDate.getTime() - Date.now()) < 90000 ? 'Maintenant' : formatLisbonTime(currentDate)}
               </span>
             </div>
             <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-sm">
@@ -149,7 +149,7 @@ export function MapScreen({
                 mode === 'SUN' ? 'bg-sun-500 text-white shadow-sm' : 'text-shade-500'
               }`}
             >
-              ☀ SUN
+              ☀ Soleil
             </button>
             <button
               onClick={() => onModeChange('SHADE')}
@@ -157,7 +157,7 @@ export function MapScreen({
                 mode === 'SHADE' ? 'bg-shade-600 text-white shadow-sm' : 'text-shade-500'
               }`}
             >
-              🌑 SHADE
+              🌑 Ombre
             </button>
           </div>
 

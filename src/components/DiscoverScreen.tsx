@@ -1,6 +1,7 @@
-import type { DiscoverCategory, SunMode, VenueCategory } from '@/types';
+import type { DiscoverCategory, SunMode } from '@/types';
 import { RecommendationService } from '@/services/RecommendationService';
 import { VenueService } from '@/services/VenueService';
+import { statusShort } from '@/utils/copy';
 
 interface DiscoverScreenProps {
   currentDate: Date;
@@ -10,24 +11,24 @@ interface DiscoverScreenProps {
 }
 
 const PRIMARY: DiscoverCategory[] = [
-  { id: 'max_sun', label: 'Sun', icon: '☀', mode: 'SUN', categories: [], description: 'Chase the light' },
-  { id: 'max_shade', label: 'Shade', icon: '🌑', mode: 'SHADE', categories: [], description: 'Keep it cool' },
+  { id: 'max_sun', label: 'Soleil', icon: '☀', mode: 'SUN', categories: [], description: 'Suivre la lumière' },
+  { id: 'max_shade', label: 'Ombre', icon: '🌑', mode: 'SHADE', categories: [], description: 'Rester au frais' },
 ];
 
 const SECONDARY: DiscoverCategory[] = [
-  { id: 'coffee', label: 'Coffee', icon: '☕', mode: 'ANY', categories: ['cafe'], description: 'Sunny café terraces' },
-  { id: 'drink', label: 'Drinks', icon: '🍹', mode: 'ANY', categories: ['bar', 'rooftop'], description: 'Bars & rooftops' },
-  { id: 'eat', label: 'Food', icon: '🍽️', mode: 'ANY', categories: ['restaurant'], description: 'Outdoor dining' },
-  { id: 'beach', label: 'Beach', icon: '🏖️', mode: 'ANY', categories: ['beach'], description: 'Sun by the water' },
-  { id: 'park', label: 'Park', icon: '🌳', mode: 'ANY', categories: ['park'], description: 'Green spaces' },
-  { id: 'best_light', label: 'Best Light', icon: '📸', mode: 'SUN', categories: ['viewpoint', 'square'], description: 'Golden hour spots' },
+  { id: 'coffee', label: 'Café', icon: '☕', mode: 'ANY', categories: ['cafe'], description: 'Terrasses de café au soleil' },
+  { id: 'drink', label: 'Un verre', icon: '🍹', mode: 'ANY', categories: ['bar', 'rooftop'], description: 'Bars et rooftops' },
+  { id: 'eat', label: 'Manger', icon: '🍽️', mode: 'ANY', categories: ['restaurant'], description: 'Manger dehors' },
+  { id: 'beach', label: 'Plage', icon: '🏖️', mode: 'ANY', categories: ['beach'], description: "Le soleil au bord de l'eau" },
+  { id: 'park', label: 'Parc', icon: '🌳', mode: 'ANY', categories: ['park'], description: 'Espaces verts' },
+  { id: 'best_light', label: 'Belle lumière', icon: '📸', mode: 'SUN', categories: ['viewpoint', 'square'], description: "Pour l'heure dorée" },
 ];
 
 export function DiscoverScreen({ currentDate, userLocation, onCategorySelect, onVenueSelect }: DiscoverScreenProps) {
   return (
     <div className="h-full overflow-y-auto no-scrollbar pb-20">
       <div className="px-5 pt-8 pb-4">
-        <h1 className="text-2xl font-bold text-shade-800">What are you in the mood for?</h1>
+        <h1 className="text-2xl font-bold text-shade-800">Tu as envie de quoi ?</h1>
       </div>
 
       {/* Primary choices — large */}
@@ -56,8 +57,8 @@ export function DiscoverScreen({ currentDate, userLocation, onCategorySelect, on
                 {top && (
                   <div className="text-right">
                     <p className="text-xs font-semibold text-white/90 truncate max-w-[120px]">{top.venue.name}</p>
-                    <p className="text-2xl font-bold text-white">{top.sunMatch}</p>
-                    <p className="text-[10px] text-white/60">{top.walkTimeMin} min</p>
+                    <p className="text-[11px] text-white/70">{top.walkTimeMin} min à pied</p>
+                    <p className="text-[11px] font-semibold text-white/90">{statusShort(top, mode)}</p>
                   </div>
                 )}
               </div>
@@ -68,7 +69,7 @@ export function DiscoverScreen({ currentDate, userLocation, onCategorySelect, on
 
       {/* Secondary intents — compact grid */}
       <div className="px-5">
-        <p className="text-xs font-bold tracking-wider text-shade-400 mb-3">OUTSIDE</p>
+        <p className="text-xs font-bold tracking-wider text-shade-400 mb-3">DEHORS</p>
         <div className="grid grid-cols-3 gap-2.5">
           {SECONDARY.map((cat) => (
             <button
@@ -108,7 +109,7 @@ export function DiscoverResults({ category, currentDate, userLocation, onBack, o
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          Back
+          Retour
         </button>
         <div className="flex items-center gap-2">
           <span className="text-xl">{category.icon}</span>
@@ -122,7 +123,6 @@ export function DiscoverResults({ category, currentDate, userLocation, onBack, o
       <div className="px-4 py-3 space-y-2">
         {recs.map((rec, idx) => {
           const displayPct = mode === 'SUN' ? rec.sunPercentage : rec.shadePercentage;
-          const durationText = rec.sunWindowDurationMin > 0 ? RecommendationService.formatDuration(rec.sunWindowDurationMin) : '';
           return (
             <button
               key={rec.venue.id}
@@ -137,13 +137,10 @@ export function DiscoverResults({ category, currentDate, userLocation, onBack, o
                     <p className="text-[10px] text-shade-400">{VenueService.getNeighborhood(rec.venue)}</p>
                   </div>
                 </div>
-                <span className={`text-lg font-bold ${mode === 'SUN' ? 'text-sun-500' : 'text-shade-500'}`}>{rec.sunMatch}</span>
               </div>
               <div className="flex items-center gap-2 mt-2 ml-5">
-                <span className={`text-[11px] font-semibold ${mode === 'SUN' ? 'text-sun-600' : 'text-shade-600'}`}>{displayPct}%</span>
-                <span className="text-[11px] text-shade-400">· {rec.walkTimeMin}m</span>
-                {durationText && <span className="text-[11px] text-shade-400">· {durationText}</span>}
-                {rec.sunWindowEnd && <span className="text-[11px] text-shade-400">· until {rec.sunWindowEnd}</span>}
+                <span className={`text-[11px] font-semibold ${mode === 'SUN' ? 'text-sun-600' : 'text-shade-600'}`}>{displayPct} %</span>
+                <span className="text-[11px] text-shade-400">· {rec.walkTimeMin} min à pied · {statusShort(rec, mode)}</span>
               </div>
             </button>
           );

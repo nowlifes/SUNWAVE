@@ -70,15 +70,15 @@ export function TimeSlider({ mode, currentDate, onTimeChange }: TimeSliderProps)
           <div className="flex items-center gap-2">
             <span className={`text-lg font-bold ${accentText}`}>{fmt(h, m)}</span>
             {isNow ? (
-              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${mode === 'SUN' ? 'bg-sun-100 text-sun-700' : 'bg-shade-200 text-shade-600'}`}>NOW</span>
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${mode === 'SUN' ? 'bg-sun-100 text-sun-700' : 'bg-shade-200 text-shade-600'}`}>MAINTENANT</span>
             ) : (
               <button onClick={() => onTimeChange(new Date())} className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full text-white active:scale-95 transition-transform ${accentBg}`}>
-                Back to now
+                Revenir à maintenant
               </button>
             )}
           </div>
           {!isNow && !expanded && (
-            <span className="text-[10px] text-shade-400">Drag to explore</span>
+            <span className="text-[10px] text-shade-400">Glisse pour explorer</span>
           )}
         </div>
 

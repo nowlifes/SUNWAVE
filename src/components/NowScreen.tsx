@@ -4,6 +4,7 @@ import { RecommendationService } from '@/services/RecommendationService';
 import { ReliefService } from '@/services/ReliefService';
 import { SunService } from '@/services/SunService';
 import { formatLisbonTime } from '@/utils/lisbonTime';
+import { categoryLabel, formatGap, statusCopy, statusShort } from '@/utils/copy';
 
 // ---------------------------------------------------------------------------
 // L'écran réponse — l'écran d'accueil.
@@ -30,27 +31,6 @@ interface NowScreenProps {
   onVenueSelect: (venueId: string) => void;
   onGetDirections: (venueId: string) => void;
   onOpenMap: () => void;
-}
-
-const CATEGORY_LABEL: Record<string, string> = {
-  rooftop: 'Rooftop',
-  terrace: 'Terrasse',
-  miradouro: 'Belvédère',
-  viewpoint: 'Belvédère',
-  park: 'Parc',
-  beach: 'Plage',
-  square: 'Place',
-  cafe: 'Café',
-  bar: 'Bar',
-  restaurant: 'Restaurant',
-};
-
-function categoryLabel(category: string): string {
-  return CATEGORY_LABEL[category] ?? category.charAt(0).toUpperCase() + category.slice(1);
-}
-
-function formatGap(minutes: number): string {
-  return RecommendationService.formatDuration(Math.max(0, Math.round(minutes)));
 }
 
 export function NowScreen({
@@ -254,9 +234,7 @@ function AnswerCard({
   const isSun = mode === 'SUN';
   const exposure = isSun ? rec.sunPercentage : rec.shadePercentage;
   const inItNow = exposure >= 40;
-  const leavesIn = rec.sunLeavesInMin;
-  const arrivesIn = rec.sunArrivesInMin;
-  const word = isSun ? 'soleil' : 'ombre';
+  const status = statusCopy(rec, mode);
 
   // Le relief — la seule chose qu'une app née en ville plate ne peut pas dire.
   // `null` sur les deux tiers des lieux, et c'est voulu : voir ReliefService.
@@ -292,49 +270,8 @@ function AnswerCard({
       <div className="mt-5 flex items-center gap-3 rounded-2xl bg-sun-50 px-4 py-3.5">
         <SunDial percentage={exposure} />
         <div className="min-w-0">
-          {inItNow && leavesIn !== null && rec.lastsUntilSunset ? (
-            <>
-              <p className="text-[15px] font-bold leading-tight text-shade-900">
-                À l'ombre jusqu'au coucher du soleil
-              </p>
-              <p className="mt-0.5 text-xs text-shade-500">
-                {exposure} % d'ombre maintenant · encore {formatGap(leavesIn)}
-              </p>
-            </>
-          ) : inItNow && leavesIn !== null ? (
-            <>
-              <p className="text-[15px] font-bold leading-tight text-shade-900">
-                Perd {isSun ? 'le soleil' : "l'ombre"} dans {formatGap(leavesIn)}
-              </p>
-              <p className="mt-0.5 text-xs text-shade-500">
-                {exposure} % de {word} maintenant
-                {rec.sunWindowEnd ? ` · jusqu'à ${rec.sunWindowEnd}` : ''}
-              </p>
-            </>
-          ) : arrivesIn !== null && rec.arrivesTomorrow ? (
-            <>
-              <p className="text-[15px] font-bold leading-tight text-shade-900">
-                Soleil demain dès {rec.sunWindowStart}
-              </p>
-              <p className="mt-0.5 text-xs text-shade-500">Dans {formatGap(arrivesIn)}</p>
-            </>
-          ) : arrivesIn !== null ? (
-            <>
-              <p className="text-[15px] font-bold leading-tight text-shade-900">
-                {isSun ? 'Le soleil arrive' : "L'ombre arrive"} dans {formatGap(arrivesIn)}
-              </p>
-              <p className="mt-0.5 text-xs text-shade-500">
-                {rec.sunWindowStart ? `À partir de ${rec.sunWindowStart}` : 'Plus tard'} · {exposure} % maintenant
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-[15px] font-bold leading-tight text-shade-900">
-                {exposure} % de {word} maintenant
-              </p>
-              <p className="mt-0.5 text-xs text-shade-500">Stable pour la prochaine heure</p>
-            </>
-          )}
+          <p className="text-[15px] font-bold leading-tight text-shade-900">{status.title}</p>
+          <p className="mt-0.5 text-xs text-shade-500">{status.detail}</p>
         </div>
       </div>
 
@@ -377,19 +314,7 @@ function AlternativeRow({
   onSelect: () => void;
 }) {
   const exposure = mode === 'SUN' ? rec.sunPercentage : rec.shadePercentage;
-  const leavesIn = rec.sunLeavesInMin;
-  const arrivesIn = rec.sunArrivesInMin;
-
-  const detail =
-    leavesIn !== null
-      ? rec.lastsUntilSunset
-        ? "jusqu'au coucher"
-        : `${formatGap(leavesIn)} restantes`
-      : arrivesIn !== null
-        ? rec.arrivesTomorrow
-          ? `demain dès ${rec.sunWindowStart}`
-          : `dans ${formatGap(arrivesIn)}`
-        : `${exposure} %`;
+  const detail = statusShort(rec, mode);
 
   return (
     <button

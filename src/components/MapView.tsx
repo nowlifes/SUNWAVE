@@ -311,7 +311,7 @@ export function MapView({
       <button
         onClick={onRecenter}
         className="absolute right-3 bottom-3 w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center active:scale-90 transition-transform z-20 border border-shade-200/60"
-        aria-label="Center on me"
+        aria-label="Me recentrer"
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="4" />

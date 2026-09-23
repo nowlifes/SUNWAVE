@@ -1,10 +1,11 @@
-import { useState, useCallback } from 'react';
-import type { Venue, SunMode, Recommendation } from '@/types';
+import { useState, useCallback, useMemo } from 'react';
+import type { Venue, SunMode, Recommendation, ReportType } from '@/types';
 import { RecommendationService } from '@/services/RecommendationService';
 import { VenueService } from '@/services/VenueService';
 import { ReportService } from '@/services/ReportService';
 import { MapService } from '@/services/MapService';
-import { lisbonHour, lisbonWeekday, lisbonMinutesOfDay } from '@/utils/lisbonTime';
+import { lisbonHour } from '@/utils/lisbonTime';
+import { categoryLabel, statusCopy } from '@/utils/copy';
 
 interface PlaceDetailSheetProps {
   venue: Venue;
@@ -18,15 +19,22 @@ interface PlaceDetailSheetProps {
   onGetDirections: () => void;
 }
 
-const REPORT_OPTIONS: { type: import('@/types').ReportType; label: string }[] = [
-  { type: 'terrace_shaded', label: 'Terrace is actually shaded' },
-  { type: 'terrace_sunny', label: 'Terrace is actually sunny' },
-  { type: 'terrace_missing', label: "Terrace doesn't exist" },
-  { type: 'venue_closed', label: 'Venue is closed' },
-  { type: 'building_missing', label: 'Building/structure is missing' },
-  { type: 'outdoor_different', label: 'Outdoor area is different' },
-  { type: 'other', label: 'Other' },
+const REPORT_OPTIONS: { type: ReportType; label: string }[] = [
+  { type: 'terrace_shaded', label: "La terrasse est en fait à l'ombre" },
+  { type: 'terrace_sunny', label: 'La terrasse est en fait au soleil' },
+  { type: 'terrace_missing', label: "Il n'y a pas de terrasse" },
+  { type: 'venue_closed', label: 'Le lieu est fermé' },
+  { type: 'building_missing', label: 'Un bâtiment manque sur la carte' },
+  { type: 'outdoor_different', label: "L'espace extérieur est différent" },
+  { type: 'other', label: 'Autre chose' },
 ];
+
+const PROVENANCE_LABEL = {
+  open: 'CIEL DÉGAGÉ',
+  estimated: 'ESTIMÉ',
+  mixed: 'MIXTE',
+  measured: 'MESURÉ',
+} as const;
 
 export function PlaceDetailSheet({
   venue,
@@ -44,58 +52,25 @@ export function PlaceDetailSheet({
   const [saved, setSaved] = useState(isSaved);
 
   const hour = lisbonHour(currentDate);
-  const sunPct = venue.sunExposureByHour[hour] || 0;
-  const shadePct = venue.shadeExposureByHour[hour] || 0;
-  const displayPct = mode === 'SUN' ? sunPct : shadePct;
 
-  const distanceM = MapService.haversineDistance(userLocation, { lat: venue.latitude, lng: venue.longitude });
-  const walkTime = recommendation?.walkTimeMin ?? MapService.walkTimeMinutes(distanceM);
-
-  const isOpen = recommendation?.isOpen ?? (() => {
-    const day = lisbonWeekday(currentDate);
-    const hours = venue.openingHours[day];
-    if (!hours) return false;
-    const nowMin = lisbonMinutesOfDay(currentDate);
-    const [openH, openM] = hours.open.split(':').map(Number);
-    const [closeH, closeM] = hours.close.split(':').map(Number);
-    const openMin = openH * 60 + openM;
-    let closeMin = closeH * 60 + closeM;
-    if (closeMin <= openMin) closeMin += 24 * 60;
-    return nowMin >= openMin && nowMin <= closeMin;
-  })();
+  // Les chiffres de la fiche sont ceux de l'accueil et de la carte : même
+  // calcul, même minute. Elle recomposait les siens et se contredisait.
+  const rec = useMemo(
+    () => recommendation ?? RecommendationService.getRecommendationFor(venue, mode, userLocation, currentDate),
+    [recommendation, venue, mode, userLocation, currentDate]
+  );
+  const status = statusCopy(rec, mode);
+  const displayPct = mode === 'SUN' ? rec.sunPercentage : rec.shadePercentage;
 
   const neighborhood = VenueService.getNeighborhood(venue);
-
   const bestTime = RecommendationService.getBestTime(venue, mode, currentDate);
-
-  const sunWindow = recommendation?.sunWindowDurationMin ?? (() => {
-    const exposure = mode === 'SUN' ? venue.sunExposureByHour : venue.shadeExposureByHour;
-    const threshold = mode === 'SUN' ? 40 : 50;
-    let duration = 0;
-    for (let h = hour; h < 24; h++) {
-      if (exposure[h] >= threshold) duration += 60;
-      else if (duration > 0) break;
-    }
-    return duration;
-  })();
-
-  const sunMatchScore = recommendation?.sunMatch ?? (() => {
-    const sunExposureScore = mode === 'SUN' ? sunPct : shadePct;
-    const distanceScore = Math.max(0, 100 - (distanceM / 3000) * 100);
-    const timeRemainingScore = Math.min(100, (sunWindow / 120) * 100);
-    const outdoorScore = venue.hasOutdoorArea ? 100 : 30;
-    const confidenceScore = venue.confidence === 'HIGH' ? 100 : venue.confidence === 'MEDIUM' ? 65 : 35;
-    return Math.round(
-      sunExposureScore * 0.45 + distanceScore * 0.2 + timeRemainingScore * 0.15 + outdoorScore * 0.1 + confidenceScore * 0.1
-    );
-  })();
 
   const handleSave = useCallback(() => {
     setSaved((s) => !s);
     onSave();
   }, [onSave]);
 
-  const handleSubmitReport = useCallback((type: import('@/types').ReportType) => {
+  const handleSubmitReport = useCallback((type: ReportType) => {
     ReportService.submit(venue.id, type);
     setReportSubmitted(true);
     setTimeout(() => {
@@ -123,9 +98,9 @@ export function PlaceDetailSheet({
   const prov = venue.heightProvenance;
   const estimatedShare = prov.total > 0 ? prov.estimated / prov.total : 0;
   const provVerdict =
-    prov.total === 0 ? 'OPEN SKY' : estimatedShare > 0.5 ? 'ESTIMATED' : estimatedShare > 0.2 ? 'MIXED' : 'MEASURED';
+    prov.total === 0 ? 'open' : estimatedShare > 0.5 ? 'estimated' : estimatedShare > 0.2 ? 'mixed' : 'measured';
   const provColor =
-    provVerdict === 'ESTIMATED' ? 'text-orange-600' : provVerdict === 'MIXED' ? 'text-amber-600' : 'text-green-600';
+    provVerdict === 'estimated' ? 'text-orange-600' : provVerdict === 'mixed' ? 'text-amber-600' : 'text-green-600';
 
   const sunBars = venue.sunExposureByHour.slice(7, 20).map((pct, i) => {
     const h = i + 7;
@@ -156,7 +131,7 @@ export function PlaceDetailSheet({
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold text-shade-800">{venue.name}</h2>
                   <p className="text-sm text-shade-500 mt-0.5">{venue.address}</p>
-                  <p className="text-xs text-shade-400 mt-0.5">{neighborhood} · {venue.category}</p>
+                  <p className="text-xs text-shade-400 mt-0.5">{neighborhood} · {categoryLabel(venue.category)}</p>
                 </div>
                 <button
                   onClick={onClose}
@@ -169,65 +144,47 @@ export function PlaceDetailSheet({
                 </button>
               </div>
 
-              {/* Duration hero — most important info first */}
-              {sunWindow > 0 && (
-                <div className={`flex items-center justify-between mb-4 px-4 py-3 rounded-2xl ${mode === 'SUN' ? 'bg-sun-50' : 'bg-shade-100'}`}>
-                  <div>
-                    <p className={`text-base font-bold ${mode === 'SUN' ? 'text-sun-600' : 'text-shade-600'}`}>
-                      {mode === 'SUN' ? 'SUNNY' : 'SHADED'} FOR {RecommendationService.formatDuration(sunWindow).toUpperCase()}
-                    </p>
-                    {bestTime && <p className="text-[11px] text-shade-400 mt-0.5">Best today: {bestTime.start} → {bestTime.end}</p>}
-                  </div>
-                  {isOpen ? (
-                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                      <span className="text-[10px] font-bold text-green-600">OPEN</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-shade-100">
-                      <span className="w-1.5 h-1.5 rounded-full bg-shade-400" />
-                      <span className="text-[10px] font-bold text-shade-500">CLOSED</span>
-                    </div>
-                  )}
+              {/* Ce qu'il faut savoir maintenant — la même phrase qu'à l'accueil. */}
+              <div className={`flex items-start justify-between gap-3 mb-4 px-4 py-3 rounded-2xl ${mode === 'SUN' ? 'bg-sun-50' : 'bg-shade-100'}`}>
+                <div className="min-w-0">
+                  <p className="text-base font-bold leading-tight text-shade-900">{status.title}</p>
+                  <p className="text-xs text-shade-500 mt-0.5">{status.detail}</p>
+                  {bestTime && <p className="text-[11px] text-shade-400 mt-1">Meilleur créneau aujourd'hui : {bestTime.start} → {bestTime.end}</p>}
                 </div>
-              )}
+                {rec.isOpen ? (
+                  <div className="flex shrink-0 items-center gap-1 px-2.5 py-1 rounded-full bg-green-50">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                    <span className="text-[10px] font-bold text-green-600">OUVERT</span>
+                  </div>
+                ) : (
+                  <div className="flex shrink-0 items-center gap-1 px-2.5 py-1 rounded-full bg-shade-100">
+                    <span className="w-1.5 h-1.5 rounded-full bg-shade-400" />
+                    <span className="text-[10px] font-bold text-shade-500">FERMÉ</span>
+                  </div>
+                )}
+              </div>
 
-              {/* Quick stats row */}
-              <div className="flex items-center gap-3 mb-4">
+              {/* Exposition et marche — une seule fois chacune. */}
+              <div className="flex flex-wrap items-center gap-2 mb-5">
                 <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${mode === 'SUN' ? 'bg-sun-100' : 'bg-shade-200'}`}>
                   <span className="text-sm">{mode === 'SUN' ? '☀' : '🌑'}</span>
                   <span className={`text-sm font-bold ${mode === 'SUN' ? 'text-sun-600' : 'text-shade-600'}`}>
-                    {showRange ? `${nowBand.lo}–${nowBand.hi}%` : `${displayPct}%`}
+                    {showRange ? `${nowBand.lo}–${nowBand.hi} %` : `${displayPct} %`}
                   </span>
-                  <span className="text-[10px] font-medium text-shade-500">{mode === 'SUN' ? 'sunny' : 'shaded'}</span>
+                  <span className="text-[10px] font-medium text-shade-500">{mode === 'SUN' ? 'au soleil' : "à l'ombre"}</span>
                 </div>
                 <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-shade-100">
-                  <span className="text-sm font-bold text-shade-700">{walkTime}</span>
-                  <span className="text-[10px] font-medium text-shade-500">min walk</span>
+                  <span className="text-sm font-bold text-shade-700">{rec.walkTimeMin} min</span>
+                  <span className="text-[10px] font-medium text-shade-500">à pied · {MapService.formatDistance(rec.distanceM)}</span>
                 </div>
-                <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-shade-100">
-                  <span className={`text-sm font-bold ${mode === 'SUN' ? 'text-sun-600' : 'text-shade-600'}`}>{sunMatchScore}</span>
-                  <span className="text-[10px] font-medium text-shade-500">match</span>
-                </div>
-              </div>
-
-              {/* Walk time */}
-              <div className="flex items-center gap-2 mb-4 text-sm">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="10" r="3" />
-                  <path d="M12 13c-3 0-5 2-5 5v3h10v-3c0-3-2-5-5-5z" />
-                </svg>
-                <span className="font-semibold text-shade-700">{walkTime} min walk</span>
-                <span className="text-shade-400">·</span>
-                <span className="text-shade-500">{MapService.formatDistance(MapService.haversineDistance(userLocation, { lat: venue.latitude, lng: venue.longitude }))}</span>
               </div>
 
               {/* Sun/shade today bars */}
               <div className="mb-5">
-                <h3 className="text-xs font-bold tracking-wider text-shade-500 mb-3">{mode === 'SUN' ? 'SUN TODAY' : 'SHADE TODAY'}</h3>
+                <h3 className="text-xs font-bold tracking-wider text-shade-500 mb-3">{mode === 'SUN' ? "SOLEIL AUJOURD'HUI" : "OMBRE AUJOURD'HUI"}</h3>
                 <div className="space-y-1.5">
                   {sunBars.map(({ hour: h, pct, isCurrent }) => {
-                    const displayPct = mode === 'SUN' ? pct : venue.shadeExposureByHour[h] || 0;
+                    const barPct = mode === 'SUN' ? pct : venue.shadeExposureByHour[h] || 0;
                     const activeColor = mode === 'SUN' ? 'bg-sun-500' : 'bg-shade-500';
                     const inactiveColor = mode === 'SUN' ? 'bg-sun-300' : 'bg-shade-300';
                     const accentText = mode === 'SUN' ? 'text-sun-600' : 'text-shade-600';
@@ -256,12 +213,12 @@ export function PlaceDetailSheet({
                           {hb.hi > hb.lo && (
                             <div
                               className={`absolute inset-y-0 w-0.5 ${activeColor}`}
-                              style={{ left: `calc(${displayPct}% - 1px)` }}
+                              style={{ left: `calc(${barPct}% - 1px)` }}
                             />
                           )}
                         </div>
                         <span className={`text-[10px] font-semibold w-7 text-right ${isCurrent ? accentText : 'text-shade-500'}`}>
-                          {displayPct}%
+                          {barPct}%
                         </span>
                       </div>
                     );
@@ -269,24 +226,14 @@ export function PlaceDetailSheet({
                 </div>
               </div>
 
-              {/* Sun window detail */}
-              {sunWindow > 0 && (
-                <div className="flex items-center justify-between mb-5 px-4 py-2.5 rounded-xl bg-shade-50">
-                  <div>
-                    <p className="text-[10px] font-bold tracking-wider text-shade-400">SUN WINDOW</p>
-                    <p className="text-sm font-bold text-shade-700">{bestTime ? `${bestTime.start} → ${bestTime.end}` : 'All day'}</p>
-                  </div>
-                </div>
-              )}
-
               {/* Where this number comes from — provenance of the heights the
                   shadow engine used here, and how far the figure moves with
                   them. Replaces a `confidence` field typed by hand per venue,
                   which knew nothing about the data behind the calculation. */}
               <div className="bg-shade-50 rounded-2xl p-3 mb-5">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] font-bold tracking-wider text-shade-400">WHERE THIS NUMBER COMES FROM</p>
-                  <span className={`text-xs font-bold ${provColor}`}>{provVerdict}</span>
+                  <p className="text-[10px] font-bold tracking-wider text-shade-400">D'OÙ VIENT CE CHIFFRE</p>
+                  <span className={`text-xs font-bold ${provColor}`}>{PROVENANCE_LABEL[provVerdict]}</span>
                 </div>
 
                 {prov.total > 0 && (
@@ -299,17 +246,17 @@ export function PlaceDetailSheet({
 
                 <p className="text-[11px] text-shade-500 leading-relaxed">
                   {prov.total === 0
-                    ? 'No building stands close enough to shade this spot, so the figure rests on no guessed height at all.'
-                    : `Of the ${prov.total} buildings tested around this spot, ${prov.tagged} carry a measured height, ${prov.levels} a height derived from their floor count, and ${prov.estimated} a height estimated from the neighbourhood.`}
+                    ? "Aucun bâtiment n'est assez proche pour faire de l'ombre ici : le chiffre ne repose sur aucune hauteur devinée."
+                    : `Sur les ${prov.total} bâtiments testés autour, ${prov.tagged} ont une hauteur mesurée, ${prov.levels} une hauteur déduite du nombre d'étages et ${prov.estimated} une hauteur estimée d'après le quartier.`}
                 </p>
                 <p className="text-[11px] text-shade-500 leading-relaxed mt-1.5">
                   {showRange
-                    ? `Replaying the shadows with those neighbours a storey taller or shorter moves ${
-                        mode === 'SUN' ? 'sun' : 'shade'
-                      } between ${nowBand.lo}% and ${nowBand.hi}% — a ${bandWidth}-point spread around ${displayPct}%.`
-                    : `Moving those neighbours a storey up or down barely shifts the result: ${
-                        bandWidth === 0 ? 'no change' : `${bandWidth} point`
-                      } at this hour.`}
+                    ? `Avec ces voisins un étage plus haut ou plus bas, ${
+                        mode === 'SUN' ? 'le soleil' : "l'ombre"
+                      } varie entre ${nowBand.lo} % et ${nowBand.hi} % — ${bandWidth} points d'écart autour de ${displayPct} %.`
+                    : `Monter ou baisser ces voisins d'un étage ne change presque rien : ${
+                        bandWidth === 0 ? 'aucun écart' : `${bandWidth} point`
+                      } à cette heure.`}
                 </p>
               </div>
 
@@ -324,7 +271,7 @@ export function PlaceDetailSheet({
                     mode === 'SUN' ? 'bg-sun-500' : 'bg-shade-600'
                   }`}
                 >
-                  GO HERE
+                  Y aller
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
                   </svg>
@@ -335,7 +282,7 @@ export function PlaceDetailSheet({
                     saved ? 'bg-sun-100 text-sun-600' : 'bg-shade-100 text-shade-600'
                   }`}
                 >
-                  {saved ? 'SAVED' : 'SAVE'}
+                  {saved ? 'Enregistré' : 'Enregistrer'}
                 </button>
               </div>
 
@@ -343,7 +290,7 @@ export function PlaceDetailSheet({
                 onClick={() => setShowReport(true)}
                 className="w-full py-2.5 text-xs font-semibold text-shade-400 active:scale-95 transition-transform"
               >
-                REPORT AN ISSUE
+                Signaler une erreur
               </button>
             </div>
           ) : (
@@ -351,7 +298,7 @@ export function PlaceDetailSheet({
             <div className="px-5 pb-8 pt-2">
               {!reportSubmitted ? (
                 <>
-                  <h3 className="text-xl font-bold text-shade-800 mb-4">Is something wrong?</h3>
+                  <h3 className="text-xl font-bold text-shade-800 mb-4">Quelque chose cloche ?</h3>
                   <div className="space-y-2">
                     {REPORT_OPTIONS.map((opt) => (
                       <button
@@ -367,7 +314,7 @@ export function PlaceDetailSheet({
                     onClick={() => setShowReport(false)}
                     className="w-full mt-4 py-2.5 text-xs font-semibold text-shade-400"
                   >
-                    Cancel
+                    Annuler
                   </button>
                 </>
               ) : (
@@ -377,8 +324,8 @@ export function PlaceDetailSheet({
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </div>
-                  <p className="text-lg font-bold text-shade-800">Thanks!</p>
-                  <p className="text-sm text-shade-500 mt-1 text-center">We'll use this to improve the map.</p>
+                  <p className="text-lg font-bold text-shade-800">Merci !</p>
+                  <p className="text-sm text-shade-500 mt-1 text-center">On s'en sert pour corriger la carte.</p>
                 </div>
               )}
             </div>
