@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { GeoPoint, Recommendation, SunMode } from '@/types';
 import { RecommendationService } from '@/services/RecommendationService';
+import { ReliefService } from '@/services/ReliefService';
 import { SunService } from '@/services/SunService';
 import { formatLisbonTime } from '@/utils/lisbonTime';
 
@@ -213,6 +214,16 @@ function AnswerCard({
   const arrivesIn = rec.sunArrivesInMin;
   const word = isSun ? 'soleil' : 'ombre';
 
+  // Le relief — la seule chose qu'une app née en ville plate ne peut pas dire.
+  // `null` sur les deux tiers des lieux, et c'est voulu : voir ReliefService.
+  //
+  // Mode Ombre exclu, et pas par prudence : dominer le quartier donne MOINS
+  // d'ombre, pas plus. La même mesure y dirait l'inverse de la vérité.
+  const relief = useMemo(
+    () => (isSun ? ReliefService.explain({ lat: rec.venue.latitude, lng: rec.venue.longitude }) : null),
+    [isSun, rec.venue.latitude, rec.venue.longitude]
+  );
+
   return (
     <div className="mt-6 rounded-3xl bg-white p-6 shadow-xl shadow-shade-900/10">
       <p className="text-[10.5px] font-bold uppercase tracking-wider text-sun-600">
@@ -262,6 +273,13 @@ function AnswerCard({
           )}
         </div>
       </div>
+
+      {relief && (
+        <p className="mt-3.5 flex items-start gap-2 px-0.5 text-[12.5px] leading-snug text-shade-500">
+          <ReliefIcon />
+          <span>{relief}</span>
+        </p>
+      )}
 
       <div className="mt-5 flex gap-2.5">
         <button
@@ -325,6 +343,26 @@ function AlternativeRow({
 }
 
 // ---------------------------------------------------------------------------
+
+/** Une crête — le relief sous le lieu, pas une décoration. */
+function ReliefIcon() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#94A3B8"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="mt-0.5 shrink-0"
+      aria-hidden="true"
+    >
+      <path d="M3 20h18L14 7l-4 7-2.5-3z" />
+    </svg>
+  );
+}
 
 /** Un anneau rempli — ce qu'il reste de ciel à ce lieu. */
 function SunDial({ percentage, small = false }: { percentage: number; small?: boolean }) {
