@@ -39,30 +39,17 @@ class VenueServiceClass {
     );
   }
 
+  /**
+   * Le quartier, tel que l'adresse le nomme (« …, Graça »).
+   *
+   * Il sortait d'une liste de cercles testés dans l'ordre, le premier qui
+   * contenait le lieu gagnant : Chiado, premier et large, avalait la moitié
+   * de la ville, et 48 lieux sur 64 portaient un quartier faux. Les adresses
+   * ont été relevées à pied ; elles font foi.
+   */
   getNeighborhood(venue: Venue): string {
-    const { latitude: lat, longitude: lng } = venue;
-    const neighborhoods: Array<{ name: string; lat: number; lng: number; radius: number }> = [
-      { name: 'Chiado', lat: 38.7138, lng: -9.142, radius: 0.008 },
-      { name: 'Baixa', lat: 38.7118, lng: -9.1375, radius: 0.008 },
-      { name: 'Bairro Alto', lat: 38.7155, lng: -9.1445, radius: 0.006 },
-      { name: 'Príncipe Real', lat: 38.717, lng: -9.148, radius: 0.006 },
-      { name: 'Alfama', lat: 38.7125, lng: -9.1295, radius: 0.008 },
-      { name: 'Cais do Sodré', lat: 38.7068, lng: -9.145, radius: 0.006 },
-      { name: 'Santa Catarina', lat: 38.7105, lng: -9.1465, radius: 0.005 },
-      { name: 'Estrela', lat: 38.7145, lng: -9.155, radius: 0.007 },
-      { name: 'Santos', lat: 38.707, lng: -9.151, radius: 0.006 },
-      { name: 'Avenida', lat: 38.719, lng: -9.1435, radius: 0.007 },
-      { name: 'Saldanha', lat: 38.7235, lng: -9.145, radius: 0.007 },
-      { name: 'Graça', lat: 38.714, lng: -9.1335, radius: 0.006 },
-      { name: 'Belém', lat: 38.6975, lng: -9.205, radius: 0.01 },
-      { name: 'Costa da Caparica', lat: 38.645, lng: -9.23, radius: 0.015 },
-    ];
-
-    for (const n of neighborhoods) {
-      const dist = Math.sqrt((lat - n.lat) ** 2 + (lng - n.lng) ** 2);
-      if (dist < n.radius) return n.name;
-    }
-    return 'Lisbon';
+    const last = venue.address.split(',').pop()?.trim();
+    return last || 'Lisbonne';
   }
 }
 
