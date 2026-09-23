@@ -253,7 +253,6 @@ export default function App() {
             currentDate={currentDate}
             userLocation={userLocation}
             onCategorySelect={handleCategorySelect}
-            onVenueSelect={handleVenueSelect}
           />
         )}
 

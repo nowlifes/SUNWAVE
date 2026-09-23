@@ -7,7 +7,6 @@ interface DiscoverScreenProps {
   currentDate: Date;
   userLocation: { lat: number; lng: number };
   onCategorySelect: (category: DiscoverCategory) => void;
-  onVenueSelect: (venueId: string) => void;
 }
 
 const PRIMARY: DiscoverCategory[] = [
@@ -24,7 +23,7 @@ const SECONDARY: DiscoverCategory[] = [
   { id: 'best_light', label: 'Belle lumière', icon: '📸', mode: 'SUN', categories: ['viewpoint', 'square'], description: "Pour l'heure dorée" },
 ];
 
-export function DiscoverScreen({ currentDate, userLocation, onCategorySelect, onVenueSelect }: DiscoverScreenProps) {
+export function DiscoverScreen({ currentDate, userLocation, onCategorySelect }: DiscoverScreenProps) {
   return (
     <div className="h-full overflow-y-auto no-scrollbar pb-20">
       <div className="px-5 pt-8 pb-4">

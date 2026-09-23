@@ -72,7 +72,7 @@ export function MapScreen({
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
-  const categories = activeFilter === 'all' ? [] : [activeFilter];
+  const categories = useMemo(() => (activeFilter === 'all' ? [] : [activeFilter]), [activeFilter]);
 
   const recommendations = useMemo(
     () => RecommendationService.getRecommendations(mode, userLocation, currentDate, categories, weather, 50),
