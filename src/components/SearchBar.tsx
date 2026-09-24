@@ -5,9 +5,12 @@ import { VenueService } from '@/services/VenueService';
 interface SearchBarProps {
   onSelectVenue: (venue: Venue) => void;
   placeholder?: string;
+  /** Sur la carte de nuit : champ et résultats opaques, encre claire. */
+  tone?: 'day' | 'night';
 }
 
-export function SearchBar({ onSelectVenue, placeholder = 'Chercher un lieu' }: SearchBarProps) {
+export function SearchBar({ onSelectVenue, placeholder = 'Chercher un lieu', tone = 'day' }: SearchBarProps) {
+  const night = tone === 'night';
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Venue[]>([]);
   const [focused, setFocused] = useState(false);
@@ -33,8 +36,8 @@ export function SearchBar({ onSelectVenue, placeholder = 'Chercher un lieu' }: S
 
   return (
     <div className="relative">
-      <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl glass shadow-sm">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl ${night ? 'min-h-11 border border-dusk-line bg-dusk-panel' : 'glass shadow-sm'}`}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={night ? '#AFC0E8' : '#94A3B8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="11" cy="11" r="8" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
@@ -45,7 +48,7 @@ export function SearchBar({ onSelectVenue, placeholder = 'Chercher un lieu' }: S
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 200)}
           placeholder={placeholder}
-          className="flex-1 bg-transparent text-sm font-medium text-shade-700 placeholder:text-shade-400 outline-none"
+          className={`flex-1 bg-transparent text-sm font-medium outline-none ${night ? 'text-dusk-shell placeholder:text-dusk-dim' : 'text-shade-700 placeholder:text-shade-400'}`}
         />
         {query && (
           <button
@@ -61,15 +64,15 @@ export function SearchBar({ onSelectVenue, placeholder = 'Chercher un lieu' }: S
       </div>
 
       {focused && results.length > 0 && (
-        <div className="absolute top-full mt-1 left-0 right-0 glass rounded-2xl shadow-lg overflow-hidden z-30 animate-scale-in max-h-64 overflow-y-auto no-scrollbar">
+        <div className={`absolute ${night ? 'bottom-full mb-1 border border-dusk-line bg-dusk-panel' : 'top-full mt-1 glass'} left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-30 animate-scale-in max-h-64 overflow-y-auto no-scrollbar`}>
           {results.map((venue) => (
             <button
               key={venue.id}
               onClick={() => handleSelect(venue)}
-              className="w-full text-left px-4 py-3 hover:bg-shade-50/50 active:bg-shade-100 border-b border-shade-100/50 last:border-0"
+              className={`w-full text-left px-4 py-3 border-b last:border-0 ${night ? 'border-dusk-line active:bg-dusk-cobalt' : 'hover:bg-shade-50/50 active:bg-shade-100 border-shade-100/50'}`}
             >
-              <p className="text-sm font-semibold text-shade-700">{venue.name}</p>
-              <p className="text-xs text-shade-400">{venue.address}</p>
+              <p className={`text-sm font-semibold ${night ? 'text-dusk-shell' : 'text-shade-700'}`}>{venue.name}</p>
+              <p className={`text-xs ${night ? 'text-dusk-sub' : 'text-shade-400'}`}>{venue.address}</p>
             </button>
           ))}
         </div>

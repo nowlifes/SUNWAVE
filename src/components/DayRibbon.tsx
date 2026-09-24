@@ -13,9 +13,11 @@ import { RIBBON_END_MIN, RIBBON_START_MIN, ribbonCells } from '@/utils/ribbon';
 // pourcentage à cette minute.
 // ---------------------------------------------------------------------------
 
-const GOOD = { SUN: '#F59E0B', SHADE: '#2F6FA6' } as const;
-const NONE = '#E4DED3';
-const NIGHT = '#1E3A5F';
+const PALETTE = {
+  day: { good: { SUN: '#F59E0B', SHADE: '#2F6FA6' }, none: '#E4DED3', night: '#1E3A5F', now: 'bg-ink' },
+  // Sur la carte de nuit océan : braise / menthe, bleu pour « rien », nuit profonde.
+  night: { good: { SUN: '#FF6A2B', SHADE: '#6EE0D2' }, none: '#2A4590', night: '#08143A', now: 'bg-dusk-shell' },
+} as const;
 
 const span = RIBBON_END_MIN - RIBBON_START_MIN;
 const pct = (min: number) => `${((min - RIBBON_START_MIN) / span) * 100}%`;
@@ -30,9 +32,11 @@ interface DayRibbonProps {
   size?: 'full' | 'mini';
   /** La journée montrée n'est pas celle de maintenant (la nuit : demain). */
   hideNow?: boolean;
+  tone?: 'day' | 'night';
 }
 
-export function DayRibbon({ venue, mode, date, sunrise, sunset, size = 'full', hideNow = false }: DayRibbonProps) {
+export function DayRibbon({ venue, mode, date, sunrise, sunset, size = 'full', hideNow = false, tone = 'day' }: DayRibbonProps) {
+  const { good, none, night, now } = PALETTE[tone];
   const cells = useMemo(
     () =>
       ribbonCells(
@@ -56,17 +60,17 @@ export function DayRibbon({ venue, mode, date, sunrise, sunset, size = 'full', h
             className="h-full flex-1"
             style={
               c.value === null
-                ? { background: NIGHT, opacity: 0.85 }
+                ? { background: night, opacity: 0.85 }
                 : c.value === 0
-                  ? { background: NONE }
-                  : { background: GOOD[mode], opacity: 0.25 + (0.75 * c.value) / 100 }
+                  ? { background: none }
+                  : { background: good[mode], opacity: 0.25 + (0.75 * c.value) / 100 }
             }
           />
         ))}
       </div>
       {showNow && (
         <div
-          className={`absolute ${full ? '-top-1.5 -bottom-1.5 w-0.5' : 'inset-y-0 w-[1.5px]'} -translate-x-1/2 rounded-full bg-ink`}
+          className={`absolute ${full ? '-top-1.5 -bottom-1.5 w-0.5' : 'inset-y-0 w-[1.5px]'} -translate-x-1/2 rounded-full ${now}`}
           style={{ left: pct(nowMin) }}
         />
       )}
