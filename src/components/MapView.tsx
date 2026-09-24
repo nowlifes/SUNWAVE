@@ -14,7 +14,11 @@ import type { Venue, SunMode, GeoPoint, Recommendation } from '@/types';
 import { SunService } from '@/services/SunService';
 import { ShadowService } from '@/services/ShadowService';
 import { lisbonBuildings } from '@/data/lisbonBuildings';
+import { lisbonTerrain30 } from '@/data/lisbonTerrain30';
+import { caparicaTerrain30 } from '@/data/caparicaTerrain30';
+import { almadaTerrain30 } from '@/data/almadaTerrain30';
 import { WALK_RING_M, initialFrame, pillLabel } from '@/utils/mapGuide';
+import { gridRuns } from '@/utils/landMask';
 
 setWorkerUrl(maplibreWorkerUrl);
 
@@ -56,15 +60,16 @@ interface MapViewProps {
   insets: MapInsets;
 }
 
-// Palette « Plein ouest » : la carte est de nuit océan, le soleil y pose une
-// braise, l'ombre un bleu franc. Trois teintes qu'on distingue d'un coup
-// d'œil, là où l'ancienne carte mettait ombre et bâtiments dans le même gris.
+// Palette « Plein ouest » : la carte est de nuit océan et reste calme — les
+// pastilles portent la réponse. Le soleil n'y pose qu'un voile chaud léger,
+// sur la terre seulement ; l'ombre est un cran plus sombre que le sol ;
+// l'eau, bleu-canard, ne se confond jamais avec la ville.
 const C = {
   night: '#0B1A45',
-  sunTint: '#FF8A4C',
-  shadow: '#233F8C',
-  building: '#101F52',
-  buildingEdge: '#1D3270',
+  water: '#0A3346',
+  sunVeil: '#FF6A2B',
+  shadow: '#081233',
+  building: '#1A2F69',
   sun: '#FF6A2B',
   shade: '#6EE0D2',
   shell: '#FFF6EC',
@@ -100,7 +105,7 @@ const MAP_STYLE: import('maplibre-gl').StyleSpecification = {
     { id: 'night', type: 'background', paint: { 'background-color': C.night } },
     // Le fond CARTO sombre est gris neutre : posé à mi-opacité sur la nuit
     // océan, il en prend la teinte et garde rues, Tage et parcs lisibles.
-    { id: 'base', type: 'raster', source: 'base', paint: { 'raster-opacity': 0.6, 'raster-contrast': 0.25 } },
+    { id: 'base', type: 'raster', source: 'base', paint: { 'raster-opacity': 0.45, 'raster-contrast': 0.3 } },
     { id: 'labels', type: 'raster', source: 'labels', paint: { 'raster-opacity': 0.95 }, minzoom: 12 },
   ],
 };
@@ -123,9 +128,12 @@ const FOOTPRINTS = {
 
 const EMPTY = { type: 'FeatureCollection' as const, features: [] };
 
-const OVERLAY_BOUNDS: [number, number][] = [
-  [-9.35, 38.78], [-9.35, 38.62], [-8.95, 38.62], [-8.95, 38.78], [-9.35, 38.78],
-];
+// Terre et eau d'après les grilles de relief à 30 m (voir landMask.ts).
+const TERRAIN_GRIDS = [lisbonTerrain30, caparicaTerrain30, almadaTerrain30];
+const LAND = gridRuns(TERRAIN_GRIDS, 'land');
+const WATER = gridRuns(TERRAIN_GRIDS, 'water');
+/** Voile soleil : 12 % au plus, sinon la ville entière vire au brun. */
+const SUN_VEIL_OPACITY = 0.12;
 
 /** L'anneau de 10 min à pied, en polygone de 64 côtés. */
 function ringCoords(center: GeoPoint, radiusM: number): [number, number][] {
@@ -145,10 +153,11 @@ function ringCoords(center: GeoPoint, radiusM: number): [number, number][] {
 let framedFor: string | null = null;
 /** Des pastilles à l'arrivée, au moins : une carte vide n'explique rien. */
 const MIN_FRAMED_VENUES = 6;
-/** 6 à 8 pastilles à l'écran, pas plus : au-delà, on ne lit plus rien. */
-const MAX_PILLS = 7;
-/** Dont au plus 2 discrètes (lieux hors de ce qu'on cherche). */
-const MAX_QUIET_PILLS = 2;
+/** 6 pastilles à l'écran, pas plus : au-delà, on ne lit plus rien. */
+const MAX_PILLS = 6;
+/** Discrètes (lieux hors de ce qu'on cherche) : une seule quand il y a assez
+ *  de lieux dans ce qu'on cherche ; la nuit ou sans soleil, elles comblent. */
+const MAX_QUIET_WITH_LOUD = 1;
 const PILL_GAP_PX = 4;
 
 const prefersReducedMotion = () =>
@@ -203,17 +212,19 @@ export function MapView({
       minZoom: 11,
     });
     map.on('load', () => {
-      map.addSource('sun-overlay', {
-        type: 'geojson',
-        data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [OVERLAY_BOUNDS] } },
-      });
+      map.addSource('water', { type: 'geojson', data: WATER });
+      map.addSource('land', { type: 'geojson', data: LAND });
       map.addSource('building-shadows', { type: 'geojson', data: EMPTY });
       map.addSource('footprints', { type: 'geojson', data: FOOTPRINTS });
       map.addSource('walk-ring', { type: 'geojson', data: EMPTY });
       map.addSource('probe-link', { type: 'geojson', data: EMPTY });
       // Sous les libellés : les noms de rues restent lisibles.
       map.addLayer(
-        { id: 'sun-overlay', type: 'fill', source: 'sun-overlay', paint: { 'fill-color': C.sunTint, 'fill-opacity': 0 } },
+        { id: 'water', type: 'fill', source: 'water', paint: { 'fill-color': C.water, 'fill-opacity': 0.9, 'fill-antialias': false } },
+        'labels'
+      );
+      map.addLayer(
+        { id: 'sun-veil', type: 'fill', source: 'land', paint: { 'fill-color': C.sunVeil, 'fill-opacity': 0, 'fill-antialias': false } },
         'labels'
       );
       map.addLayer(
@@ -233,9 +244,9 @@ export function MapView({
           id: 'footprints',
           type: 'fill',
           source: 'footprints',
-          // Les bâtiments en retrait : un ton de la nuit, pas un aplat blanc
-          // qui écrasait les rues.
-          paint: { 'fill-color': C.building, 'fill-outline-color': C.buildingEdge },
+          // Les bâtiments en retrait, proches du sol : du relief sans bruit,
+          // pour que les pastilles ressortent.
+          paint: { 'fill-color': C.building, 'fill-opacity': 0.35 },
         },
         'labels'
       );
@@ -311,12 +322,11 @@ export function MapView({
   );
   const isDaytime = sunPos.elevation > 0;
 
-  // Soleil = braise posée sur la ville, ombre = bleu franc par-dessus. Les
-  // mêmes deux couleurs que la légende, dans les deux modes.
+  // Le jour, un voile chaud sur la terre ; les ombres par-dessus, plus sombres.
   useEffect(() => {
     if (!mapRef.current || !mapReady) return;
     const map = mapRef.current;
-    map.setPaintProperty('sun-overlay', 'fill-opacity', isDaytime ? 0.26 : 0);
+    map.setPaintProperty('sun-veil', 'fill-opacity', isDaytime ? SUN_VEIL_OPACITY : 0);
 
     const source = map.getSource('building-shadows') as GeoJSONSource | undefined;
     if (!source) return;
@@ -420,6 +430,7 @@ export function MapView({
       { x0: ringTop.x - 50, y0: ringTop.y - 24, x1: ringTop.x + 50, y1: ringTop.y },
     ];
     let quiet = 0;
+    const loudAvailable = candidates.filter((c) => c.label?.inIt).length;
     const good = mode === 'SUN' ? C.sun : C.shade;
     const inWord = mode === 'SUN' ? 'au soleil' : "à l'ombre";
 
@@ -428,7 +439,7 @@ export function MapView({
       const isSelected = v.id === selectedVenueId;
       const name = label?.name ?? v.name;
       const loud = !!label?.inIt;
-      if (!loud && !isSelected && quiet >= MAX_QUIET_PILLS) continue;
+      if (!loud && !isSelected && loudAvailable >= 3 && quiet >= MAX_QUIET_WITH_LOUD) continue;
 
       const time = loud ? label?.time ?? null : null;
       const w = loud ? name.length * 6.6 + (time ? 42 : 0) + 22 : name.length * 6.4 + 22;
