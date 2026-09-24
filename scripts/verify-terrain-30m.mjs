@@ -71,16 +71,27 @@ try {
     if (!insideFine) fail(`${v.name} is still outside the fine grid`);
   }
 
-  // --- 4. Every building vertex must be inside the fine grid ----------------
+  // --- 4. Every building vertex must be inside A fine grid ------------------
+  // TerrainService.fine is a list since the south bank (Caparica, Almada):
+  // checking the Lisbon box alone flagged every south-bank building.
   const { lisbonBuildings } = await server.ssrLoadModule('/src/data/lisbonBuildings.ts');
+  const { caparicaTerrain30 } = await server.ssrLoadModule('/src/data/caparicaTerrain30.ts');
+  const { almadaTerrain30 } = await server.ssrLoadModule('/src/data/almadaTerrain30.ts');
+  const fineBoxes = [lisbonTerrain30, caparicaTerrain30, almadaTerrain30].map(box);
+  const inAnyFine = (p) => fineBoxes.some((f) => p.lat >= f.s && p.lat <= f.n && p.lng >= f.w && p.lng <= f.e);
   let outside = 0;
+  const stray = new Map();
   for (const b of lisbonBuildings) {
     for (const p of b.points) {
-      if (p.lat < fine.s || p.lat > fine.n || p.lng < fine.w || p.lng > fine.e) outside++;
+      if (inAnyFine(p)) continue;
+      outside++;
+      const k = `${p.lat.toFixed(2)},${p.lng.toFixed(2)}`;
+      stray.set(k, (stray.get(k) ?? 0) + 1);
     }
   }
-  console.log(`\nBuilding vertices outside the fine grid: ${outside} (expected 0)`);
-  if (outside > 0) fail(`${outside} building vertices fall outside the fine grid`);
+  console.log(`\nBuilding vertices outside every fine grid: ${outside} (expected 0)`);
+  for (const [k, n] of [...stray].sort((a, b) => b[1] - a[1]).slice(0, 6)) console.log(`  ${n} around ${k}`);
+  if (outside > 0) fail(`${outside} building vertices fall outside every fine grid`);
 
   // --- 5. What changed, venue by venue -------------------------------------
   const sample = (g, lat, lng) => {
