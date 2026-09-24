@@ -1,10 +1,13 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import type { Venue, SunMode, VenueCategory, GeoPoint, WeatherData, Recommendation } from '@/types';
 import { MapView, type ProbeView } from './MapView';
 import { TimeSlider } from './TimeSlider';
 import { DayRibbon } from './DayRibbon';
 import { SearchBar } from './SearchBar';
 import { PlaceDetailSheet } from './PlaceDetailSheet';
+import { LiveQuestion } from './LiveQuestion';
+import { liveReports } from '@/services/LiveReportService';
+import { isDaylight } from '@/utils/live';
 import { RecommendationService } from '@/services/RecommendationService';
 import { VenueService } from '@/services/VenueService';
 import { VenueSunService } from '@/services/VenueSunService';
@@ -88,6 +91,7 @@ export function MapScreen({
   mode,
   currentDate,
   userLocation,
+  locationGranted,
   selectedVenueId,
   onVenueSelect,
   onTimeChange,
@@ -108,6 +112,24 @@ export function MapScreen({
   const [probePoint, setProbePoint] = useState<GeoPoint | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [searchVenue, setSearchVenue] = useState<Venue | null>(null);
+
+  // « Il reste des places ? » : posée seulement à qui est vraiment sur place
+  // (position réelle, à moins de 100 m), une fois par lieu tant qu'on n'a pas
+  // répondu ou dit « pas maintenant ».
+  useSyncExternalStore(
+    (cb) => liveReports.subscribe(cb),
+    () => liveReports.getVersion()
+  );
+  const [dismissedLiveId, setDismissedLiveId] = useState<string | null>(null);
+  const hereVenue = useMemo(
+    () =>
+      locationGranted
+        ? VenueService.getAllVenues().find((v) => liveReports.isInZone(v, userLocation)) ?? null
+        : null,
+    [locationGranted, userLocation]
+  );
+  const askLive =
+    hereVenue && isDaylight(new Date()) && dismissedLiveId !== hereVenue.id && !liveReports.hasAnswered(hereVenue.id) ? hereVenue : null;
   // Non-visual: source real weather from Open-Meteo via WeatherService instead
   // of a static computed value — synchronous cache read on mount, then a real
   // fetch (+ periodic refresh) updates it in the background. See
@@ -338,6 +360,15 @@ export function MapScreen({
           <span className="shrink-0 tabular-nums text-dusk-sub">{weather.temperature}&nbsp;°C</span>
         </div>
       </div>
+
+      {askLive && !detailOpen && (
+        <LiveQuestion
+          venue={askLive}
+          mode={mode}
+          onAnswer={(answer) => liveReports.submit(askLive, answer, userLocation)}
+          onDismiss={() => setDismissedLiveId(askLive.id)}
+        />
+      )}
 
       {/* En bas, à portée du pouce : la feuille, puis le curseur d'heure. */}
       <div className="absolute inset-x-0 bottom-0 z-20" style={{ paddingBottom: NAV_HEIGHT }}>

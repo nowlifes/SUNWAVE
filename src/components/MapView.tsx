@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useMemo } from 'react';
+import { useRef, useEffect, useState, useMemo, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl';
 import type { GeoJSONSource } from 'maplibre-gl';
@@ -12,6 +12,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import type { Venue, SunMode, GeoPoint, Recommendation } from '@/types';
 import { SunService } from '@/services/SunService';
+import { liveReports } from '@/services/LiveReportService';
+import { LIVE_COLOR, LIVE_SHORT } from '@/utils/live';
 import { ShadowService } from '@/services/ShadowService';
 import { lisbonBuildings } from '@/data/lisbonBuildings';
 import { lisbonTerrain30 } from '@/data/lisbonTerrain30';
@@ -183,6 +185,11 @@ export function MapView({
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
+  // Une réponse arrive (la nôtre, demain celle des autres) : les pastilles se redessinent.
+  const liveVersion = useSyncExternalStore(
+    (cb) => liveReports.subscribe(cb),
+    () => liveReports.getVersion()
+  );
   const markersRef = useRef<Marker[]>([]);
   const userMarkerRef = useRef<Marker | null>(null);
   const ringLabelRef = useRef<Marker | null>(null);
@@ -455,7 +462,9 @@ export function MapView({
       // tactile dépasse le dessin, pas l'inverse.
       const el = document.createElement('button');
       el.type = 'button';
-      el.setAttribute('aria-label', time ? `${v.name}, ${inWord} jusqu'à ${time}` : v.name);
+      const live = liveReports.getState(v.id);
+      const liveNote = live ? `, ${LIVE_SHORT[live.level].toLowerCase()} d'après ceux sur place` : '';
+      el.setAttribute('aria-label', (time ? `${v.name}, ${inWord} jusqu'à ${time}` : v.name) + liveNote);
       el.style.cssText = `display:block;padding:${(44 - h) / 2}px 0;background:none;border:0;cursor:pointer;`;
       const pill = document.createElement('span');
       pill.style.cssText = loud
@@ -463,6 +472,12 @@ export function MapView({
         : `display:flex;align-items:center;height:${h}px;padding:0 10px;border-radius:999px;background:${C.surface};border:1px solid ${C.edge};color:${C.sub};font:500 12px Geist,sans-serif;white-space:nowrap;`;
       if (isSelected) pill.style.outline = `3px solid ${C.shell}`;
       if (isSelected) pill.style.outlineOffset = '2px';
+      if (live) {
+        // Le drapeau : feu tricolore de la place disponible, dit par ceux qui y sont.
+        const flag = document.createElement('span');
+        flag.style.cssText = `flex:none;width:10px;height:10px;border-radius:50%;background:${LIVE_COLOR[live.level]};box-shadow:0 0 0 2px ${C.night};${loud ? '' : 'margin-right:6px;'}`;
+        pill.append(flag);
+      }
       pill.append(document.createTextNode(name));
       if (time) {
         const t = document.createElement('span');
@@ -482,7 +497,7 @@ export function MapView({
     // mapZoom / mapCenter : non lus directement (map.project reflète déjà la
     // vue), mais le tri visible/caché ne vaut que pour la vue où il a été
     // calculé — sans eux, pan et zoom garderaient les pastilles d'avant.
-  }, [venues, recommendations, mode, selectedVenueId, mapReady, onVenueSelect, mapZoom, mapCenter, insets, userLocation]);
+  }, [venues, recommendations, mode, selectedVenueId, mapReady, onVenueSelect, mapZoom, mapCenter, insets, userLocation, liveVersion]);
 
   // La bulle « ici » et le pointillé vers le voisin qui fait mieux.
   useEffect(() => {

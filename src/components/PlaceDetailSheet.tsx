@@ -1,9 +1,11 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useSyncExternalStore } from 'react';
 import type { Venue, SunMode, Recommendation, ReportType } from '@/types';
 import { RecommendationService } from '@/services/RecommendationService';
 import { SunService } from '@/services/SunService';
 import { VenueService } from '@/services/VenueService';
 import { ReportService } from '@/services/ReportService';
+import { liveReports, type LiveAnswer } from '@/services/LiveReportService';
+import { LIVE_ANSWERS, LIVE_SHORT, isDaylight, liveAge, liveWho } from '@/utils/live';
 import { formatLisbonTime, lisbonHour, lisbonMinutesOfDay } from '@/utils/lisbonTime';
 import { categoryLabel, statusCopy, travelParts } from '@/utils/copy';
 
@@ -58,6 +60,18 @@ export function PlaceDetailSheet({
 
   const isSun = mode === 'SUN';
   const hour = lisbonHour(currentDate);
+
+  // Les réponses de ceux qui sont sur place : l'heure réelle, pas celle du curseur.
+  useSyncExternalStore(
+    (cb) => liveReports.subscribe(cb),
+    () => liveReports.getVersion()
+  );
+  const liveNow = Date.now();
+  const live = liveReports.getState(venue.id, liveNow);
+  const inZone = liveReports.isInZone(venue, userLocation);
+  const canAsk = inZone && isDaylight(new Date(liveNow));
+  const answered = liveReports.hasAnswered(venue.id, liveNow);
+  const answerLive = (answer: LiveAnswer) => liveReports.submit(venue, answer, userLocation);
 
   // Les chiffres de la fiche sont ceux de l'accueil et de la carte : même
   // calcul, même minute. Elle recomposait les siens et se contredisait.
@@ -241,6 +255,49 @@ export function PlaceDetailSheet({
                   </div>
                 ))}
               </div>
+
+              {/* Sur place, en direct : ce que disent ceux qui y sont. Rien tant
+                  que personne n'a répondu et qu'on n'est pas soi-même là. */}
+              {(live || canAsk) && (
+                <div className="mt-5 rounded-2xl border border-shade-200 p-4">
+                  <p className="flex items-center gap-2 text-[13px] font-semibold text-shade-500">
+                    <span className="w-2 h-2 rounded-full bg-green-500 ring-4 ring-green-100" />
+                    Sur place, en direct
+                  </p>
+                  {live && (
+                    <p className="mt-2 text-base leading-snug text-shade-800">
+                      {LIVE_ANSWERS.find((a) => a.answer === live.level)?.emoji}{' '}
+                      <span className="font-semibold">{LIVE_SHORT[live.level]}</span>
+                      {' · '}
+                      {liveWho(live.count)}, {liveAge(live.ageMin)}
+                    </p>
+                  )}
+                  {canAsk && !answered && (
+                    <>
+                      <p className="mt-3 text-sm text-shade-500">
+                        Il reste des places {isSun ? 'au soleil' : "à l'ombre"} ? Dis-le aux autres
+                      </p>
+                      <div className="mt-2 flex gap-2">
+                        {LIVE_ANSWERS.map((a) => (
+                          <button
+                            key={a.answer}
+                            onClick={() => answerLive(a.answer)}
+                            className="flex-1 rounded-2xl bg-shade-50 py-2.5 text-[13px] font-semibold text-shade-800 active:scale-95 transition-transform"
+                          >
+                            <span className="block text-xl leading-tight">{a.emoji}</span>
+                            {a.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {canAsk && answered && (
+                    <p className="mt-3 rounded-xl bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">
+                      Merci, les autres le voient
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Action buttons */}
               <div className="flex gap-3 mt-5">
