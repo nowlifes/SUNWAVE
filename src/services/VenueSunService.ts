@@ -156,7 +156,22 @@ class VenueSunServiceClass {
    * durée annoncée qui a besoin de la précision.
    */
   getSunExposureByQuarter(venue: Venue, buildings: BuildingFootprint[], date: Date): number[] {
-    const target = this.targetOf(venue);
+    return this.quarterCurve(this.targetOf(venue), buildings, date);
+  }
+
+  /**
+   * La même courbe pour un point que personne n'a relevé — l'endroit touché
+   * sur la carte. Au sol (altitude du relief), orientation par défaut :
+   * un trottoir n'a pas de façade privilégiée. Arrondi au mètre près, pour
+   * que deux touchers au même endroit partagent le cache.
+   */
+  getPointSunByQuarter(point: GeoPoint, buildings: BuildingFootprint[], date: Date): number[] {
+    const lat = Math.round(point.lat * 1e5) / 1e5;
+    const lng = Math.round(point.lng * 1e5) / 1e5;
+    return this.quarterCurve({ id: `pt:${lat},${lng}`, lat, lng, orientationDeg: DEFAULT_ORIENTATION_DEG }, buildings, date);
+  }
+
+  private quarterCurve(target: SunTarget, buildings: BuildingFootprint[], date: Date): number[] {
     const key = `${target.id}|${this.dateKey(date)}`;
     const cached = this.quarterCache.get(key);
     if (cached) return cached;
