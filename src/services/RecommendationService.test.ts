@@ -165,3 +165,41 @@ describe('mode Ombre et hauteurs estimées', () => {
     expect(find('SUN', 'Rio Maravilha').confidence).toBe('HIGH');
   });
 });
+
+describe('au-delà de la marche', () => {
+  // Depuis la Costa da Caparica, en mode Ombre, la liste envoyait à Lisbonne,
+  // 11 km et un fleuve plus loin : la plage n'a pas d'ombre de bâtiment, un
+  // café de la Baixa à 100 % gagnait malgré la distance. Tant qu'un lieu
+  // ouvert est à portée de pied, la réponse reste à portée de pied.
+  const CAPARICA = { lat: 38.6446, lng: -9.2366 };
+  const hot = { temperature: 30, condition: 'clear' as const, rainProbability: 0, windSpeedKmh: 10, description: '' };
+
+  for (const mode of ['SUN', 'SHADE'] as const) {
+    for (const hour of [9, 12, 15, 18]) {
+      it(`${mode} à ${hour} h depuis Caparica : rien à plus de 30 min à pied`, () => {
+        const date = at(`2026-09-23T${String(hour).padStart(2, '0')}:00:00+01:00`);
+        const answers = RecommendationService.getAnswerList(mode, CAPARICA, date, [], hot, 6);
+        expect(answers.length).toBeGreaterThan(0);
+        for (const r of answers) expect(r.walkTimeMin, r.venue.name).toBeLessThanOrEqual(30);
+      });
+    }
+  }
+});
+
+describe('« va là » veut dire maintenant', () => {
+  // Depuis la Baixa, 13 h, 31 °C : Copenhagen Coffee Lab (40 % d'ombre) prenait
+  // la tête sous « Va là pour l'ombre » tout en affichant « l'ombre arrive dans
+  // 4 h 15 » — la liste comptait 40 % comme de l'ombre, la fenêtre 50 %.
+  const BAIXA = { lat: 38.7107, lng: -9.1365 };
+  const date = at('2026-07-15T13:00:00+01:00');
+  const hot = { temperature: 31, condition: 'clear' as const, rainProbability: 0, windSpeedKmh: 10, description: '' };
+
+  for (const mode of ['SUN', 'SHADE'] as const) {
+    it(`${mode} : un lieu en tête qui y est déjà n'annonce pas une arrivée`, () => {
+      const answers = RecommendationService.getAnswerList(mode, BAIXA, date, [], hot, 6);
+      const nowIn = answers.filter((r) => r.sunArrivesInMin === 0 || r.sunLeavesInMin !== null);
+      if (nowIn.length === 0) return;
+      for (const r of answers) expect(r.sunArrivesInMin ?? 0, r.venue.name).toBeLessThanOrEqual(0);
+    });
+  }
+});

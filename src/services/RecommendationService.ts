@@ -24,6 +24,17 @@ function hhmm(min: number): string {
   return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 }
 
+/** Portée à pied de la liste-réponse. Pas les 20 min du libellé : Comoba, à
+ *  21 min de Rossio, est l'ombre qui tient tout l'après-midi. Assez large pour
+ *  tout un quartier, bien en deçà du Tage (Caparica → Baixa : 136 min). */
+const ANSWER_REACH_MIN = 30;
+
+/** À partir de quel pourcentage un lieu est « au soleil » / « à l'ombre ».
+ *  Une seule source : la liste et la fenêtre divergeaient (40 contre 50 en
+ *  Ombre), et un lieu à 40 % menait « Va là pour l'ombre » en annonçant
+ *  « l'ombre arrive dans 4 h 15 ». */
+export const IN_IT_THRESHOLD: Record<SunMode, number> = { SUN: 40, SHADE: 50 };
+
 const CONFIDENCE_SCORE: Record<Confidence, number> = {
   HIGH: 100,
   MEDIUM: 65,
@@ -100,11 +111,16 @@ class RecommendationServiceClass {
   ): Recommendation[] {
     const all = this.getRecommendations(mode, userLocation, date, categories, weather, 100);
     const open = all.filter((r) => r.isOpen);
-    const pool = open.length > 0 ? open : all;
+    // Une réponse qui traverse le Tage n'en est pas une : depuis Caparica, la
+    // plage n'a pas d'ombre de bâtiment et un café de la Baixa à 11 km passait
+    // devant. Tant qu'un lieu ouvert est à portée de pied, on n'en sort pas —
+    // plutôt « l'ombre arrive ici à 17 h » qu'un trajet en ferry.
+    const reachable = open.filter((r) => r.walkTimeMin <= ANSWER_REACH_MIN);
+    const pool = reachable.length > 0 ? reachable : open.length > 0 ? open : all;
 
     const exposureOf = (r: Recommendation) =>
       mode === 'SUN' ? r.sunPercentage : r.shadePercentage;
-    const inItNow = pool.filter((r) => exposureOf(r) >= 40);
+    const inItNow = pool.filter((r) => exposureOf(r) >= IN_IT_THRESHOLD[mode]);
 
     if (inItNow.length > 0) return inItNow.slice(0, maxResults);
 
@@ -231,7 +247,7 @@ class RecommendationServiceClass {
   } {
     // Au quart d'heure, pas à l'heure : voir getSunExposureByQuarter.
     const exposure = exposureByQuarter(venue, mode, date);
-    const threshold = mode === 'SUN' ? 40 : 50;
+    const threshold = IN_IT_THRESHOLD[mode];
     const nowMin = lisbonMinutesOfDay(date);
     const nowQ = Math.floor(nowMin / 15);
 

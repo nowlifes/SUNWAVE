@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { GeoPoint, Recommendation, SunMode } from '@/types';
-import { RecommendationService } from '@/services/RecommendationService';
+import { IN_IT_THRESHOLD, RecommendationService } from '@/services/RecommendationService';
 import { ReliefService } from '@/services/ReliefService';
 import { SunService } from '@/services/SunService';
 import { VenueService } from '@/services/VenueService';
@@ -289,7 +289,7 @@ function AnswerCard({
 }) {
   const isSun = mode === 'SUN';
   const exposure = isSun ? rec.sunPercentage : rec.shadePercentage;
-  const inItNow = exposure >= 40;
+  const inItNow = exposure >= IN_IT_THRESHOLD[mode];
   const status = statusCopy(rec, mode);
 
   // Le relief — la seule chose qu'une app née en ville plate ne peut pas dire.

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { SunMode, Venue } from '@/types';
+import { IN_IT_THRESHOLD } from '@/services/RecommendationService';
 import { VenueSunService } from '@/services/VenueSunService';
 import { lisbonBuildings } from '@/data/lisbonBuildings';
 import { lisbonMinutesOfDay } from '@/utils/lisbonTime';
@@ -96,7 +97,7 @@ export function DayRibbon({ venue, mode, date, sunrise, sunset, size = 'full', h
 
 /** Ce que la bande montre, dit à voix haute pour un lecteur d'écran. */
 function ribbonLabel(cells: { startMin: number; value: number | null }[], mode: SunMode): string {
-  const good = cells.filter((c) => c.value !== null && c.value >= 40);
+  const good = cells.filter((c) => c.value !== null && c.value >= IN_IT_THRESHOLD[mode]);
   if (good.length === 0) return `Pas ${mode === 'SUN' ? 'de soleil' : "d'ombre"} franc aujourd'hui`;
   const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
   return `${mode === 'SUN' ? 'Soleil' : 'Ombre'} de ${hhmm(good[0].startMin)} à ${hhmm(good[good.length - 1].startMin + 30)}`;
