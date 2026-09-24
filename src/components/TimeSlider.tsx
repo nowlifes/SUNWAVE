@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { SunMode } from '@/types';
 import { formatLisbonTime, lisbonMinutesOfDay, setLisbonTime, snapToQuarter } from '@/utils/lisbonTime';
 import { RIBBON_END_MIN, RIBBON_START_MIN, type RibbonCell } from '@/utils/ribbon';
+import { LIGHT, NIGHT } from '@/utils/palette';
 
 // ---------------------------------------------------------------------------
 // La bande de lumière EST le curseur d'heure : on glisse le doigt sur la
@@ -27,9 +28,9 @@ interface TimeSliderProps {
 }
 
 const SPAN = RIBBON_END_MIN - RIBBON_START_MIN;
-const GOOD = { SUN: '#FF6A2B', SHADE: '#6EE0D2' } as const;
-const NOT = '#2A4590';
-const NIGHT = '#08143A';
+const GOOD = { SUN: LIGHT.fire, SHADE: NIGHT.sub } as const;
+const NOT = NIGHT.p3;
+const NIGHT_CELL = NIGHT.deep;
 /** Après le lâcher, la bande reste ouverte le temps de lire l'heure. */
 const SETTLE_MS = 1500;
 
@@ -56,7 +57,7 @@ export function TimeSlider({ mode, currentDate, onTimeChange, cells, onScrubStar
     () =>
       cells.map((c) =>
         c.value === null
-          ? { background: NIGHT }
+          ? { background: NIGHT_CELL }
           : c.value >= 50
             ? { background: good, opacity: 0.45 + (0.55 * c.value) / 100 }
             : { background: NOT }

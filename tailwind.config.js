@@ -1,59 +1,53 @@
 /** @type {import('tailwindcss').Config} */
+// Palette « raccord » : un seul bleu nuit en paliers, de l'eau à la coquille ;
+// le jour est le même bleu éclairci ; la seule autre couleur est la lumière
+// du soleil (braise → or → pâle). Aucun accent secondaire. Les mêmes valeurs,
+// pour le SVG et les styles en ligne, sont dans src/utils/palette.ts.
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        sun: {
-          50: '#FFF7ED',
-          100: '#FFEDD5',
-          200: '#FED7AA',
-          300: '#FDBA74',
-          400: '#FB923C',
-          500: '#F59E0B',
-          600: '#D97706',
-          700: '#B45309',
-          800: '#92400E',
-          900: '#78350F',
-        },
-        // Identité « Ciel vivant » : papier chaud, encre bleu nuit, braise.
-        paper: '#F7F3EC',
-        ink: '#0E2A47',
-        mute: '#5B6B7F',
-        line: '#E4E0D8',
-        ember: '#B45309',
-        // « Plein ouest » : l'heure du coucher, nuit océan et orange de braise.
+        // Nuit : de l'eau à la coquille.
         dusk: {
+          water: '#071233',
           deep: '#08143A',
           night: '#0B1A45',
-          sky: '#0F2263',
-          cobalt: '#1A3383',
-          panel: '#16296A',
-          line: '#24397A',
+          panel: '#122457',
+          cobalt: '#1A2F69',
+          line: '#233B7C',
           edge: '#3A5099',
           dim: '#8FA3D6',
           sub: '#AFC0E8',
           mist: '#D6DEF5',
           shell: '#FFF6EC',
+          // Strates du ciel (Plein ouest), même bleu.
+          sky: '#0F2263',
+          // Lumière : réservée au soleil, aux heures de soleil et à un seul
+          // bouton principal par écran de nuit.
           fire: '#FF6A2B',
           glow: '#FFAA57',
+          pale: '#FFD28A',
+          ember: '#FF8A4C',
         },
-        shade: {
-          50: '#F8FAFC',
-          100: '#F1F5F9',
-          200: '#E2E8F0',
-          300: '#CBD5E1',
-          400: '#94A3B8',
-          500: '#64748B',
-          600: '#475569',
-          700: '#334155',
-          800: '#1E293B',
-          900: '#0F172A',
+        // Jour : le même bleu, éclairci.
+        day: {
+          sky1: '#22398A',
+          sky2: '#3A55A6',
+          sky3: '#6F86C6',
+          sky4: '#AEBDE3',
+          DEFAULT: '#F3F6FC',
+          2: '#E6ECF8',
+          line: '#C5D1EC',
+          sub: '#34487A',
+          // Braise en encre : texte orange sur fond clair (gros texte).
+          ember: '#A83400',
         },
+        // Encre du jour = la nuit.
+        ink: '#0B1A45',
       },
       fontFamily: {
         sans: ['Geist', 'system-ui', '-apple-system', 'sans-serif'],
-        serif: ['"Instrument Serif"', 'Georgia', 'serif'],
         display: ['"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
         mono: ['"Geist Mono"', 'ui-monospace', 'monospace'],
       },

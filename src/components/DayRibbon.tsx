@@ -5,6 +5,7 @@ import { VenueSunService } from '@/services/VenueSunService';
 import { lisbonBuildings } from '@/data/lisbonBuildings';
 import { lisbonMinutesOfDay } from '@/utils/lisbonTime';
 import { RIBBON_END_MIN, RIBBON_START_MIN, ribbonCells } from '@/utils/ribbon';
+import { DAY, LIGHT, NIGHT } from '@/utils/palette';
 
 // ---------------------------------------------------------------------------
 // La bande de lumière — la journée d'un lieu d'un seul coup d'œil : quand le
@@ -13,10 +14,11 @@ import { RIBBON_END_MIN, RIBBON_START_MIN, ribbonCells } from '@/utils/ribbon';
 // pourcentage à cette minute.
 // ---------------------------------------------------------------------------
 
+// Un seul bleu, une seule lumière : le soleil est braise, l'ombre est le bleu
+// clair du palier (jamais une autre couleur), la nuit est la nuit.
 const PALETTE = {
-  day: { good: { SUN: '#F59E0B', SHADE: '#2F6FA6' }, none: '#E4DED3', night: '#1E3A5F', now: 'bg-ink' },
-  // Sur la carte de nuit océan : braise / menthe, bleu pour « rien », nuit profonde.
-  night: { good: { SUN: '#FF6A2B', SHADE: '#6EE0D2' }, none: '#2A4590', night: '#08143A', now: 'bg-dusk-shell' },
+  day: { good: { SUN: LIGHT.fire, SHADE: DAY.sky2 }, none: '#D9E0F1', night: NIGHT.night, now: 'bg-ink', label: 'text-day-sub', nowLabel: 'text-ink' },
+  night: { good: { SUN: LIGHT.fire, SHADE: NIGHT.sub }, none: NIGHT.p3, night: NIGHT.deep, now: 'bg-dusk-shell', label: 'text-dusk-dim', nowLabel: 'text-dusk-shell' },
 } as const;
 
 const span = RIBBON_END_MIN - RIBBON_START_MIN;
@@ -36,7 +38,7 @@ interface DayRibbonProps {
 }
 
 export function DayRibbon({ venue, mode, date, sunrise, sunset, size = 'full', hideNow = false, tone = 'day' }: DayRibbonProps) {
-  const { good, none, night, now } = PALETTE[tone];
+  const { good, none, night, now, label, nowLabel } = PALETTE[tone];
   const cells = useMemo(
     () =>
       ribbonCells(
@@ -53,14 +55,14 @@ export function DayRibbon({ venue, mode, date, sunrise, sunset, size = 'full', h
 
   const bar = (
     <div className={`relative ${full ? 'h-[26px]' : 'h-2 w-16 shrink-0'}`}>
-      <div className={`flex h-full overflow-hidden ${full ? 'rounded' : 'rounded-full'}`}>
+      <div className={`flex h-full overflow-hidden ${full ? 'gap-[1.5px] rounded' : 'rounded-full'}`}>
         {cells.map((c) => (
           <div
             key={c.startMin}
             className="h-full flex-1"
             style={
               c.value === null
-                ? { background: night, opacity: 0.85 }
+                ? { background: night }
                 : c.value === 0
                   ? { background: none }
                   : { background: good[mode], opacity: 0.25 + (0.75 * c.value) / 100 }
@@ -70,7 +72,7 @@ export function DayRibbon({ venue, mode, date, sunrise, sunset, size = 'full', h
       </div>
       {showNow && (
         <div
-          className={`absolute ${full ? '-top-1.5 -bottom-1.5 w-0.5' : 'inset-y-0 w-[1.5px]'} -translate-x-1/2 rounded-full ${now}`}
+          className={`absolute ${full ? '-top-1.5 -bottom-1.5 w-[3px]' : 'inset-y-0 w-[1.5px]'} -translate-x-1/2 rounded-full ${now}`}
           style={{ left: pct(nowMin) }}
         />
       )}
@@ -82,12 +84,12 @@ export function DayRibbon({ venue, mode, date, sunrise, sunset, size = 'full', h
   return (
     <div role="img" aria-label={ribbonLabel(cells, mode)}>
       {bar}
-      <div className="relative mt-2 h-4 text-[11px] tabular-nums text-mute">
+      <div className={`relative mt-2 h-4 font-mono text-[11px] tabular-nums ${label}`}>
         {/* Les bornes s'effacent quand « maintenant » les recouvrirait. */}
         {(!showNow || nowMin - RIBBON_START_MIN > 150) && <span className="absolute left-0">06:00</span>}
         {showNow && (
           <span
-            className="absolute -translate-x-1/2 font-semibold text-ink"
+            className={`absolute -translate-x-1/2 whitespace-nowrap font-sans font-bold ${nowLabel}`}
             style={{ left: `clamp(2.5rem, ${pct(nowMin)}, calc(100% - 2.5rem))` }}
           >
             maintenant

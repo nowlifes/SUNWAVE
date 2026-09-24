@@ -31,11 +31,11 @@ interface SunsetScreenProps {
 
 /** Les strates du ciel, du zénith à l'horizon (y en px du viewBox 390×460). */
 const SKY_BANDS = [
-  { y: 0, h: 84, fill: '#0F2263' },
-  { y: 84, h: 70, fill: '#1A3383' },
-  { y: 154, h: 60, fill: '#2F4C9E' },
-  { y: 214, h: 50, fill: '#C9606A' },
-  { y: 264, h: 46, fill: '#EE8150' },
+  { y: 0, h: 84, fill: '#122457' },
+  { y: 84, h: 70, fill: '#1A2F69' },
+  { y: 154, h: 60, fill: '#233B7C' },
+  { y: 214, h: 50, fill: '#3A5099' },
+  { y: 264, h: 46, fill: '#FF6A2B' },
   { y: 310, h: 40, fill: '#FFAA57' },
   { y: 350, h: 34, fill: '#FFD28A' },
 ];
@@ -223,15 +223,15 @@ function DuskSky({ venue, now, lastLight }: { venue: Venue; now: Date; lastLight
         strokeLinecap="round"
       />
       <g clipPath="url(#dusk-above)">
-        <circle cx={sunX} cy={sunY} r="34" fill="#FFF1CF" fillOpacity="0.22" />
-        <circle cx={sunX} cy={sunY} r="22" fill="#FFF1CF" />
+        <circle cx={sunX} cy={sunY} r="34" fill="#FFD28A" fillOpacity="0.22" />
+        <circle cx={sunX} cy={sunY} r="22" fill="#FFD28A" />
       </g>
 
       {/* la bande de lumière du lieu, heure par heure, posée sur l'horizon */}
       {Array.from({ length: RIBBON_HOURS }, (_, i) => {
         const hour = RIBBON_FIRST_HOUR + i;
         const x = RIBBON_X0 + i * RIBBON_STEP;
-        const fill = hour > lastHour ? '#1B2C66' : hour === lastHour ? '#FF6A2B' : '#FFB35C';
+        const fill = hour > lastHour ? '#1A2F69' : hour === lastHour ? '#FF6A2B' : '#FFAA57';
         const opacity = hour >= lastHour ? 1 : Math.max(0.15, (hourly[hour] ?? 0) / 100);
         return <rect key={hour} x={x} y={HORIZON_Y - 7} width={RIBBON_STEP - 2} height="14" fill={fill} fillOpacity={opacity} />;
       })}
@@ -457,16 +457,16 @@ function HorizonProfile({ venue, now, lastLight }: { venue: Venue; now: Date; la
         </clipPath>
       </defs>
       {[
-        { y: 0, h: 50, fill: '#1A3383' },
-        { y: 50, h: 45, fill: '#2F4C9E' },
-        { y: 95, h: 35, fill: '#C9606A' },
-        { y: 130, h: 25, fill: '#EE8150' },
+        { y: 0, h: 50, fill: '#1A2F69' },
+        { y: 50, h: 45, fill: '#233B7C' },
+        { y: 95, h: 35, fill: '#3A5099' },
+        { y: 130, h: 25, fill: '#FF6A2B' },
         { y: 155, h: 81, fill: '#FFD28A' },
       ].map((b) => (
         <rect key={b.y} x="0" y={b.y} width={W} height={b.h} fill={b.fill} />
       ))}
       {/* sous l'horizon : l'eau, puis la terre par-dessus */}
-      <polygon points={`0,${H} ${skyLine} ${W},${H}`} fill="#10245E" />
+      <polygon points={`0,${H} ${skyLine} ${W},${H}`} fill="#122457" />
       {land.map((seg, i) => (
         <g key={i}>
           <polygon
@@ -501,9 +501,9 @@ function HorizonProfile({ venue, now, lastLight }: { venue: Venue; now: Date; la
         strokeLinecap="round"
       />
       {data.path.slice(1, -1).map((p, i) => (
-        <circle key={i} cx={x(p.az)} cy={y(p.el)} r="9" fill="#FFF1CF" fillOpacity={0.3 + (i / data.path.length) * 0.3} />
+        <circle key={i} cx={x(p.az)} cy={y(p.el)} r="9" fill="#FFD28A" fillOpacity={0.3 + (i / data.path.length) * 0.3} />
       ))}
-      {first && <circle cx={x(first.az)} cy={y(first.el)} r="12" fill="#FFF1CF" />}
+      {first && <circle cx={x(first.az)} cy={y(first.el)} r="12" fill="#FFD28A" />}
       <g clipPath="url(#profile-sky)">
         <circle cx={x(touch.az)} cy={y(touch.el)} r="11" fill="#FF6A2B" />
       </g>
@@ -569,7 +569,7 @@ function LastMinutes({ now, lastLight }: { now: Date; lastLight: Date }) {
               y="8"
               width={cw - 2}
               height="28"
-              fill={lit ? (warmth > 0.75 ? '#FF6A2B' : '#FFB35C') : '#1B2C66'}
+              fill={lit ? (warmth > 0.75 ? '#FF6A2B' : '#FFAA57') : '#1A2F69'}
               fillOpacity={lit ? 0.7 + warmth * 0.3 : 1}
             />
           );
@@ -615,9 +615,9 @@ function ElsewhereRow({
     <li>
       <button onClick={onSelect} className="flex min-h-14 w-full items-center gap-3.5 py-2 text-left active:opacity-70 transition-opacity">
         <svg width="72" height="42" viewBox="0 0 72 42" className="shrink-0" aria-hidden="true">
-          <rect x="0" y="0" width="72" height="16" fill="#2F4C9E" />
-          <rect x="0" y="16" width="72" height="12" fill="#EE8150" />
-          <rect x="0" y="28" width="72" height="14" fill="#10245E" />
+          <rect x="0" y="0" width="72" height="16" fill="#233B7C" />
+          <rect x="0" y="16" width="72" height="12" fill="#FF6A2B" />
+          <rect x="0" y="28" width="72" height="14" fill="#122457" />
           <path d="M0 28 L72 28" stroke="#FFF6EC" strokeWidth="1.5" />
           <clipPath id={`e-${light.venue.id}`}>
             <rect x="0" y="0" width="72" height="28" />
@@ -648,7 +648,7 @@ function Stat({ value, label, accent = false }: { value: string; label: string; 
 
 function DuskModeSwitch({ mode, onModeChange }: { mode: SunMode; onModeChange: (mode: SunMode) => void }) {
   return (
-    <div role="radiogroup" aria-label="Chercher" className="flex shrink-0 rounded-full border border-dusk-edge bg-[#0A1B55] p-1">
+    <div role="radiogroup" aria-label="Chercher" className="flex shrink-0 rounded-full border border-dusk-edge bg-dusk-deep p-1">
       {(['SUN', 'SHADE'] as const).map((m) => (
         <button
           key={m}

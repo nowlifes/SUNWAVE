@@ -36,8 +36,8 @@ export function SearchBar({ onSelectVenue, placeholder = 'Chercher un lieu', ton
 
   return (
     <div className="relative">
-      <div className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl ${night ? 'min-h-11 border border-dusk-line bg-dusk-panel' : 'glass shadow-sm'}`}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={night ? '#AFC0E8' : '#94A3B8'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl ${night ? 'min-h-11 border border-dusk-line bg-dusk-panel' : 'min-h-11 border border-day-line bg-day-2'}`}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={night ? '#AFC0E8' : '#34487A'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="11" cy="11" r="8" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
@@ -48,14 +48,15 @@ export function SearchBar({ onSelectVenue, placeholder = 'Chercher un lieu', ton
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 200)}
           placeholder={placeholder}
-          className={`flex-1 bg-transparent text-sm font-medium outline-none ${night ? 'text-dusk-shell placeholder:text-dusk-dim' : 'text-shade-700 placeholder:text-shade-400'}`}
+          className={`flex-1 bg-transparent text-sm font-medium outline-none ${night ? 'text-dusk-shell placeholder:text-dusk-dim' : 'text-ink placeholder:text-day-sub'}`}
         />
         {query && (
           <button
             onClick={() => { setQuery(''); setResults([]); }}
-            className="w-5 h-5 rounded-full bg-shade-200 flex items-center justify-center"
+            aria-label="Effacer"
+            className={`-mr-3 flex h-11 w-11 items-center justify-center ${night ? 'text-dusk-sub' : 'text-day-sub'}`}
           >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="3" strokeLinecap="round">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
@@ -64,15 +65,15 @@ export function SearchBar({ onSelectVenue, placeholder = 'Chercher un lieu', ton
       </div>
 
       {focused && results.length > 0 && (
-        <div className={`absolute ${night ? 'bottom-full mb-1 border border-dusk-line bg-dusk-panel' : 'top-full mt-1 glass'} left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-30 animate-scale-in max-h-64 overflow-y-auto no-scrollbar`}>
+        <div className={`absolute ${night ? 'bottom-full mb-1 border border-dusk-line bg-dusk-panel' : 'top-full mt-1 border border-day-line bg-day'} left-0 right-0 rounded-2xl shadow-lg overflow-hidden z-30 animate-scale-in max-h-64 overflow-y-auto no-scrollbar`}>
           {results.map((venue) => (
             <button
               key={venue.id}
               onClick={() => handleSelect(venue)}
-              className={`w-full text-left px-4 py-3 border-b last:border-0 ${night ? 'border-dusk-line active:bg-dusk-cobalt' : 'hover:bg-shade-50/50 active:bg-shade-100 border-shade-100/50'}`}
+              className={`w-full text-left px-4 py-3 border-b last:border-0 ${night ? 'border-dusk-line active:bg-dusk-cobalt' : 'border-day-line active:bg-day-2'}`}
             >
-              <p className={`text-sm font-semibold ${night ? 'text-dusk-shell' : 'text-shade-700'}`}>{venue.name}</p>
-              <p className={`text-xs ${night ? 'text-dusk-sub' : 'text-shade-400'}`}>{venue.address}</p>
+              <p className={`text-sm font-semibold ${night ? 'text-dusk-shell' : 'text-ink'}`}>{venue.name}</p>
+              <p className={`text-xs ${night ? 'text-dusk-sub' : 'text-day-sub'}`}>{venue.address}</p>
             </button>
           ))}
         </div>

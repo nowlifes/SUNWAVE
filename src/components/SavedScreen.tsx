@@ -15,87 +15,82 @@ interface SavedScreenProps {
 export function SavedScreen({ savedVenues, currentDate, onVenueSelect, onRemove }: SavedScreenProps) {
   const [activeTab, setActiveTab] = useState<'sun' | 'shade'>('sun');
   const hour = lisbonHour(currentDate);
-  const currentMode = activeTab === 'sun' ? 'SUN' : 'SHADE' as SunMode;
+  const currentMode: SunMode = activeTab === 'sun' ? 'SUN' : 'SHADE';
+  const isSun = activeTab === 'sun';
 
-  const displayVenues = savedVenues.filter((v) => {
-    const bestTime = RecommendationService.getBestTime(v, currentMode, currentDate);
-    return bestTime !== null;
-  });
+  const displayVenues = savedVenues.filter((v) => RecommendationService.getBestTime(v, currentMode, currentDate) !== null);
 
   return (
-    <div className="h-full overflow-y-auto no-scrollbar pb-20">
-      <div className="px-5 pt-8 pb-2">
-        <h1 className="text-2xl font-bold text-shade-800">Favoris</h1>
+    <div className="h-full overflow-y-auto no-scrollbar bg-day pb-24 text-ink">
+      <div className="px-6 pt-10 pb-2">
+        <h1 className="font-display text-[2.6rem] font-extrabold leading-none tracking-[-0.025em] [font-stretch:90%]">Favoris</h1>
       </div>
 
-      <div className="px-5 py-3">
-        <div className="flex gap-1 p-0.5 bg-shade-100 rounded-xl">
-          <button
-            onClick={() => setActiveTab('sun')}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'sun' ? 'bg-white text-sun-600 shadow-sm' : 'text-shade-400'}`}
-          >
-            ☀ Au soleil
-          </button>
-          <button
-            onClick={() => setActiveTab('shade')}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'shade' ? 'bg-white text-shade-600 shadow-sm' : 'text-shade-400'}`}
-          >
-            🌑 À l'ombre
-          </button>
+      <div className="px-6 py-3">
+        <div className="flex gap-1 rounded-full border border-day-line bg-day-2 p-1" role="radiogroup" aria-label="Favoris">
+          {(['sun', 'shade'] as const).map((tab) => (
+            <button
+              key={tab}
+              role="radio"
+              aria-checked={activeTab === tab}
+              onClick={() => setActiveTab(tab)}
+              className={`min-h-10 flex-1 rounded-full text-[13px] font-bold transition-colors motion-reduce:transition-none ${
+                activeTab === tab ? 'bg-ink text-white' : 'text-day-sub'
+              }`}
+            >
+              {tab === 'sun' ? 'Au soleil' : "À l'ombre"}
+            </button>
+          ))}
         </div>
       </div>
 
       {displayVenues.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 px-5">
-          <span className="text-3xl mb-3 opacity-30">{activeTab === 'sun' ? '☀' : '🌑'}</span>
-          <p className="text-sm font-semibold text-shade-500 text-center">
-            {activeTab === 'sun' ? 'Aucun lieu au soleil enregistré.' : "Aucun lieu à l'ombre enregistré."}
+        <div className="flex flex-col items-center justify-center py-20 px-6">
+          <span
+            aria-hidden="true"
+            className={`mb-4 h-5 w-5 rounded-full ${isSun ? 'bg-dusk-fire shadow-[0_0_0_6px_rgba(255,170,87,0.3)]' : 'border-2 border-day-sub'}`}
+          />
+          <p className="text-center text-sm font-semibold">
+            {isSun ? 'Aucun lieu au soleil enregistré.' : "Aucun lieu à l'ombre enregistré."}
           </p>
-          <p className="text-xs text-shade-400 mt-1 text-center">Touche « Enregistrer » sur un lieu pour le retrouver ici.</p>
+          <p className="mt-1 text-center text-xs text-day-sub">Touche « Enregistrer » sur un lieu pour le retrouver ici.</p>
         </div>
       ) : (
         <div className="px-4 py-2 space-y-2.5">
           {displayVenues.map((venue) => {
             const bestTime = RecommendationService.getBestTime(venue, currentMode, currentDate);
-            const currentPct = currentMode === 'SUN'
-              ? venue.sunExposureByHour[hour] || 0
-              : venue.shadeExposureByHour[hour] || 0;
+            const currentPct = isSun ? venue.sunExposureByHour[hour] || 0 : venue.shadeExposureByHour[hour] || 0;
+            const inIt = currentPct > 50;
             const neighborhood = VenueService.getNeighborhood(venue);
 
             return (
-              <div key={venue.id} className="bg-white rounded-2xl p-4 shadow-sm border border-shade-100">
-                <div className="flex items-start justify-between">
-                  <button onClick={() => onVenueSelect(venue.id)} className="flex-1 text-left min-w-0">
-                    <h3 className="text-sm font-bold text-shade-800 truncate">{venue.name}</h3>
-                    <p className="text-[11px] text-shade-400 mt-0.5">{neighborhood} · {categoryLabel(venue.category)}</p>
+              <div key={venue.id} className="rounded-2xl border border-day-line bg-day-2 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <button onClick={() => onVenueSelect(venue.id)} className="min-w-0 flex-1 text-left">
+                    <h3 className="truncate text-[15px] font-bold">{venue.name}</h3>
+                    <p className="mt-0.5 text-[12px] text-day-sub">{neighborhood} · {categoryLabel(venue.category)}</p>
 
-                    {/* Current sun/shade status */}
-                    <div className="flex items-center gap-2 mt-2">
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs">{activeTab === 'sun' ? '☀' : '🌑'}</span>
-                        <span className={`text-xs font-bold ${activeTab === 'sun' ? 'text-sun-600' : 'text-shade-600'}`}>{currentPct} %</span>
-                        <span className={`text-[10px] ${currentPct > 50 ? (activeTab === 'sun' ? 'text-sun-500' : 'text-shade-500') : 'text-shade-400'}`}>
-                          {currentPct > 50 ? (activeTab === 'sun' ? 'Au soleil maintenant' : "À l'ombre maintenant") : (activeTab === 'sun' ? 'Pas au soleil maintenant' : "Pas à l'ombre maintenant")}
-                        </span>
-                      </div>
+                    <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
+                      <span className={`font-mono font-semibold ${isSun && inIt ? 'text-day-ember' : 'text-day-sub'}`}>{currentPct} %</span>
+                      <span className="text-day-sub">
+                        {inIt ? (isSun ? 'Au soleil maintenant' : "À l'ombre maintenant") : isSun ? 'Pas au soleil maintenant' : "Pas à l'ombre maintenant"}
+                      </span>
                       {bestTime && (
-                        <>
-                          <span className="text-shade-300 text-[10px]">·</span>
-                          <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-bold text-shade-400">MEILLEUR CRÉNEAU</span>
-                            <span className={`text-xs font-bold ${activeTab === 'sun' ? 'text-sun-600' : 'text-shade-600'}`}>
-                              {bestTime.start}–{bestTime.end}
-                            </span>
-                          </div>
-                        </>
+                        <span className="text-day-sub">
+                          · meilleur créneau{' '}
+                          <span className={`font-mono font-semibold ${isSun ? 'text-day-ember' : 'text-ink'}`}>
+                            {bestTime.start}–{bestTime.end}
+                          </span>
+                        </span>
                       )}
-                    </div>
+                    </p>
                   </button>
                   <button
                     onClick={() => onRemove(venue.id)}
-                    className="w-7 h-7 rounded-full bg-shade-100 flex items-center justify-center active:scale-90 transition-transform shrink-0"
+                    aria-label={`Retirer ${venue.name} des favoris`}
+                    className="-mr-2 -mt-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-day-sub active:scale-90 transition-transform motion-reduce:transition-none"
                   >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2.5" strokeLinecap="round">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
                       <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
                   </button>

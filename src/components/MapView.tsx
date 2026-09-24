@@ -62,18 +62,17 @@ interface MapViewProps {
   insets: MapInsets;
 }
 
-// Palette « Plein ouest » : la carte est de nuit océan et reste calme — les
-// pastilles portent la réponse. Le soleil n'y pose qu'un voile chaud léger,
-// sur la terre seulement ; l'ombre est un cran plus sombre que le sol ;
-// l'eau, bleu-canard, ne se confond jamais avec la ville.
+// Palette « raccord » : un seul bleu nuit en paliers. L'eau est le palier le
+// plus profond, la ville la nuit, l'ombre un cran plus sombre que le sol ; la
+// seule autre couleur est la lumière.
 const C = {
   night: '#0B1A45',
-  water: '#0A3346',
+  water: '#071233',
   sunVeil: '#FF6A2B',
-  shadow: '#081233',
+  shadow: '#08143A',
   building: '#1A2F69',
   sun: '#FF6A2B',
-  shade: '#6EE0D2',
+  shade: '#AFC0E8',
   shell: '#FFF6EC',
   sub: '#AFC0E8',
   surface: '#122457',
@@ -385,9 +384,9 @@ export function MapView({
       el.style.pointerEvents = 'none';
       el.innerHTML =
         `<div style="position:relative;width:16px;height:16px">` +
-        `<div class="animate-pulse-glow" style="position:absolute;inset:-10px;border-radius:50%;background:rgba(110,224,210,0.22)"></div>` +
-        `<div style="position:absolute;inset:0;border-radius:50%;background:${C.shade};border:3px solid ${C.night};box-shadow:0 0 0 2px ${C.shade}"></div>` +
-        `<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);font:600 11px Geist,sans-serif;color:${C.shade};text-shadow:0 1px 3px ${C.night}">toi</div>` +
+        `<div class="animate-pulse-glow" style="position:absolute;inset:-10px;border-radius:50%;background:rgba(255,246,236,0.18)"></div>` +
+        `<div style="position:absolute;inset:0;border-radius:50%;background:${C.night};border:3px solid ${C.shell}"></div>` +
+        `<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);font:600 11px Geist,sans-serif;color:${C.shell};text-shadow:0 1px 3px ${C.night}">toi</div>` +
         `</div>`;
       userMarkerRef.current = new Marker({ element: el, anchor: 'center' });
     }
@@ -550,7 +549,7 @@ export function MapView({
 }
 
 function ProbeBubble({ probe, onClose, onNeighbour }: { probe: ProbeView; onClose: () => void; onNeighbour: () => void }) {
-  const accent = probe.mode === 'SUN' ? 'text-dusk-glow' : 'text-[#6EE0D2]';
+  const accent = probe.mode === 'SUN' ? 'text-dusk-ember' : 'text-dusk-sub';
   return (
     <div className="flex flex-col items-center">
       <div className="glass-night relative w-[min(78vw,280px)] rounded-2xl border border-dusk-edge/70 py-2.5 pl-3.5 pr-11 text-dusk-shell shadow-[0_8px_24px_rgba(8,20,58,0.55)] animate-scale-in motion-reduce:animate-none">

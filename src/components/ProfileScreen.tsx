@@ -12,25 +12,25 @@ interface ProfileScreenProps {
 // l'accueil restait au soleil.
 export function ProfileScreen({ mode, onModeChange, locationLabel, locationGranted }: ProfileScreenProps) {
   return (
-    <div className="h-full overflow-y-auto no-scrollbar pb-20">
-      <div className="px-5 pt-6 pb-4">
-        <h1 className="text-3xl font-bold text-shade-800">Profil</h1>
+    <div className="h-full overflow-y-auto no-scrollbar bg-day pb-24 text-ink">
+      <div className="px-6 pt-10 pb-4">
+        <h1 className="font-display text-[2.6rem] font-extrabold leading-none tracking-[-0.025em] [font-stretch:90%]">Profil</h1>
       </div>
 
-      {/* Location */}
-      <div className="px-5 mb-6">
-        <h2 className="text-xs font-bold tracking-wider text-shade-400 mb-2">POSITION</h2>
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-shade-100">
+      {/* Position */}
+      <div className="px-6 mb-6">
+        <h2 className="mb-2 text-[13px] font-semibold text-day-sub">Position</h2>
+        <div className="rounded-[20px] border border-day-line bg-day-2 p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-day">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                 <circle cx="12" cy="10" r="3" />
               </svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-shade-700">{locationLabel}</p>
-              <p className="text-xs text-shade-400">
+              <p className="text-sm font-bold">{locationLabel}</p>
+              <p className="text-xs text-day-sub">
                 {locationGranted ? 'Position activée' : 'Temps de marche depuis le centre de Lisbonne'}
               </p>
             </div>
@@ -38,35 +38,28 @@ export function ProfileScreen({ mode, onModeChange, locationLabel, locationGrant
         </div>
       </div>
 
-      {/* Sun preference */}
-      <div className="px-5 mb-6">
-        <h2 className="text-xs font-bold tracking-wider text-shade-400 mb-2">TU CHERCHES</h2>
-        <div className="flex gap-3">
-          <button
-            onClick={() => onModeChange('SUN')}
-            className={`flex-1 py-4 rounded-2xl font-bold text-sm transition-all active:scale-95 ${
-              mode === 'SUN'
-                ? 'bg-sun-500 text-white shadow-lg shadow-sun-500/30'
-                : 'bg-white text-shade-500 border border-shade-100'
-            }`}
-          >
-            ☀ Soleil
-          </button>
-          <button
-            onClick={() => onModeChange('SHADE')}
-            className={`flex-1 py-4 rounded-2xl font-bold text-sm transition-all active:scale-95 ${
-              mode === 'SHADE'
-                ? 'bg-shade-600 text-white shadow-lg shadow-shade-600/30'
-                : 'bg-white text-shade-500 border border-shade-100'
-            }`}
-          >
-            🌑 Ombre
-          </button>
+      {/* Ce qu'on cherche */}
+      <div className="px-6 mb-6">
+        <h2 className="mb-2 text-[13px] font-semibold text-day-sub">Tu cherches</h2>
+        <div className="flex gap-3" role="radiogroup" aria-label="Tu cherches">
+          {(['SUN', 'SHADE'] as const).map((m) => (
+            <button
+              key={m}
+              role="radio"
+              aria-checked={mode === m}
+              onClick={() => onModeChange(m)}
+              className={`min-h-[52px] flex-1 rounded-full text-[15px] font-bold transition-colors active:scale-[0.98] motion-reduce:transition-none ${
+                mode === m ? 'bg-ink text-white' : 'border-[1.5px] border-day-line text-day-sub'
+              }`}
+            >
+              {m === 'SUN' ? 'Soleil' : 'Ombre'}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="px-5 py-4">
-        <p className="text-center text-xs text-shade-400">Sunwave · Lisbonne · v1.0</p>
+      <div className="px-6 py-4">
+        <p className="text-center font-mono text-xs text-day-sub">Sunwave · Lisbonne · v1.0</p>
       </div>
     </div>
   );

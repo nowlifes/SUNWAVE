@@ -16,7 +16,7 @@ const NAV_ITEMS: { screen: ScreenName; label: string; icon: string }[] = [
 ];
 
 function NavIcon({ icon, active, dusk = false }: { icon: string; active: boolean; dusk?: boolean }) {
-  const color = dusk ? (active ? '#FF6A2B' : '#8FA3D6') : active ? '#B45309' : '#5B6B7F';
+  const color = dusk ? (active ? '#FF6A2B' : '#8FA3D6') : active ? '#FF6A2B' : '#34487A';
   const paths: Record<string, React.ReactNode> = {
     sun: (
       <>
@@ -68,7 +68,7 @@ export function BottomNav({ activeScreen, onScreenChange, dusk = false }: Bottom
   return (
     <div
       className={`absolute bottom-0 left-0 right-0 z-30 border-t ${
-        dusk ? 'border-dusk-sky bg-dusk-deep' : 'glass border-shade-200/50'
+        dusk ? 'border-dusk-cobalt bg-dusk-deep' : 'border-day-line bg-day-2'
       }`}
     >
       <div className="flex items-center px-1 py-1.5 pb-[env(safe-area-inset-bottom)]">
@@ -83,7 +83,7 @@ export function BottomNav({ activeScreen, onScreenChange, dusk = false }: Bottom
               <NavIcon icon={item.icon} active={active} dusk={dusk} />
               {/* Cinq onglets sur 320 px = 64 px chacun : libellés en casse
                   normale, sans espacement, sinon « MAINTENANT » déborde. */}
-              <span className={`max-w-full truncate text-[10px] font-semibold transition-colors ${active ? (dusk ? 'text-dusk-fire' : 'text-ember') : dusk ? 'text-dusk-dim' : 'text-mute'}`}>
+              <span className={`max-w-full truncate text-[10px] font-semibold transition-colors ${active ? (dusk ? 'text-dusk-fire' : 'text-day-ember') : dusk ? 'text-dusk-dim' : 'text-day-sub'}`}>
                 {item.label}
               </span>
             </button>

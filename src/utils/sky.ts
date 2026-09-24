@@ -1,21 +1,26 @@
 // ---------------------------------------------------------------------------
-// Le ciel de l'écran d'accueil : la couleur du ciel de Lisbonne à cette
-// minute, et le soleil posé sur sa course. Un coup d'œil dit l'heure qu'il
-// est dans la journée du soleil, avant même de lire un chiffre.
+// Le ciel de l'écran d'accueil : des strates nettes du même bleu, qui suivent
+// la hauteur du soleil, et le soleil posé sur sa course. Un coup d'œil dit
+// l'heure qu'il est dans la journée du soleil, avant même de lire un chiffre.
 // ---------------------------------------------------------------------------
 
 export interface SkyPalette {
+  /** Du zénith à l'horizon : cinq strates. */
+  bands: [string, string, string, string, string];
   top: string;
-  middle: string;
-  bottom: string;
 }
 
+const palette = (bands: SkyPalette['bands']): SkyPalette => ({ bands, top: bands[0] });
+
 // Paliers de hauteur du soleil, en degrés : sous −6° c'est la nuit civile,
-// entre −6° et 0° le crépuscule, jusqu'à 10° l'heure dorée.
-const NIGHT: SkyPalette = { top: '#0B1A2E', middle: '#15294A', bottom: '#2A3D5E' };
-const TWILIGHT: SkyPalette = { top: '#243766', middle: '#7A5C8A', bottom: '#E8906A' };
-const GOLDEN: SkyPalette = { top: '#3A6A9E', middle: '#C98E6E', bottom: '#F4B983' };
-const DAY: SkyPalette = { top: '#2F6FA6', middle: '#5B93C2', bottom: '#EFC9A0' };
+// entre −6° et 0° le crépuscule, jusqu'à 10° l'heure dorée. Seule la strate
+// de l'horizon prend la lumière (or, puis pâle) : la lumière, pas un décor.
+const NIGHT = palette(['#071233', '#08143A', '#0B1A45', '#122457', '#1A2F69']);
+const TWILIGHT = palette(['#122457', '#1A2F69', '#233B7C', '#3A55A6', '#FFAA57']);
+const GOLDEN = palette(['#1A2F69', '#3A55A6', '#6F86C6', '#AEBDE3', '#FFD28A']);
+const DAY = palette(['#22398A', '#3A55A6', '#6F86C6', '#AEBDE3', '#DCE3F4']);
+/** Mode Ombre : l'écran est de nuit, le ciel aussi, quelle que soit l'heure. */
+export const SHADE_SKY = palette(['#08143A', '#0B1A45', '#122457', '#1A2F69', '#233B7C']);
 
 export function skyPalette(sunElevationDeg: number): SkyPalette {
   if (sunElevationDeg < -6) return NIGHT;

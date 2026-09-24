@@ -441,7 +441,7 @@ export function MapScreen({
                                 </span>
                               </span>
                               <span className="flex shrink-0 flex-col items-end gap-1.5">
-                                <span className={`font-mono text-[13px] font-semibold ${mode === 'SUN' ? 'text-dusk-glow' : 'text-[#6EE0D2]'}`}>
+                                <span className={`font-mono text-[13px] font-semibold ${mode === 'SUN' ? 'text-dusk-glow' : 'text-dusk-sub'}`}>
                                   {inIt(r) ? r.sunWindowEnd : r.sunWindowStart ? `dès ${r.sunWindowStart}` : ''}
                                 </span>
                                 <DayRibbon venue={r.venue} mode={mode} date={currentDate} sunrise={sunrise} sunset={sunset} size="mini" tone="night" />
@@ -514,7 +514,7 @@ function ModeToggle({ mode, onModeChange }: { mode: SunMode; onModeChange: (m: S
           onClick={() => onModeChange(m)}
           aria-pressed={mode === m}
           className={`min-h-10 rounded-full px-3 text-[13px] font-bold min-[360px]:px-3.5 transition-colors duration-300 motion-reduce:transition-none ${
-            mode === m ? (m === 'SUN' ? 'bg-dusk-fire text-dusk-night' : 'bg-[#6EE0D2] text-dusk-night') : 'text-dusk-sub'
+            mode === m ? (m === 'SUN' ? 'bg-dusk-fire text-dusk-night' : 'bg-dusk-sub text-dusk-night') : 'text-dusk-sub'
           }`}
         >
           {m === 'SUN' ? 'Soleil' : 'Ombre'}
@@ -526,7 +526,7 @@ function ModeToggle({ mode, onModeChange }: { mode: SunMode; onModeChange: (m: S
 
 /** « Au soleil jusqu'à 19:24 », ou la phrase de statut habituelle. */
 function StatusLine({ rec, mode, isNow, lead = false }: { rec: Recommendation; mode: SunMode; isNow: boolean; lead?: boolean }) {
-  const accent = mode === 'SUN' ? 'text-dusk-glow' : 'text-[#6EE0D2]';
+  const accent = mode === 'SUN' ? 'text-dusk-glow' : 'text-dusk-sub';
   const cap = (t: string) => (lead ? t.charAt(0).toUpperCase() + t.slice(1) : t.charAt(0).toLowerCase() + t.slice(1));
   if (inIt(rec) && rec.sunWindowEnd) {
     return (
@@ -551,7 +551,7 @@ function BestRow({ rec, mode, onOpen, onGo }: { rec: Recommendation; mode: SunMo
       <button
         onClick={onGo}
         className={`min-h-11 shrink-0 rounded-full px-5 text-[15px] font-bold text-dusk-night active:scale-[0.97] transition-transform motion-reduce:transition-none ${
-          mode === 'SUN' ? 'bg-dusk-fire' : 'bg-[#6EE0D2]'
+          mode === 'SUN' ? 'bg-dusk-fire' : 'bg-dusk-sub'
         }`}
       >
         Y aller
@@ -602,7 +602,7 @@ function PlaceCard({
         <button
           onClick={onGo}
           className={`min-h-12 flex-1 rounded-full text-[16px] font-bold text-dusk-night active:scale-[0.98] transition-transform motion-reduce:transition-none ${
-            mode === 'SUN' ? 'bg-dusk-fire' : 'bg-[#6EE0D2]'
+            mode === 'SUN' ? 'bg-dusk-fire' : 'bg-dusk-sub'
           }`}
         >
           Y aller

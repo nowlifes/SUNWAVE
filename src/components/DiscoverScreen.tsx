@@ -9,29 +9,50 @@ interface DiscoverScreenProps {
   onCategorySelect: (category: DiscoverCategory) => void;
 }
 
+// Pas d'emoji ni de dégradé : la seule couleur de l'app est la lumière. Le
+// soleil brille (disque plein), l'ombre est éteinte (rond vide).
 const PRIMARY: DiscoverCategory[] = [
-  { id: 'max_sun', label: 'Soleil', icon: '☀', mode: 'SUN', categories: [], description: 'Suivre la lumière' },
-  { id: 'max_shade', label: 'Ombre', icon: '🌑', mode: 'SHADE', categories: [], description: 'Rester au frais' },
+  { id: 'max_sun', label: 'Soleil', icon: 'sun', mode: 'SUN', categories: [], description: 'Suivre la lumière' },
+  { id: 'max_shade', label: 'Ombre', icon: 'shade', mode: 'SHADE', categories: [], description: 'Rester au frais' },
 ];
 
 const SECONDARY: DiscoverCategory[] = [
-  { id: 'coffee', label: 'Café', icon: '☕', mode: 'ANY', categories: ['cafe'], description: 'Terrasses de café au soleil' },
-  { id: 'drink', label: 'Un verre', icon: '🍹', mode: 'ANY', categories: ['bar', 'rooftop'], description: 'Bars et rooftops' },
-  { id: 'eat', label: 'Manger', icon: '🍽️', mode: 'ANY', categories: ['restaurant'], description: 'Manger dehors' },
-  { id: 'beach', label: 'Plage', icon: '🏖️', mode: 'ANY', categories: ['beach'], description: "Le soleil au bord de l'eau" },
-  { id: 'park', label: 'Parc', icon: '🌳', mode: 'ANY', categories: ['park'], description: 'Espaces verts' },
-  { id: 'best_light', label: 'Belle lumière', icon: '📸', mode: 'SUN', categories: ['viewpoint', 'square'], description: "Pour l'heure dorée" },
+  { id: 'coffee', label: 'Café', icon: '', mode: 'ANY', categories: ['cafe'], description: 'Terrasses de café au soleil' },
+  { id: 'drink', label: 'Un verre', icon: '', mode: 'ANY', categories: ['bar', 'rooftop'], description: 'Bars et rooftops' },
+  { id: 'eat', label: 'Manger', icon: '', mode: 'ANY', categories: ['restaurant'], description: 'Manger dehors' },
+  { id: 'beach', label: 'Plage', icon: '', mode: 'ANY', categories: ['beach'], description: "Le soleil au bord de l'eau" },
+  { id: 'park', label: 'Parc', icon: '', mode: 'ANY', categories: ['park'], description: 'Espaces verts' },
+  { id: 'best_light', label: 'Belle lumière', icon: '', mode: 'SUN', categories: ['viewpoint', 'square'], description: "Pour l'heure dorée" },
 ];
+
+/** Soleil = ça brille, ombre = éteint. */
+function StateDot({ mode, size = 14 }: { mode: SunMode; size?: number }) {
+  return mode === 'SUN' ? (
+    <span
+      aria-hidden="true"
+      className="inline-block shrink-0 rounded-full bg-dusk-fire shadow-[0_0_0_4px_rgba(255,170,87,0.35)]"
+      style={{ width: size, height: size }}
+    />
+  ) : (
+    <span
+      aria-hidden="true"
+      className="inline-block shrink-0 rounded-full border-2 border-day-sub"
+      style={{ width: size, height: size }}
+    />
+  );
+}
 
 export function DiscoverScreen({ currentDate, userLocation, onCategorySelect }: DiscoverScreenProps) {
   return (
-    <div className="h-full overflow-y-auto no-scrollbar pb-20">
-      <div className="px-5 pt-8 pb-4">
-        <h1 className="text-2xl font-bold text-shade-800">Tu as envie de quoi ?</h1>
+    <div className="h-full overflow-y-auto no-scrollbar bg-day pb-24 text-ink">
+      <div className="px-6 pt-10 pb-4">
+        <h1 className="font-display text-[2.6rem] font-extrabold leading-[0.96] tracking-[-0.025em] [font-stretch:90%] [text-wrap:balance]">
+          Tu as envie de quoi ?
+        </h1>
       </div>
 
-      {/* Primary choices — large */}
-      <div className="px-5 space-y-3 mb-6">
+      {/* Les deux grandes envies */}
+      <div className="px-6 space-y-3 mb-7">
         {PRIMARY.map((cat) => {
           const mode = cat.mode as SunMode;
           const recs = RecommendationService.getRecommendations(mode, userLocation, currentDate, undefined, undefined, 1);
@@ -40,44 +61,38 @@ export function DiscoverScreen({ currentDate, userLocation, onCategorySelect }: 
             <button
               key={cat.id}
               onClick={() => onCategorySelect(cat)}
-              className="w-full relative overflow-hidden rounded-3xl p-5 text-left active:scale-[0.98] transition-transform shadow-md"
-              style={{
-                background: cat.mode === 'SUN'
-                  ? 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'
-                  : 'linear-gradient(135deg, #64748B 0%, #334155 100%)',
-              }}
+              className="flex w-full items-center justify-between gap-3 rounded-[20px] border border-day-line bg-day-2 p-5 text-left active:scale-[0.98] transition-transform motion-reduce:transition-none"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <StateDot mode={mode} size={18} />
                 <div>
-                  <span className="text-3xl block mb-1">{cat.icon}</span>
-                  <h3 className="text-xl font-bold text-white">{cat.label}</h3>
-                  <p className="text-xs text-white/70 mt-0.5">{cat.description}</p>
+                  <h3 className="font-display text-[1.6rem] font-bold leading-none [font-stretch:90%]">{cat.label}</h3>
+                  <p className="mt-1 text-[13px] text-day-sub">{cat.description}</p>
                 </div>
-                {top && (
-                  <div className="text-right">
-                    <p className="text-xs font-semibold text-white/90 truncate max-w-[120px]">{top.venue.name}</p>
-                    <p className="text-[11px] text-white/70">{travelLabel(top)}</p>
-                    <p className="text-[11px] font-semibold text-white/90">{statusShort(top, mode)}</p>
-                  </div>
-                )}
               </div>
+              {top && (
+                <div className="min-w-0 text-right">
+                  <p className="max-w-[130px] truncate text-[13px] font-semibold">{top.venue.name}</p>
+                  <p className="text-[12px] text-day-sub">{travelLabel(top)}</p>
+                  <p className={`text-[12px] font-semibold ${mode === 'SUN' ? 'text-day-ember' : 'text-day-sub'}`}>{statusShort(top, mode)}</p>
+                </div>
+              )}
             </button>
           );
         })}
       </div>
 
-      {/* Secondary intents — compact grid */}
-      <div className="px-5">
-        <p className="text-xs font-bold tracking-wider text-shade-400 mb-3">DEHORS</p>
-        <div className="grid grid-cols-3 gap-2.5">
+      {/* Dehors, par envie */}
+      <div className="px-6">
+        <p className="mb-3 text-[13px] font-semibold text-day-sub">Dehors</p>
+        <div className="grid grid-cols-2 gap-2.5 min-[360px]:grid-cols-3">
           {SECONDARY.map((cat) => (
             <button
               key={cat.id}
               onClick={() => onCategorySelect(cat)}
-              className="bg-white rounded-2xl p-3 shadow-sm active:scale-95 transition-transform border border-shade-100 flex flex-col items-center gap-1"
+              className="min-h-14 rounded-2xl border border-day-line bg-day-2 px-3 py-3 text-[14px] font-bold active:scale-95 transition-transform motion-reduce:transition-none"
             >
-              <span className="text-2xl">{cat.icon}</span>
-              <span className="text-xs font-bold text-shade-700">{cat.label}</span>
+              {cat.label}
             </button>
           ))}
         </div>
@@ -102,19 +117,19 @@ export function DiscoverResults({ category, currentDate, userLocation, onBack, o
   );
 
   return (
-    <div className="h-full overflow-y-auto no-scrollbar pb-20 animate-slide-in-right">
-      <div className="sticky top-0 bg-white/90 backdrop-blur-md z-10 px-5 pt-6 pb-3 border-b border-shade-100">
-        <button onClick={onBack} className="flex items-center gap-1.5 text-sm font-semibold text-shade-500 mb-3 active:scale-95 transition-transform">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <div className="h-full overflow-y-auto no-scrollbar bg-day pb-24 text-ink animate-slide-in-right motion-reduce:animate-none">
+      <div className="sticky top-0 z-10 border-b border-day-line bg-day px-6 pt-6 pb-3">
+        <button onClick={onBack} className="-ml-1 mb-2 flex min-h-11 items-center gap-1.5 text-sm font-semibold text-day-sub active:scale-95 transition-transform motion-reduce:transition-none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <polyline points="15 18 9 12 15 6" />
           </svg>
           Retour
         </button>
-        <div className="flex items-center gap-2">
-          <span className="text-xl">{category.icon}</span>
+        <div className="flex items-center gap-2.5">
+          {category.mode !== 'ANY' && <StateDot mode={mode} />}
           <div>
-            <h1 className="text-lg font-bold text-shade-800">{category.label}</h1>
-            <p className="text-xs text-shade-500">{category.description}</p>
+            <h1 className="font-display text-[1.6rem] font-bold leading-none [font-stretch:90%]">{category.label}</h1>
+            <p className="mt-1 text-xs text-day-sub">{category.description}</p>
           </div>
         </div>
       </div>
@@ -126,20 +141,18 @@ export function DiscoverResults({ category, currentDate, userLocation, onBack, o
             <button
               key={rec.venue.id}
               onClick={() => onVenueSelect(rec.venue.id)}
-              className="w-full text-left bg-white rounded-2xl p-3.5 shadow-sm active:scale-[0.98] transition-transform border border-shade-100"
+              className="w-full rounded-2xl border border-day-line bg-day-2 p-3.5 text-left active:scale-[0.98] transition-transform motion-reduce:transition-none"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-xs font-bold text-shade-400">{idx + 1}</span>
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-shade-800 truncate">{rec.venue.name}</h3>
-                    <p className="text-[10px] text-shade-400">{VenueService.getNeighborhood(rec.venue)}</p>
-                  </div>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="w-4 shrink-0 font-mono text-xs font-semibold text-day-sub">{idx + 1}</span>
+                <div className="min-w-0">
+                  <h3 className="truncate text-[15px] font-bold">{rec.venue.name}</h3>
+                  <p className="text-[12px] text-day-sub">{VenueService.getNeighborhood(rec.venue)}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 mt-2 ml-5">
-                <span className={`text-[11px] font-semibold ${mode === 'SUN' ? 'text-sun-600' : 'text-shade-600'}`}>{displayPct} %</span>
-                <span className="text-[11px] text-shade-400">· {travelLabel(rec)} · {statusShort(rec, mode)}</span>
+              <div className="mt-1.5 ml-[26px] flex items-center gap-1.5 text-[12px]">
+                <span className={`font-mono font-semibold ${mode === 'SUN' ? 'text-day-ember' : 'text-day-sub'}`}>{displayPct} %</span>
+                <span className="text-day-sub">· {travelLabel(rec)} · {statusShort(rec, mode)}</span>
               </div>
             </button>
           );

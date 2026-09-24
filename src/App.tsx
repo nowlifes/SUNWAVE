@@ -211,9 +211,9 @@ export default function App() {
   }, [locationGranted]);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-shade-100 flex items-center justify-center">
+    <div className="relative w-full h-screen overflow-hidden bg-dusk-deep flex items-center justify-center">
       {/* Mobile container */}
-      <div className="relative w-full h-full max-w-md mx-auto bg-shade-50 overflow-hidden shadow-2xl">
+      <div className="relative w-full h-full max-w-md mx-auto bg-day overflow-hidden shadow-2xl">
         {/* Screen routing */}
         {screen === 'now' && (
           <NowScreen
@@ -304,7 +304,7 @@ export default function App() {
         )}
 
         {/* Bottom navigation */}
-        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} dusk={(screen === 'now' && dusk) || screen === 'map'} />
+        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} dusk={(screen === 'now' && (dusk || mode === 'SHADE')) || screen === 'map'} />
       </div>
     </div>
   );

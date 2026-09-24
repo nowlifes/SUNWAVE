@@ -12,6 +12,8 @@ import { SkyHeader } from './SkyHeader';
 import { formatLisbonTime } from '@/utils/lisbonTime';
 import { categoryLabel, formatGap, placeName, statusCopy, statusShort, travelLabel, venueCountLine } from '@/utils/copy';
 import { inviteText, inviteUrl, shareInvite } from '@/utils/share';
+import { LIGHT, NIGHT } from '@/utils/palette';
+import { Squiggle } from './Squiggle';
 
 // ---------------------------------------------------------------------------
 // L'écran réponse — l'écran d'accueil.
@@ -178,8 +180,10 @@ export function NowScreen({
   }
 
 
+  const tone = toneFor(mode);
+
   return (
-    <div className="absolute inset-0 overflow-y-auto bg-paper pb-24">
+    <div className={`absolute inset-0 overflow-y-auto pb-24 ${tone.screen}`}>
       {/* --- le ciel de cette minute, et ce qu'il reste de jour ---------------- */}
       <SkyHeader date={currentDate} sunrise={sunrise} sunset={sunset} mode={mode} onModeChange={onModeChange} place={place}>
         {phase === 'day' ? (
@@ -198,13 +202,13 @@ export function NowScreen({
       <div className="px-6">
         {/* Premier lancement : dire pourquoi soleil ou ombre, et offrir l'autre. */}
         {autoTemperature !== null && (
-          <div className="mt-4 flex items-center justify-between gap-2.5 rounded-2xl border border-line bg-white/60 py-2 pl-3.5 pr-2">
-            <p className="text-[13px] leading-snug text-ink">
+          <div className={`mt-4 flex items-center justify-between gap-2.5 rounded-2xl border py-2 pl-3.5 pr-2 ${tone.card}`}>
+            <p className="text-[13px] leading-snug">
               Il fait {autoTemperature} °C : on te montre {isSun ? 'le soleil' : "l'ombre"}.
             </p>
             <button
               onClick={() => onModeChange(isSun ? 'SHADE' : 'SUN')}
-              className="min-h-11 shrink-0 rounded-xl px-2.5 text-[12.5px] font-semibold text-ember active:scale-95 transition-transform"
+              className={`min-h-11 shrink-0 rounded-xl px-2.5 text-[12.5px] font-semibold active:scale-95 transition-transform motion-reduce:transition-none ${tone.link}`}
             >
               {isSun ? "L'ombre plutôt ?" : 'Le soleil plutôt ?'}
             </button>
@@ -214,15 +218,16 @@ export function NowScreen({
         {/* --- la réponse --------------------------------------------------- */}
         {nightShade ? (
           <section className="mt-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-mute">Mode ombre</p>
-            <h2 className="mt-1.5 font-serif text-[2.2rem] leading-[1.05] text-ink">Il fait nuit : l'ombre est partout.</h2>
-            <p className="mt-2 text-sm text-mute">
-              Le soleil revient à <span className="font-semibold text-ink">{formatLisbonTime(nextSunrise)}</span>. Le mode
+            <h2 className="font-display text-[2.4rem] font-medium leading-[0.98] tracking-[-0.02em] [font-stretch:78%]">
+              Il fait nuit : l'ombre est partout.
+            </h2>
+            <p className={`mt-2 text-sm ${tone.sub}`}>
+              Le soleil revient à <span className="font-mono font-semibold text-dusk-ember">{formatLisbonTime(nextSunrise)}</span>. Le mode
               ombre reprendra son sens à ce moment-là.
             </p>
             <button
               onClick={() => onModeChange('SUN')}
-              className="mt-5 min-h-[50px] w-full rounded-[14px] bg-ink text-[15px] font-semibold text-white active:scale-[0.98] transition-transform"
+              className={`mt-5 min-h-[52px] w-full rounded-full text-[16px] font-bold active:scale-[0.98] transition-transform motion-reduce:transition-none ${tone.primary}`}
             >
               Voir où le soleil revient
             </button>
@@ -241,13 +246,15 @@ export function NowScreen({
           />
         ) : (
           <section className="mt-6">
-            <h2 className="font-serif text-[2rem] leading-tight text-ink">Tout est fermé pour l'instant.</h2>
-            <p className="mt-1.5 text-sm text-mute">
+            <h2 className="font-display text-[2.2rem] font-bold leading-[1] tracking-[-0.02em] [font-stretch:90%]">
+              Tout est fermé pour l'instant.
+            </h2>
+            <p className={`mt-1.5 text-sm ${tone.sub}`}>
               Ouvre la carte pour voir où tombe {isSun ? 'le soleil' : "l'ombre"} malgré tout.
             </p>
             <button
               onClick={onOpenMap}
-              className="mt-4 min-h-[50px] w-full rounded-[14px] bg-ink text-[15px] font-semibold text-white active:scale-[0.98] transition-transform"
+              className={`mt-4 min-h-[52px] w-full rounded-full text-[16px] font-bold active:scale-[0.98] transition-transform motion-reduce:transition-none ${tone.primary}`}
             >
               Voir la carte
             </button>
@@ -259,7 +266,7 @@ export function NowScreen({
         {/* --- le filet, toujours visible ----------------------------------- */}
         {!nightShade && alternatives.length > 0 && (
           <section className="mt-7">
-            <h2 className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-mute">
+            <h2 className={`mb-1 text-[13px] font-semibold ${tone.sub}`}>
               Aussi {isSun ? 'au soleil' : "à l'ombre"}
             </h2>
             {alternatives.map((alt) => (
@@ -275,8 +282,8 @@ export function NowScreen({
         )}
 
         {/* --- la promesse que les gros ne peuvent structurellement pas tenir */}
-        <p className="mt-8 px-1 text-center text-[11.5px] leading-relaxed text-mute">
-          <span className="font-semibold text-ink">{VENUE_COUNT_LINE}</span>
+        <p className={`mt-8 px-1 text-center text-[11.5px] leading-relaxed ${tone.sub}`}>
+          <span className="font-semibold">{VENUE_COUNT_LINE}</span>
           <br />
           Pas 2 000 adresses aspirées d'une base.
           {outsideLisbon ? (
@@ -300,6 +307,40 @@ export function NowScreen({
 
 // ---------------------------------------------------------------------------
 
+/** Deux tons, un seul bleu : le soleil est un jour clair, l'ombre une nuit. */
+function toneFor(mode: SunMode) {
+  return mode === 'SUN'
+    ? {
+        night: false,
+        screen: 'bg-day text-ink',
+        sub: 'text-day-sub',
+        line: 'border-day-line',
+        card: 'border-day-line bg-day-2',
+        link: 'text-day-ember',
+        primary: 'bg-ink text-white',
+        secondary: 'border-[1.5px] border-ink text-ink',
+        underline: LIGHT.fire,
+      }
+    : {
+        night: true,
+        screen: 'bg-dusk-night text-dusk-shell',
+        sub: 'text-dusk-sub',
+        line: 'border-dusk-line',
+        card: 'border-dusk-line bg-dusk-panel',
+        link: 'text-dusk-sub',
+        primary: 'bg-dusk-sub text-dusk-night',
+        secondary: 'border-[1.5px] border-dusk-edge text-dusk-shell',
+        underline: NIGHT.sub,
+      };
+}
+
+/** « dernier rayon », « puis le soleil revient ici » : ce que dit l'heure géante. */
+function bigTimeCaption(rec: Recommendation, mode: SunMode): [string, string] {
+  // À l'ombre jusqu'au coucher : le soleil ne revient pas, la nuit tombe.
+  if (mode === 'SHADE') return rec.lastsUntilSunset ? ['coucher du', 'soleil'] : ['puis le soleil', 'revient ici'];
+  return rec.endsAtSunset ? ['dernier', 'rayon'] : ['puis', "l'ombre"];
+}
+
 function AnswerCard({
   rec,
   mode,
@@ -322,9 +363,26 @@ function AnswerCard({
   shareState: 'idle' | 'copied' | 'failed';
 }) {
   const isSun = mode === 'SUN';
+  const tone = toneFor(mode);
   const exposure = isSun ? rec.sunPercentage : rec.shadePercentage;
   const inItNow = exposure >= IN_IT_THRESHOLD[mode];
   const status = statusCopy(rec, mode);
+  // L'heure est l'illustration : quand on y est, la fin de la fenêtre s'écrit
+  // en géant ; sinon, la phrase de statut suffit.
+  const bigTime = inItNow && rec.sunLeavesInMin !== null ? rec.sunWindowEnd : null;
+  const headline = bigTime
+    ? isSun
+      ? rec.endsAtSunset
+        ? "Au soleil jusqu'au coucher."
+        : "Au soleil jusqu'à"
+      : rec.lastsUntilSunset
+        ? "À l'ombre jusqu'au coucher."
+        : "À l'ombre jusqu'à"
+    : `${status.title}.`;
+  const [cap1, cap2] = bigTimeCaption(rec, mode);
+  // L'orange dit une heure de soleil : « le soleil revient », « dernier rayon ».
+  // « coucher du soleil » en mode Ombre n'en est pas une.
+  const captionColor = isSun ? 'text-day-ember' : rec.lastsUntilSunset ? 'text-dusk-sub' : 'text-dusk-ember';
 
   // Le relief — la seule chose qu'une app née en ville plate ne peut pas dire.
   // `null` sur les deux tiers des lieux, et c'est voulu : voir ReliefService.
@@ -342,46 +400,64 @@ function AnswerCard({
 
   return (
     <section className="mt-5">
-      <div className="-mr-2.5 flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ember">
-          {inItNow ? `Va là pour ${isSun ? 'le soleil' : "l'ombre"}` : `Prochain ${isSun ? 'au soleil' : "à l'ombre"}`}
-        </p>
+      <div className="-mr-2.5 flex items-start justify-between gap-2">
+        <h2
+          className={`font-display text-[clamp(2.25rem,11.5vw,2.9rem)] leading-[0.94] tracking-[-0.025em] [text-wrap:balance] ${
+            isSun ? 'font-extrabold [font-stretch:90%]' : 'font-medium [font-stretch:78%]'
+          }`}
+        >
+          {headline}
+        </h2>
         <button
           onClick={onShare}
           aria-label="Inviter quelqu'un"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-mute active:scale-90 active:bg-line/60 transition-transform"
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full active:scale-90 transition-transform motion-reduce:transition-none ${tone.sub}`}
         >
           <ShareIcon />
         </button>
       </div>
 
-      <button onClick={onOpen} className="block text-left active:opacity-70 transition-opacity">
-        <h2 className="font-serif text-[2.4rem] leading-[1.02] text-ink [text-wrap:pretty]">{rec.venue.name}</h2>
-      </button>
+      {bigTime && (
+        <div className="mt-3.5 flex items-end gap-3">
+          <p
+            className={`font-mono text-[clamp(4rem,22vw,5.4rem)] leading-[0.86] tracking-[-0.05em] tabular-nums ${
+              isSun ? 'font-bold text-ink' : 'font-semibold text-dusk-sub'
+            }`}
+          >
+            {bigTime}
+          </p>
+          <p className={`mb-1 text-[13px] font-semibold leading-tight ${captionColor}`}>
+            {cap1}
+            <br />
+            {cap2}
+          </p>
+        </div>
+      )}
+      <p className={`mt-2.5 text-[14px] font-medium leading-snug ${tone.sub}`}>{status.detail}</p>
 
-      <p className="mt-2 text-sm text-mute">
-        {categoryLabel(rec.venue.category)} · {VenueService.getNeighborhood(rec.venue)} · {travelLabel(rec)}
-      </p>
+      <div className="mt-5">
+        <button onClick={onOpen} className="flex min-h-11 flex-col items-start gap-px text-left active:opacity-70 transition-opacity">
+          <span className="font-display text-[22px] font-bold leading-[1.1] [font-stretch:92%] [text-wrap:pretty]">{rec.venue.name}</span>
+          <Squiggle text={rec.venue.name} color={tone.underline} width={Math.min(300, 24 + rec.venue.name.length * 9)} />
+        </button>
+        <p className={`mt-0.5 text-[13px] font-medium ${tone.sub}`}>
+          {categoryLabel(rec.venue.category)} · {VenueService.getNeighborhood(rec.venue)} · {travelLabel(rec)}
+        </p>
+      </div>
 
-      {/* Le compte à rebours — le chiffre qu'aucune autre app ne peut imprimer —
-          et la journée entière du lieu, d'un coup d'œil. */}
-      <p className="mt-5 text-[15px] leading-snug text-ink">
-        <span className="font-semibold">{status.title}</span>
-        <span className="block text-[13px] text-mute">{status.detail}</span>
-      </p>
-      <div className="mt-3">
-        <DayRibbon venue={rec.venue} mode={mode} {...day} />
+      <div className="mt-4">
+        <DayRibbon venue={rec.venue} mode={mode} {...day} tone={tone.night ? 'night' : 'day'} />
       </div>
 
       {relief && (
-        <p className="mt-3.5 flex items-start gap-2 text-[12.5px] leading-snug text-mute">
+        <p className={`mt-3.5 flex items-start gap-2 text-[12.5px] leading-snug ${tone.sub}`}>
           <ReliefIcon />
           <span>{relief}</span>
         </p>
       )}
 
       {shareState !== 'idle' && (
-        <p role="status" className="mt-3.5 text-center text-[12.5px] font-semibold text-ink">
+        <p role="status" className="mt-3.5 text-center text-[12.5px] font-semibold">
           {shareState === 'copied'
             ? "Invitation copiée — colle-la dans ta conversation."
             : "Copie impossible sur cet appareil."}
@@ -391,14 +467,14 @@ function AnswerCard({
       <div className="mt-5 flex gap-2.5">
         <button
           onClick={onDirections}
-          className="min-h-[50px] flex-1 rounded-[14px] bg-ink text-[15px] font-semibold text-white active:scale-[0.98] transition-transform"
+          className={`min-h-[52px] flex-1 rounded-full text-[16px] font-bold active:scale-[0.98] transition-transform motion-reduce:transition-none ${tone.primary}`}
         >
           M'y emmener
         </button>
         {hasAlternatives && (
           <button
             onClick={onSomethingElse}
-            className="min-h-[50px] rounded-[14px] border border-[#D5CEC2] px-5 text-[15px] font-semibold text-ink active:scale-[0.98] transition-transform"
+            className={`min-h-[52px] rounded-full px-5 text-[15px] font-semibold active:scale-[0.98] transition-transform motion-reduce:transition-none ${tone.secondary}`}
           >
             Autre chose
           </button>
@@ -410,18 +486,19 @@ function AnswerCard({
 
 // ---------------------------------------------------------------------------
 
-/** « Et après ? » — là où aller quand l'ombre rattrape le lieu proposé. */
+/** « Et après ? » — là où aller quand l'ombre rattrape le lieu proposé.
+ *  Seulement en mode Soleil, donc sur le ton de jour. */
 function SunTrailCard({ trail, onSelect }: { trail: SunTrail; onSelect: (venueId: string) => void }) {
   const [first, ...next] = trail.stops;
   const last = trail.stops[trail.stops.length - 1];
 
   return (
-    <div className="mt-4 rounded-2xl border border-line bg-white/60 p-5">
-      <p className="text-[10.5px] font-bold uppercase tracking-wider text-ember">Suivre le soleil</p>
-      <h2 className="mt-1 font-serif text-[1.6rem] leading-tight text-ink">
-        Et après {formatLisbonTime(first.leaveAt)} ?
+    <div className="mt-6 rounded-[20px] border border-day-line bg-day-2 p-5">
+      <p className="text-[12px] font-semibold text-day-ember">Suivre le soleil</p>
+      <h2 className="mt-1 font-display text-[1.6rem] font-bold leading-tight [font-stretch:90%]">
+        Et après <span className="font-mono">{formatLisbonTime(first.leaveAt)}</span> ?
       </h2>
-      <p className="mt-0.5 text-[13px] text-mute">
+      <p className="mt-0.5 text-[13px] text-day-sub">
         {trail.untilSunset
           ? `Au soleil jusqu'au coucher, à ${formatLisbonTime(last.leaveAt)}.`
           : `Au soleil jusqu'à ${formatLisbonTime(last.leaveAt)}.`}
@@ -436,7 +513,7 @@ function SunTrailCard({ trail, onSelect }: { trail: SunTrail; onSelect: (venueId
         />
         {next.map((stop) => (
           <li key={stop.rec.venue.id}>
-            <p className="ml-[5px] border-l-2 border-dashed border-line py-1.5 pl-[17px] text-[11.5px] text-mute">
+            <p className="ml-[5px] border-l-2 border-dashed border-day-line py-1.5 pl-[17px] text-[11.5px] text-day-sub">
               {stop.walkMin} min à pied
             </p>
             <button
@@ -473,14 +550,14 @@ function TrailRow({
   const Tag = as;
   return (
     <Tag className="flex items-start gap-3">
-      <span className={`mt-1 h-3 w-3 shrink-0 rounded-full ${muted ? 'bg-sun-200' : 'bg-sun-500'}`} />
+      <span className={`mt-1 h-3 w-3 shrink-0 rounded-full ${muted ? 'border-2 border-day-sub' : 'bg-dusk-fire'}`} />
       <span className="min-w-0 flex-1">
-        <span className={`block truncate text-sm font-semibold ${muted ? 'text-mute' : 'text-ink'}`}>
+        <span className={`block truncate text-sm font-semibold ${muted ? 'text-day-sub' : 'text-ink'}`}>
           {name}
         </span>
-        <span className="block text-xs tabular-nums text-mute">
+        <span className="block font-mono text-xs tabular-nums text-day-sub">
           {time}
-          {detail && ` · ${detail}`}
+          {detail && <span className="font-sans"> · {detail}</span>}
         </span>
       </span>
     </Tag>
@@ -501,18 +578,19 @@ function AlternativeRow({
   day: RibbonDay;
   onSelect: () => void;
 }) {
+  const tone = toneFor(mode);
   return (
     <button
       onClick={onSelect}
-      className="flex min-h-14 w-full items-center gap-3.5 border-t border-line px-1 py-2.5 text-left active:opacity-70 transition-opacity"
+      className={`flex min-h-14 w-full items-center gap-3.5 border-t px-1 py-2.5 text-left active:opacity-70 transition-opacity ${tone.line}`}
     >
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-semibold text-ink">{rec.venue.name}</p>
-        <p className="text-[12.5px] text-mute">
+        <p className="truncate text-[15px] font-semibold">{rec.venue.name}</p>
+        <p className={`text-[12.5px] ${tone.sub}`}>
           {travelLabel(rec)} · {statusShort(rec, mode)}
         </p>
       </div>
-      <DayRibbon venue={rec.venue} mode={mode} {...day} size="mini" />
+      <DayRibbon venue={rec.venue} mode={mode} {...day} size="mini" tone={tone.night ? 'night' : 'day'} />
     </button>
   );
 }
@@ -538,8 +616,8 @@ function ReliefIcon() {
       height="13"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="#5B6B7F"
-      strokeWidth="2"
+      stroke="currentColor"
+      strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
       className="mt-0.5 shrink-0"
