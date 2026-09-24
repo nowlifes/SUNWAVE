@@ -77,6 +77,18 @@ export default function App() {
   );
   const [discoverCategory, setDiscoverCategory] = useState<DiscoverCategory | null>(null);
 
+  // Onglet caché : rien ne bat ni ne respire (voir .halo-pulse, index.css).
+  useEffect(() => {
+    const root = document.documentElement;
+    const sync = () => root.toggleAttribute('data-anim-paused', document.hidden);
+    sync();
+    document.addEventListener('visibilitychange', sync);
+    return () => {
+      document.removeEventListener('visibilitychange', sync);
+      root.removeAttribute('data-anim-paused');
+    };
+  }, []);
+
   // Persist state
   useEffect(() => saveToStorage(STORAGE_KEYS.mode, mode), [mode]);
   // Le lien a servi : un rechargement ne doit pas rouvrir la fiche.

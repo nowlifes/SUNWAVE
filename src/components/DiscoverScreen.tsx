@@ -2,6 +2,7 @@ import type { DiscoverCategory, SunMode } from '@/types';
 import { RecommendationService } from '@/services/RecommendationService';
 import { VenueService } from '@/services/VenueService';
 import { statusShort, travelLabel } from '@/utils/copy';
+import { HaloIcon } from './Halo';
 
 interface DiscoverScreenProps {
   currentDate: Date;
@@ -26,20 +27,8 @@ const SECONDARY: DiscoverCategory[] = [
 ];
 
 /** Soleil = ça brille, ombre = éteint. */
-function StateDot({ mode, size = 14 }: { mode: SunMode; size?: number }) {
-  return mode === 'SUN' ? (
-    <span
-      aria-hidden="true"
-      className="inline-block shrink-0 rounded-full bg-dusk-fire shadow-[0_0_0_4px_rgba(255,170,87,0.35)]"
-      style={{ width: size, height: size }}
-    />
-  ) : (
-    <span
-      aria-hidden="true"
-      className="inline-block shrink-0 rounded-full border-2 border-day-sub"
-      style={{ width: size, height: size }}
-    />
-  );
+function StateDot({ mode, size = 24 }: { mode: SunMode; size?: number }) {
+  return <HaloIcon kind={mode === 'SUN' ? 'sun' : 'shade'} tone="day" alt={30} size={size} />;
 }
 
 export function DiscoverScreen({ currentDate, userLocation, onCategorySelect }: DiscoverScreenProps) {
@@ -64,7 +53,7 @@ export function DiscoverScreen({ currentDate, userLocation, onCategorySelect }: 
               className="flex w-full items-center justify-between gap-3 rounded-[20px] border border-day-line bg-day-2 p-5 text-left active:scale-[0.98] transition-transform motion-reduce:transition-none"
             >
               <div className="flex items-center gap-3">
-                <StateDot mode={mode} size={18} />
+                <StateDot mode={mode} size={32} />
                 <div>
                   <h3 className="font-display text-[1.6rem] font-bold leading-none [font-stretch:90%]">{cat.label}</h3>
                   <p className="mt-1 text-[13px] text-day-sub">{cat.description}</p>

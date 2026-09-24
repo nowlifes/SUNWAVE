@@ -4,6 +4,7 @@ import { RecommendationService } from '@/services/RecommendationService';
 import { VenueService } from '@/services/VenueService';
 import { lisbonHour } from '@/utils/lisbonTime';
 import { categoryLabel } from '@/utils/copy';
+import { HaloIcon } from './Halo';
 
 interface SavedScreenProps {
   savedVenues: Venue[];
@@ -46,10 +47,7 @@ export function SavedScreen({ savedVenues, currentDate, onVenueSelect, onRemove 
 
       {displayVenues.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 px-6">
-          <span
-            aria-hidden="true"
-            className={`mb-4 h-5 w-5 rounded-full ${isSun ? 'bg-dusk-fire shadow-[0_0_0_6px_rgba(255,170,87,0.3)]' : 'border-2 border-day-sub'}`}
-          />
+          <HaloIcon kind={isSun ? 'sun' : 'shade'} tone="day" alt={30} size={44} className="mb-4" />
           <p className="text-center text-sm font-semibold">
             {isSun ? 'Aucun lieu au soleil enregistré.' : "Aucun lieu à l'ombre enregistré."}
           </p>

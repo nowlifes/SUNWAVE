@@ -1,75 +1,87 @@
+import { useId } from 'react';
 import type { ScreenName } from '@/types';
+import { DAY, LIGHT, NIGHT } from '@/utils/palette';
 
 interface BottomNavProps {
   activeScreen: ScreenName;
   onScreenChange: (screen: ScreenName) => void;
-  /** L'accueil est en « Plein ouest » : la barre passe à la nuit océan. */
+  /** L'écran est de nuit (carte, ombre, Plein ouest) : la barre suit. */
   dusk?: boolean;
 }
 
-const NAV_ITEMS: { screen: ScreenName; label: string; icon: string }[] = [
-  { screen: 'now', label: 'Maintenant', icon: 'sun' },
-  { screen: 'map', label: 'Carte', icon: 'map' },
-  { screen: 'discover', label: 'Explorer', icon: 'compass' },
-  { screen: 'saved', label: 'Favoris', icon: 'bookmark' },
-  { screen: 'profile', label: 'Profil', icon: 'user' },
+const NAV_ITEMS: { screen: ScreenName; label: string }[] = [
+  { screen: 'now', label: 'Maintenant' },
+  { screen: 'map', label: 'Carte' },
+  { screen: 'discover', label: 'Explorer' },
+  { screen: 'saved', label: 'Favoris' },
+  { screen: 'profile', label: 'Profil' },
 ];
 
-function NavIcon({ icon, active, dusk = false }: { icon: string; active: boolean; dusk?: boolean }) {
-  const color = dusk ? (active ? '#FF6A2B' : '#8FA3D6') : active ? '#FF6A2B' : '#34487A';
-  const paths: Record<string, React.ReactNode> = {
-    sun: (
-      <>
-        <circle cx="12" cy="12" r="4" />
-        <line x1="12" y1="2" x2="12" y2="4" />
-        <line x1="12" y1="20" x2="12" y2="22" />
-        <line x1="4.93" y1="4.93" x2="6.34" y2="6.34" />
-        <line x1="17.66" y1="17.66" x2="19.07" y2="19.07" />
-        <line x1="2" y1="12" x2="4" y2="12" />
-        <line x1="20" y1="12" x2="22" y2="12" />
-        <line x1="4.93" y1="19.07" x2="6.34" y2="17.66" />
-        <line x1="17.66" y1="6.34" x2="19.07" y2="4.93" />
-      </>
-    ),
-    map: (
-      <>
-        <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21 3 6" />
-        <line x1="9" y1="3" x2="9" y2="18" />
-        <line x1="15" y1="6" x2="15" y2="21" />
-      </>
-    ),
-    compass: (
-      <>
-        <circle cx="12" cy="12" r="10" />
-        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
-      </>
-    ),
-    bookmark: (
-      <>
-        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-      </>
-    ),
-    user: (
-      <>
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-      </>
-    ),
-  };
+// Cinq icônes, un seul trait de 1,8 ; chacune a son rond, comme le reste de
+// l'app. L'onglet où l'on est prend le halo.
+const PATHS: Record<ScreenName, React.ReactNode> = {
+  now: (
+    <>
+      <path d="M7 16a5 5 0 0 1 10 0" />
+      <path d="M3.5 16h17M7 20h10" />
+      <path d="M12 5v2.5M5.6 8.6l1.7 1.7M18.4 8.6l-1.7 1.7" />
+    </>
+  ),
+  map: (
+    <>
+      <path d="M4 6.5 9 4.5l6 2 5-2v13l-5 2-6-2-5 2z" />
+      <circle cx="12" cy="11.5" r="2.4" />
+    </>
+  ),
+  discover: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2" />
+    </>
+  ),
+  saved: (
+    <>
+      <path d="M7 3.5h10v17l-5-3.5-5 3.5z" />
+      <circle cx="12" cy="9.5" r="2" />
+    </>
+  ),
+  profile: (
+    <>
+      <circle cx="12" cy="8.5" r="3.8" />
+      <path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" />
+    </>
+  ),
+};
 
+function NavIcon({ screen, active, dusk = false }: { screen: ScreenName; active: boolean; dusk?: boolean }) {
+  const id = useId();
+  const stroke = active ? LIGHT.fire : dusk ? NIGHT.dim : DAY.sub;
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      {paths[icon]}
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="block overflow-visible">
+      {active && (
+        <>
+          <defs>
+            <radialGradient id={id}>
+              <stop offset="0.35" stopColor={LIGHT.glow} stopOpacity="0.42" />
+              <stop offset="1" stopColor={LIGHT.glow} stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <circle cx="12" cy="12" r="13" fill={`url(#${id})`} />
+        </>
+      )}
+      <g stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        {PATHS[screen]}
+      </g>
     </svg>
   );
 }
 
 export function BottomNav({ activeScreen, onScreenChange, dusk = false }: BottomNavProps) {
   return (
-    <div
-      className={`absolute bottom-0 left-0 right-0 z-30 border-t ${
-        dusk ? 'border-dusk-cobalt bg-dusk-deep' : 'border-day-line bg-day-2'
-      }`}
+    <nav
+      aria-label="Navigation"
+      className={`absolute bottom-0 left-0 right-0 z-30 border-t ${dusk ? 'border-dusk-cobalt bg-dusk-deep' : 'border-day-line bg-day-2'}`}
     >
       <div className="flex items-center px-1 py-1.5 pb-[env(safe-area-inset-bottom)]">
         {NAV_ITEMS.map((item) => {
@@ -78,18 +90,29 @@ export function BottomNav({ activeScreen, onScreenChange, dusk = false }: Bottom
             <button
               key={item.screen}
               onClick={() => onScreenChange(item.screen)}
-              className="flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 active:scale-90 transition-transform"
+              aria-current={active ? 'page' : undefined}
+              className="flex min-h-12 min-w-0 flex-1 flex-col items-center gap-1 py-1.5 active:scale-90 transition-transform motion-reduce:transition-none"
             >
-              <NavIcon icon={item.icon} active={active} dusk={dusk} />
+              <NavIcon screen={item.screen} active={active} dusk={dusk} />
               {/* Cinq onglets sur 320 px = 64 px chacun : libellés en casse
                   normale, sans espacement, sinon « MAINTENANT » déborde. */}
-              <span className={`max-w-full truncate text-[10px] font-semibold transition-colors ${active ? (dusk ? 'text-dusk-fire' : 'text-day-ember') : dusk ? 'text-dusk-dim' : 'text-day-sub'}`}>
+              <span
+                className={`max-w-full truncate text-[11px] ${
+                  active
+                    ? dusk
+                      ? 'font-bold text-dusk-fire'
+                      : 'font-bold text-day-ember'
+                    : dusk
+                      ? 'font-medium text-dusk-dim'
+                      : 'font-medium text-day-sub'
+                }`}
+              >
                 {item.label}
               </span>
             </button>
           );
         })}
       </div>
-    </div>
+    </nav>
   );
 }
