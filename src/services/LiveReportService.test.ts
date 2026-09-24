@@ -5,6 +5,7 @@ import {
   LIVE_ZONE_M,
   type LiveRecord,
   type LiveStore,
+  type LiveRemote,
 } from './LiveReportService';
 
 const venue = { id: 'v1', latitude: 38.7139, longitude: -9.1394 };
@@ -83,5 +84,62 @@ describe('LiveReportService', () => {
     off();
     svc.submit(venue, 'none', north(20), NOW + 1);
     expect(calls).toBe(1);
+  });
+});
+
+describe('LiveReportService — serveur partagé', () => {
+  const others = (n: number, answer: LiveRecord['answer'], at: number): LiveRecord[] =>
+    Array.from({ length: n }, (_, i) => ({ venueId: 'v1', answer, at, deviceId: `other:${i}` }));
+
+  function remote(fetched: LiveRecord[] | Error) {
+    const sent: LiveRecord[] = [];
+    const r: LiveRemote = {
+      fetchAll: async () => { if (fetched instanceof Error) throw fetched; return fetched; },
+      send: async (rec) => { sent.push(rec); },
+    };
+    return { r, sent };
+  }
+
+  it("affiche les réponses des autres après refresh", async () => {
+    const { r } = remote(others(3, 'plenty', NOW - 60_000));
+    const svc = new LiveReportService(memoryStore(), 'me', r);
+    await svc.refresh(NOW);
+    expect(svc.getState('v1', NOW)).toMatchObject({ level: 'plenty', count: 3 });
+  });
+
+  it("envoie notre réponse au serveur, après l'avoir affichée", async () => {
+    const { r, sent } = remote([]);
+    const svc = new LiveReportService(memoryStore(), 'me', r);
+    svc.submit(venue, 'few', north(20), NOW);
+    expect(svc.getState('v1', NOW)).toMatchObject({ level: 'few', count: 1 });
+    await Promise.resolve();
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ venueId: 'v1', answer: 'few', deviceId: 'me' });
+  });
+
+  it("garde notre réponse récente que le serveur n'a pas encore rendue", async () => {
+    // Heure réelle : `send().then(refresh)` relit l'horloge du système, pas NOW.
+    const t = Date.now();
+    const { r } = remote(others(1, 'none', t - 10_000));
+    const svc = new LiveReportService(memoryStore(), 'me', r);
+    svc.submit(venue, 'few', north(20), t);
+    await svc.refresh(t + 5_000);
+    expect(svc.getState('v1', t + 5_000)).toMatchObject({ count: 2 });
+  });
+
+  it("laisse tomber notre réponse si le serveur ne l'a jamais reçue au bout d'une minute", async () => {
+    const { r } = remote([]);
+    const svc = new LiveReportService(memoryStore(), 'me', r);
+    svc.submit(venue, 'few', north(20), NOW);
+    await svc.refresh(NOW + 120_000);
+    expect(svc.getState('v1', NOW + 120_000)).toBeNull();
+  });
+
+  it("garde l'état local quand le réseau échoue", async () => {
+    const { r } = remote(new Error('offline'));
+    const svc = new LiveReportService(memoryStore(), 'me', r);
+    svc.submit(venue, 'few', north(20), NOW);
+    await expect(svc.refresh(NOW + 1000)).resolves.toBeUndefined();
+    expect(svc.getState('v1', NOW + 1000)).toMatchObject({ level: 'few' });
   });
 });

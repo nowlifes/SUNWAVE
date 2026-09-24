@@ -38,7 +38,16 @@ export interface LiveStore {
   save(records: LiveRecord[]): void;
 }
 
+/** Le serveur partagé : ce que le service lui demande, rien de plus. */
+export interface LiveRemote {
+  fetchAll(deviceId: string): Promise<LiveRecord[]>;
+  send(record: LiveRecord, user: GeoPoint): Promise<void>;
+}
+
 export const LIVE_ZONE_M = 100;
+/** Une de nos réponses pas encore relue sur le serveur reste affichée ce temps-là. */
+const PENDING_GRACE_MS = 60_000;
+const POLL_MS = 45_000;
 export const LIVE_TTL_MS = 45 * 60 * 1000;
 
 const STORAGE_KEY = 'sun_live_reports';
@@ -64,6 +73,39 @@ class LocalLiveStore implements LiveStore {
   }
 }
 
+/** L'API Vercel `/api/live`. Les identifiants des autres appareils n'y figurent
+ *  pas : chacun devient une voix distincte, la nôtre est reconnue par `mine`. */
+export class HttpLiveRemote implements LiveRemote {
+  constructor(private readonly base = '/api/live') {}
+
+  async fetchAll(deviceId: string): Promise<LiveRecord[]> {
+    const res = await fetch(`${this.base}?deviceId=${encodeURIComponent(deviceId)}`);
+    if (!res.ok) throw new Error(`live ${res.status}`);
+    const body = (await res.json()) as { records?: { venueId: string; answer: LiveAnswer; at: number; mine: boolean }[] };
+    return (body.records ?? []).map((r, i) => ({
+      venueId: r.venueId,
+      answer: r.answer,
+      at: r.at,
+      deviceId: r.mine ? deviceId : `other:${i}`,
+    }));
+  }
+
+  async send(record: LiveRecord, user: GeoPoint): Promise<void> {
+    const res = await fetch(this.base, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        venueId: record.venueId,
+        answer: record.answer,
+        deviceId: record.deviceId,
+        lat: user.lat,
+        lng: user.lng,
+      }),
+    });
+    if (!res.ok) throw new Error(`live ${res.status}`);
+  }
+}
+
 function localDeviceId(): string {
   try {
     if (typeof localStorage === 'undefined') return 'anonymous';
@@ -85,7 +127,8 @@ export class LiveReportService {
 
   constructor(
     private readonly store: LiveStore = new LocalLiveStore(),
-    private readonly deviceId: string = localDeviceId()
+    private readonly deviceId: string = localDeviceId(),
+    private readonly remote?: LiveRemote
   ) {
     this.records = store.load();
   }
@@ -107,10 +150,56 @@ export class LiveReportService {
       .filter((r) => !(r.venueId === venue.id && r.deviceId === this.deviceId))
       .filter((r) => now - r.at <= LIVE_TTL_MS);
     this.records.push({ venueId: venue.id, answer, at: now, deviceId: this.deviceId });
+    this.commit();
+    // La réponse s'affiche tout de suite ; le serveur la valide de son côté
+    // (zone refaite là-bas) et `refresh` remet chacun d'accord.
+    const record = this.records[this.records.length - 1];
+    void this.remote
+      ?.send(record, user)
+      .then(() => this.refresh())
+      .catch(() => {});
+    return true;
+  }
+
+  private commit(): void {
     this.store.save(this.records);
     this.version++;
     for (const l of this.listeners) l();
-    return true;
+  }
+
+  /** Relit les réponses de tout le monde. Sans réseau, l'état local reste tel quel. */
+  async refresh(now: number = Date.now()): Promise<void> {
+    if (!this.remote) return;
+    try {
+      const fetched = await this.remote.fetchAll(this.deviceId);
+      const pending = this.records.filter(
+        (r) =>
+          r.deviceId === this.deviceId &&
+          now - r.at < PENDING_GRACE_MS &&
+          !fetched.some((f) => f.deviceId === this.deviceId && f.venueId === r.venueId)
+      );
+      this.records = [...fetched, ...pending];
+      this.commit();
+    } catch {
+      // Hors ligne ou serveur absent (vite dev) : on garde ce qu'on sait.
+    }
+  }
+
+  /** Relit toutes les 45 s tant que l'onglet est visible ; renvoie l'arrêt. */
+  startPolling(intervalMs: number = POLL_MS): () => void {
+    if (!this.remote || typeof document === 'undefined') return () => {};
+    void this.refresh();
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') void this.refresh();
+    }, intervalMs);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void this.refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }
 
   private active(venueId: string, now: number): LiveRecord[] {
@@ -146,4 +235,6 @@ export class LiveReportService {
   }
 }
 
-export const liveReports = new LiveReportService();
+export const liveReports = new LiveReportService(undefined, undefined, new HttpLiveRemote());
+// Démarre à l'import, dans le navigateur seulement (ni tests ni scripts Node).
+if (typeof window !== 'undefined') liveReports.startPolling();
