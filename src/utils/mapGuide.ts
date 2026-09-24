@@ -176,8 +176,8 @@ export function initialFrame(center: GeoPoint, points: GeoPoint[], minCount: num
 // --- Pastilles -----------------------------------------------------------------
 
 const TYPE_PREFIX = /^(miradouro|jardim|largo|praça|praca|parque|terraço|terraco|esplanada|quiosque)\s+(d[aeo]s?\s+)?/i;
-const MAX_PILL_CHARS = 14;
-const DANGLING = new Set(['de', 'da', 'do', 'das', 'dos', 'e', '&', '-', '·']);
+const MAX_PILL_CHARS = 16;
+const DANGLING = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'o', 'a', 'of', 'the', '&', '-', '·']);
 
 /** « Miradouro de Santa Catarina » → « Santa Catarina » : la pastille dit
  *  où, la carte montre déjà que c'est un belvédère. */
@@ -199,4 +199,22 @@ export function shortVenueName(name: string): string {
 export function pillLabel(rec: Recommendation): { name: string; time: string | null; inIt: boolean } {
   const inIt = rec.sunLeavesInMin !== null;
   return { name: shortVenueName(rec.venue.name), time: inIt ? rec.sunWindowEnd : null, inIt };
+}
+
+// --- Bande de lumière de la carte -------------------------------------------
+
+/**
+ * La journée du quartier, pour le curseur d'heure : quart par quart, la part
+ * des lieux proches dans ce qu'on cherche. Rendue au format que `ribbonCells`
+ * attend (du soleil, qu'il retourne lui-même en mode Ombre) pour réutiliser
+ * la même bande que les fiches.
+ */
+export function cityLightCurve(curves: number[][], mode: SunMode): number[] {
+  const threshold = IN_IT_THRESHOLD[mode];
+  return Array.from({ length: 96 }, (_, q) => {
+    if (curves.length === 0) return 0;
+    const inIt = curves.filter((c) => (mode === 'SUN' ? c[q] ?? 0 : 100 - (c[q] ?? 0)) >= threshold).length;
+    const share = Math.round((inIt / curves.length) * 100);
+    return mode === 'SUN' ? share : 100 - share;
+  });
 }

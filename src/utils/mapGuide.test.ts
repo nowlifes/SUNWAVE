@@ -3,6 +3,7 @@ import type { Recommendation } from '@/types';
 import {
   WALK_RING_M,
   betterNeighbour,
+  cityLightCurve,
   hereSentence,
   hereWindow,
   hintForVisit,
@@ -203,6 +204,10 @@ describe('shortVenueName — la pastille dit où, en peu de lettres', () => {
   it('coupe au mot, sans laisser traîner « de »', () => {
     expect(shortVenueName('Miradouro de São Pedro de Alcântara')).toBe('São Pedro');
   });
+  it('ne laisse pas traîner « of » non plus', () => {
+    expect(shortVenueName('House of Wonders')).toBe('House of Wonders');
+    expect(shortVenueName('The Garden of the Old Town')).toBe('The Garden');
+  });
   it('garde les noms courts tels quels', () => {
     expect(shortVenueName('Sea Me')).toBe('Sea Me');
     expect(shortVenueName('Hello, Kristof')).toBe('Hello, Kristof');
@@ -215,5 +220,26 @@ describe('pillLabel — nom · heure, ou pastille discrète', () => {
   });
   it("pas dans ce qu'on cherche : le nom seul, sans heure", () => {
     expect(pillLabel(rec({ sunLeavesInMin: null, sunArrivesInMin: 40 }))).toEqual({ name: 'Santa Catarina', time: null, inIt: false });
+  });
+});
+
+describe('cityLightCurve — la bande de lumière du quartier', () => {
+  const sunny = Array.from({ length: 96 }, (_, q) => (q >= 40 && q < 70 ? 90 : 0));
+  const shaded = Array.from({ length: 96 }, (_, q) => (q >= 40 && q < 50 ? 90 : 10));
+  it('mode Soleil : la part des lieux au soleil, quart par quart', () => {
+    const c = cityLightCurve([sunny, shaded], 'SUN');
+    expect(c).toHaveLength(96);
+    expect(c[45]).toBe(100);
+    expect(c[60]).toBe(50);
+    expect(c[80]).toBe(0);
+  });
+  it("mode Ombre : lue par ribbonCells comme 100 − la part à l'ombre", () => {
+    const c = cityLightCurve([sunny, shaded], 'SHADE');
+    // q=60 : sunny au soleil, shaded à l'ombre → 50 % à l'ombre.
+    expect(100 - c[60]).toBe(50);
+    expect(100 - c[45]).toBe(0);
+  });
+  it('sans lieu, une bande vide plutôt qu’une division par zéro', () => {
+    expect(cityLightCurve([], 'SUN').every((v) => v === 0)).toBe(true);
   });
 });
