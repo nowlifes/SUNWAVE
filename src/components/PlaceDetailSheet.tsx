@@ -1,10 +1,10 @@
 import { useState, useCallback, useMemo } from 'react';
 import type { Venue, SunMode, Recommendation, ReportType } from '@/types';
 import { RecommendationService } from '@/services/RecommendationService';
+import { SunService } from '@/services/SunService';
 import { VenueService } from '@/services/VenueService';
 import { ReportService } from '@/services/ReportService';
-import { MapService } from '@/services/MapService';
-import { lisbonHour } from '@/utils/lisbonTime';
+import { formatLisbonTime, lisbonHour, lisbonMinutesOfDay } from '@/utils/lisbonTime';
 import { categoryLabel, statusCopy, travelParts } from '@/utils/copy';
 
 interface PlaceDetailSheetProps {
@@ -29,12 +29,16 @@ const REPORT_OPTIONS: { type: ReportType; label: string }[] = [
   { type: 'other', label: 'Autre chose' },
 ];
 
-const PROVENANCE_LABEL = {
-  open: 'CIEL DÉGAGÉ',
-  estimated: 'ESTIMÉ',
-  mixed: 'MIXTE',
-  measured: 'MESURÉ',
-} as const;
+const RAIL_HOURS = 6;
+
+/** Le langage de toutes les applis météo : on lit une icône, pas un pourcentage. */
+function skyEmoji(sunPct: number, isNight: boolean, isSunsetHour: boolean): string {
+  if (isNight) return '🌙';
+  if (isSunsetHour) return '🌅';
+  if (sunPct >= 60) return '☀️';
+  if (sunPct >= 30) return '🌤️';
+  return '🌑';
+}
 
 export function PlaceDetailSheet({
   venue,
@@ -50,7 +54,9 @@ export function PlaceDetailSheet({
   const [showReport, setShowReport] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [saved, setSaved] = useState(isSaved);
+  const [showMore, setShowMore] = useState(false);
 
+  const isSun = mode === 'SUN';
   const hour = lisbonHour(currentDate);
 
   // Les chiffres de la fiche sont ceux de l'accueil et de la carte : même
@@ -59,11 +65,52 @@ export function PlaceDetailSheet({
     () => recommendation ?? RecommendationService.getRecommendationFor(venue, mode, userLocation, currentDate),
     [recommendation, venue, mode, userLocation, currentDate]
   );
-  const status = statusCopy(rec, mode);
-  const displayPct = mode === 'SUN' ? rec.sunPercentage : rec.shadePercentage;
+
+  // Ce qui compte, c'est l'état à l'arrivée, pas celui de maintenant : douze
+  // minutes de marche suffisent à faire perdre le soleil à une terrasse.
+  const travel = travelParts(rec);
+  const walkable = travel.unit === 'min à pied' && rec.walkTimeMin >= 1;
+  const arrivalDate = useMemo(
+    () => new Date(currentDate.getTime() + rec.walkTimeMin * 60_000),
+    [currentDate, rec.walkTimeMin]
+  );
+  const arrivalRec = useMemo(
+    () =>
+      walkable
+        ? RecommendationService.getRecommendationFor(venue, mode, userLocation, arrivalDate)
+        : rec,
+    [walkable, venue, mode, userLocation, arrivalDate, rec]
+  );
+
+  const wanted = isSun ? 'Soleil' : 'Ombre';
+  const opposite = isSun ? 'Ombre' : 'Soleil';
+  const inIt = (r: Recommendation) => r.sunLeavesInMin !== null;
+  const status = statusCopy(arrivalRec, mode);
+
+  // Trois lignes : maintenant, à l'arrivée, puis la prochaine bascule.
+  const arrivalIn = inIt(arrivalRec);
+  const nextChange = arrivalIn
+    ? arrivalRec.sunWindowEnd
+      ? { at: arrivalRec.sunWindowEnd, word: arrivalRec.endsAtSunset ? 'Nuit' : opposite, emoji: '🌙' }
+      : null
+    : arrivalRec.sunWindowStart && !arrivalRec.arrivesTomorrow
+      ? { at: arrivalRec.sunWindowStart, word: wanted, emoji: isSun ? '☀️' : '🌑' }
+      : null;
+
+  // Après le coucher, « ombre » serait faux : c'est la nuit, pour tout le monde.
+  const sunsetMin = lisbonMinutesOfDay(SunService.getSunset(currentDate));
+  const isNightAt = (d: Date) => lisbonMinutesOfDay(d) >= sunsetMin;
+  const stateOf = (yes: boolean, d: Date) =>
+    !yes && isSun && isNightAt(d)
+      ? { emoji: '🌙', word: 'Nuit' }
+      : yes === isSun
+        ? { emoji: '☀️', word: yes ? wanted : opposite }
+        : { emoji: '🌑', word: yes ? wanted : opposite };
+  const nowState = stateOf(inIt(rec), currentDate);
+  const arrivalState = stateOf(arrivalIn, arrivalDate);
+  const railHours = Array.from({ length: RAIL_HOURS }, (_, i) => hour + i).filter((h) => h <= 23);
 
   const neighborhood = VenueService.getNeighborhood(venue);
-  const bestTime = RecommendationService.getBestTime(venue, mode, currentDate);
 
   const handleSave = useCallback(() => {
     setSaved((s) => !s);
@@ -79,34 +126,46 @@ export function PlaceDetailSheet({
     }, 2500);
   }, [venue.id]);
 
-  // THE BAND. `venue.sunBand` brackets the figure by re-running the shadow
-  // geometry with every unmeasured neighbour a storey taller, then shorter.
-  // In SHADE mode the band flips with the number: shade = 100 - sun, so the
-  // optimistic end of one is the pessimistic end of the other.
+  // `venue.sunBand` encadre le chiffre en refaisant le calcul d'ombre avec
+  // chaque voisin non mesuré un étage plus haut, puis plus bas. En mode Ombre
+  // la bande se retourne avec le chiffre : ombre = 100 − soleil.
   const bandAt = useCallback((h: number) => {
     const lo = venue.sunBand.low[h] ?? 0;
     const hi = venue.sunBand.high[h] ?? 0;
-    return mode === 'SUN' ? { lo, hi } : { lo: 100 - hi, hi: 100 - lo };
-  }, [venue.sunBand, mode]);
+    return isSun ? { lo, hi } : { lo: 100 - hi, hi: 100 - lo };
+  }, [venue.sunBand, isSun]);
 
+  const displayPct = isSun ? rec.sunPercentage : rec.shadePercentage;
   const nowBand = bandAt(hour);
   const bandWidth = nowBand.hi - nowBand.lo;
-  // Under 2 points the range is narrower than the rounding and showing it as
-  // "95-96%" reads as precision, which is the opposite of the point.
+  // Sous 2 points la marge est plus étroite que l'arrondi : « 95-96 % » aurait
+  // l'air précis, l'inverse de ce qu'on veut dire.
   const showRange = bandWidth >= 2;
 
   const prov = venue.heightProvenance;
   const estimatedShare = prov.total > 0 ? prov.estimated / prov.total : 0;
   const provVerdict =
     prov.total === 0 ? 'open' : estimatedShare > 0.5 ? 'estimated' : estimatedShare > 0.2 ? 'mixed' : 'measured';
-  const provColor =
-    provVerdict === 'estimated' ? 'text-orange-600' : provVerdict === 'mixed' ? 'text-amber-600' : 'text-green-600';
+  const reliability = {
+    open: "Rien de haut autour : le chiffre ne dépend d'aucune hauteur devinée.",
+    measured: 'Les immeubles voisins sont mesurés : le chiffre est fiable.',
+    mixed: 'Une partie des immeubles voisins est estimée : le chiffre est assez fiable.',
+    estimated: 'Les immeubles voisins sont surtout estimés, pas mesurés : le chiffre est approximatif.',
+  }[provVerdict];
 
-  const sunBars = venue.sunExposureByHour.slice(7, 20).map((pct, i) => {
-    const h = i + 7;
-    const isCurrent = h === hour;
-    return { hour: h, pct, isCurrent };
-  });
+  const rowBase = 'flex items-center justify-between px-4 py-3';
+  const Row = ({ label, sub, emoji, word, highlight }: { label: string; sub: string; emoji: string; word: string; highlight?: boolean }) => (
+    <div className={`${rowBase} ${highlight ? (isSun ? 'bg-sun-100/70' : 'bg-shade-200/70') : ''}`}>
+      <div>
+        <p className="text-[15px] font-medium text-shade-800 leading-tight">{label}</p>
+        <p className="text-xs text-shade-400 mt-0.5 tabular-nums">{sub}</p>
+      </div>
+      <div className="flex items-center gap-2 font-semibold text-shade-800">
+        <span className="text-2xl leading-none">{emoji}</span>
+        {word}
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -117,8 +176,8 @@ export function PlaceDetailSheet({
       />
 
       {/* Bottom sheet */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 animate-slide-up">
-        <div className="glass rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar">
+      <div className="fixed bottom-0 inset-x-0 z-50 animate-slide-up">
+        <div className="glass mx-auto max-w-xl rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar">
           {/* Drag handle */}
           <div className="sticky top-0 flex justify-center py-2.5 glass z-10">
             <div className="w-10 h-1.5 rounded-full bg-shade-300" />
@@ -126,16 +185,18 @@ export function PlaceDetailSheet({
 
           {!showReport ? (
             <div className="px-5 pb-6">
-              {/* Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-shade-800">{venue.name}</h2>
-                  <p className="text-sm text-shade-500 mt-0.5">{venue.address}</p>
-                  <p className="text-xs text-shade-400 mt-0.5">{neighborhood} · {categoryLabel(venue.category)}</p>
+              {/* En-tête : qui, où, à combien de marche. */}
+              <div className="flex items-start justify-between gap-3 pt-1">
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-display text-2xl font-bold leading-tight text-shade-900">{venue.name}</h2>
+                  <p className="text-sm text-shade-500 mt-1">
+                    {neighborhood} · {categoryLabel(venue.category)} · {travel.value} {travel.unit}
+                  </p>
                 </div>
                 <button
                   onClick={onClose}
-                  className="w-8 h-8 rounded-full bg-shade-100 flex items-center justify-center active:scale-90 transition-transform"
+                  aria-label="Fermer"
+                  className="w-9 h-9 shrink-0 rounded-full bg-shade-100 flex items-center justify-center active:scale-90 transition-transform"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round">
                     <line x1="18" y1="6" x2="6" y2="18" />
@@ -144,133 +205,49 @@ export function PlaceDetailSheet({
                 </button>
               </div>
 
-              {/* Ce qu'il faut savoir maintenant — la même phrase qu'à l'accueil. */}
-              <div className={`flex items-start justify-between gap-3 mb-4 px-4 py-3 rounded-2xl ${mode === 'SUN' ? 'bg-sun-50' : 'bg-shade-100'}`}>
-                <div className="min-w-0">
-                  <p className="text-base font-bold leading-tight text-shade-900">{status.title}</p>
-                  <p className="text-xs text-shade-500 mt-0.5">{status.detail}</p>
-                  {bestTime && <p className="text-[11px] text-shade-400 mt-1">Meilleur créneau aujourd'hui : {bestTime.start} → {bestTime.end}</p>}
-                </div>
-                {rec.isOpen ? (
-                  <div className="flex shrink-0 items-center gap-1 px-2.5 py-1 rounded-full bg-green-50">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                    <span className="text-[10px] font-bold text-green-600">OUVERT</span>
-                  </div>
-                ) : (
-                  <div className="flex shrink-0 items-center gap-1 px-2.5 py-1 rounded-full bg-shade-100">
-                    <span className="w-1.5 h-1.5 rounded-full bg-shade-400" />
-                    <span className="text-[10px] font-bold text-shade-500">FERMÉ</span>
-                  </div>
+              {/* La réponse : une phrase, lisible en deux secondes. */}
+              <p className={`font-display text-[32px] font-bold leading-[1.05] mt-4 ${isSun ? 'text-ember' : 'text-shade-700'}`}>
+                {status.title}
+              </p>
+              <p className="text-sm text-shade-500 mt-1.5">
+                {rec.isOpen ? 'Ouvert' : 'Fermé'} · {venue.verifiedOnFoot ? '✓ Vérifié à pied' : 'À vérifier sur place'}
+              </p>
+
+              {/* Trois lignes : maintenant, à l'arrivée, plus tard. */}
+              <div className="mt-4 rounded-2xl bg-shade-50 overflow-hidden divide-y divide-shade-100">
+                <Row label="Maintenant" sub={formatLisbonTime(currentDate)} emoji={nowState.emoji} word={nowState.word} />
+                {walkable && (
+                  <Row label="À ton arrivée" sub={formatLisbonTime(arrivalDate)} emoji={arrivalState.emoji} word={arrivalState.word} highlight />
+                )}
+                {nextChange && (
+                  <Row label="Plus tard" sub={`dès ${nextChange.at}`} emoji={nextChange.emoji} word={nextChange.word} />
                 )}
               </div>
 
-              {/* Exposition et marche — une seule fois chacune. */}
-              <div className="flex flex-wrap items-center gap-2 mb-5">
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${mode === 'SUN' ? 'bg-sun-100' : 'bg-shade-200'}`}>
-                  <span className="text-sm">{mode === 'SUN' ? '☀' : '🌑'}</span>
-                  <span className={`text-sm font-bold ${mode === 'SUN' ? 'text-sun-600' : 'text-shade-600'}`}>
-                    {showRange ? `${nowBand.lo}–${nowBand.hi} %` : `${displayPct} %`}
-                  </span>
-                  <span className="text-[10px] font-medium text-shade-500">{mode === 'SUN' ? 'au soleil' : "à l'ombre"}</span>
-                </div>
-                <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-shade-100">
-                  <span className="text-sm font-bold text-shade-700">{travelParts(rec).value}</span>
-                  <span className="text-[10px] font-medium text-shade-500">
-                    {travelParts(rec).unit === 'min à pied' ? `min à pied · ${MapService.formatDistance(rec.distanceM)}` : travelParts(rec).unit}
-                  </span>
-                </div>
-              </div>
-
-              {/* Sun/shade today bars */}
-              <div className="mb-5">
-                <h3 className="text-xs font-bold tracking-wider text-shade-500 mb-3">{mode === 'SUN' ? "SOLEIL AUJOURD'HUI" : "OMBRE AUJOURD'HUI"}</h3>
-                <div className="space-y-1.5">
-                  {sunBars.map(({ hour: h, pct, isCurrent }) => {
-                    const barPct = mode === 'SUN' ? pct : venue.shadeExposureByHour[h] || 0;
-                    const activeColor = mode === 'SUN' ? 'bg-sun-500' : 'bg-shade-500';
-                    const inactiveColor = mode === 'SUN' ? 'bg-sun-300' : 'bg-shade-300';
-                    const accentText = mode === 'SUN' ? 'text-sun-600' : 'text-shade-600';
-                    const hb = bandAt(h);
-                    const rangeColor = mode === 'SUN' ? 'bg-sun-200' : 'bg-shade-200';
-                    return (
-                      <div key={h} className="flex items-center gap-2">
-                        <span className={`text-[10px] font-medium w-8 ${isCurrent ? `${accentText} font-bold` : 'text-shade-400'}`}>
-                          {String(h).padStart(2, '0')}:00
-                        </span>
-                        <div className="relative flex-1 h-3 bg-shade-100 rounded-full overflow-hidden">
-                          {/* Three layers, in reading order: what holds however
-                              wrong the guessed heights are (solid, up to the
-                              low end), how far it could go (pale, to the high
-                              end), and the central estimate (tick). Drawing the
-                              band UNDER a full-width bar would have hidden its
-                              lower half, which is the half that matters. */}
-                          <div
-                            className={`absolute inset-y-0 left-0 rounded-full smooth-transition ${isCurrent ? activeColor : inactiveColor}`}
-                            style={{ width: `${hb.lo}%` }}
-                          />
-                          <div
-                            className={`absolute inset-y-0 ${rangeColor}`}
-                            style={{ left: `${hb.lo}%`, width: `${Math.max(0, hb.hi - hb.lo)}%` }}
-                          />
-                          {hb.hi > hb.lo && (
-                            <div
-                              className={`absolute inset-y-0 w-0.5 ${activeColor}`}
-                              style={{ left: `calc(${barPct}% - 1px)` }}
-                            />
-                          )}
-                        </div>
-                        <span className={`text-[10px] font-semibold w-7 text-right ${isCurrent ? accentText : 'text-shade-500'}`}>
-                          {barPct}%
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Where this number comes from — provenance of the heights the
-                  shadow engine used here, and how far the figure moves with
-                  them. Replaces a `confidence` field typed by hand per venue,
-                  which knew nothing about the data behind the calculation. */}
-              <div className="bg-shade-50 rounded-2xl p-3 mb-5">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] font-bold tracking-wider text-shade-400">D'OÙ VIENT CE CHIFFRE</p>
-                  <span className={`text-xs font-bold ${provColor}`}>{PROVENANCE_LABEL[provVerdict]}</span>
-                </div>
-
-                {prov.total > 0 && (
-                  <div className="flex h-1.5 rounded-full overflow-hidden bg-shade-200 mb-2">
-                    <span className="bg-green-500" style={{ width: `${(prov.tagged / prov.total) * 100}%` }} />
-                    <span className="bg-blue-400" style={{ width: `${(prov.levels / prov.total) * 100}%` }} />
-                    <span className="bg-sun-500" style={{ width: `${(prov.estimated / prov.total) * 100}%` }} />
+              {/* Les prochaines heures, comme une appli météo. */}
+              <p className="text-[13px] font-semibold text-shade-500 mt-5 mb-2">Les prochaines heures</p>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                {railHours.map((h, i) => (
+                  <div
+                    key={h}
+                    className={`shrink-0 w-[52px] text-center py-2.5 rounded-2xl text-xs ${
+                      i === 0 ? 'bg-sun-100 text-shade-900 font-bold ring-2 ring-sun-500' : 'bg-shade-50 text-shade-500'
+                    }`}
+                  >
+                    {i === 0 ? 'Là' : `${h}h`}
+                    <span className="block text-[22px] leading-tight mt-1">
+                      {skyEmoji(venue.sunExposureByHour[h] ?? 0, i === 0 ? isNightAt(currentDate) : h * 60 >= sunsetMin, h === Math.floor(sunsetMin / 60))}
+                    </span>
                   </div>
-                )}
-
-                <p className="text-[11px] text-shade-500 leading-relaxed">
-                  {prov.total === 0
-                    ? "Aucun bâtiment n'est assez proche pour faire de l'ombre ici : le chiffre ne repose sur aucune hauteur devinée."
-                    : `Sur les ${prov.total} bâtiments testés autour, ${prov.tagged} ont une hauteur mesurée, ${prov.levels} une hauteur déduite du nombre d'étages et ${prov.estimated} une hauteur estimée d'après le quartier.`}
-                </p>
-                <p className="text-[11px] text-shade-500 leading-relaxed mt-1.5">
-                  {showRange
-                    ? `Avec ces voisins un étage plus haut ou plus bas, ${
-                        mode === 'SUN' ? 'le soleil' : "l'ombre"
-                      } varie entre ${nowBand.lo} % et ${nowBand.hi} % — ${bandWidth} points d'écart autour de ${displayPct} %.`
-                    : `Monter ou baisser ces voisins d'un étage ne change presque rien : ${
-                        bandWidth === 0 ? 'aucun écart' : `${bandWidth} point`
-                      } à cette heure.`}
-                </p>
+                ))}
               </div>
-
-              {/* Description */}
-              <p className="text-sm text-shade-600 leading-relaxed mb-5">{venue.description}</p>
 
               {/* Action buttons */}
-              <div className="flex gap-3 mb-3">
+              <div className="flex gap-3 mt-5">
                 <button
                   onClick={onGetDirections}
-                  className={`flex-1 py-3.5 rounded-2xl font-bold text-sm text-white active:scale-95 transition-transform flex items-center justify-center gap-2 ${
-                    mode === 'SUN' ? 'bg-sun-500' : 'bg-shade-600'
+                  className={`flex-1 h-[52px] rounded-2xl font-bold text-base active:scale-95 transition-transform flex items-center justify-center gap-2 ${
+                    isSun ? 'bg-sun-500 text-sun-900' : 'bg-shade-600 text-white'
                   }`}
                 >
                   Y aller
@@ -280,20 +257,42 @@ export function PlaceDetailSheet({
                 </button>
                 <button
                   onClick={handleSave}
-                  className={`px-5 py-3.5 rounded-2xl font-bold text-sm active:scale-95 transition-transform ${
-                    saved ? 'bg-sun-100 text-sun-600' : 'bg-shade-100 text-shade-600'
+                  aria-label={saved ? 'Retirer des enregistrés' : 'Enregistrer'}
+                  className={`w-[52px] h-[52px] rounded-2xl text-xl active:scale-95 transition-transform ${
+                    saved ? 'bg-sun-100 text-sun-600' : 'bg-shade-100 text-shade-500'
                   }`}
                 >
-                  {saved ? 'Enregistré' : 'Enregistrer'}
+                  {saved ? '♥' : '♡'}
                 </button>
               </div>
 
-              <button
-                onClick={() => setShowReport(true)}
-                className="w-full py-2.5 text-xs font-semibold text-shade-400 active:scale-95 transition-transform"
-              >
-                Signaler une erreur
-              </button>
+              {/* Le reste, à la demande : d'où vient le chiffre, ce qu'est le lieu. */}
+              <div className="mt-4 flex items-center justify-center gap-3 text-[13px] text-shade-400">
+                <button onClick={() => setShowMore((v) => !v)} className="active:scale-95 transition-transform">
+                  {showMore ? 'Masquer' : "Plus d'infos"}
+                </button>
+                <span aria-hidden>·</span>
+                <button onClick={() => setShowReport(true)} className="active:scale-95 transition-transform">
+                  Signaler une erreur
+                </button>
+              </div>
+
+              {showMore && (
+                <div className="mt-3 rounded-2xl bg-shade-50 p-4 space-y-2 text-[13px] leading-relaxed text-shade-500">
+                  <p className="text-shade-600">{venue.description}</p>
+                  <p>{reliability}</p>
+                  {prov.total > 0 && (
+                    <p>
+                      {prov.total} bâtiments autour : {prov.tagged} mesurés, {prov.levels} déduits des étages, {prov.estimated} estimés.
+                    </p>
+                  )}
+                  <p>
+                    {showRange
+                      ? `Un étage de plus ou de moins chez les voisins ferait varier ${isSun ? 'le soleil' : "l'ombre"} de ${nowBand.lo} % à ${nowBand.hi} % en ce moment (${displayPct} % calculé).`
+                      : `Un étage de plus ou de moins chez les voisins ne change presque rien à cette heure (${displayPct} %).`}
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             /* Report flow */
