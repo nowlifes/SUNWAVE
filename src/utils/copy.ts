@@ -1,4 +1,4 @@
-import type { Recommendation, SunMode } from '@/types';
+import type { GeoPoint, Recommendation, SunMode } from '@/types';
 import { MapService } from '@/services/MapService';
 
 // ---------------------------------------------------------------------------
@@ -153,4 +153,15 @@ export function markerLabel(rec: Recommendation, mode: SunMode): string {
     return rec.arrivesTomorrow ? `demain ${hourLabel(rec.sunWindowStart)}` : `dès ${hourLabel(rec.sunWindowStart)}`;
   }
   return `${mode === 'SUN' ? rec.sunPercentage : rec.shadePercentage} %`;
+}
+
+/** La rive où l'on est, pour l'en-tête. Même découpe que les grilles de
+ *  relief (scripts/fetch-lisbon-terrain-30m.mjs) : sous le Tage, Caparica à
+ *  l'ouest de -9.2, Almada à l'est. */
+export function placeName(p: GeoPoint, inSentence = false): string {
+  const south = p.lat < 38.6925 || (p.lng > -9.185 && p.lat < 38.7);
+  if (!south) return 'Lisbonne';
+  if (p.lng >= -9.2) return 'Almada';
+  // « Le soleil quitte la Costa da Caparica », pas « quitte Costa da Caparica ».
+  return inSentence ? 'la Costa da Caparica' : 'Costa da Caparica';
 }

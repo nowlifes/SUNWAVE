@@ -29,11 +29,13 @@ interface SkyHeaderProps {
   sunset: Date;
   mode: SunMode;
   onModeChange: (mode: SunMode) => void;
+  /** La rive où l'on est — « Lisbonne » à Caparica était faux. */
+  place: string;
   /** La phrase sous l'heure : ce qu'il reste de jour. */
   children: ReactNode;
 }
 
-export function SkyHeader({ date, sunrise, sunset, mode, onModeChange, children }: SkyHeaderProps) {
+export function SkyHeader({ date, sunrise, sunset, mode, onModeChange, place, children }: SkyHeaderProps) {
   const sky = skyPalette(SunService.getSunElevation(date));
   const t = sunArcProgress(date, sunrise, sunset);
   const sun = t === null ? null : arcPoint(t);
@@ -72,7 +74,7 @@ export function SkyHeader({ date, sunrise, sunset, mode, onModeChange, children 
 
       <div className="relative flex min-h-[248px] items-start justify-between gap-3 px-6 pt-10">
         <div className="min-w-0 text-white">
-          <p className="text-[13px] font-medium opacity-90">Lisbonne</p>
+          <p className="text-[13px] font-medium opacity-90">{place}</p>
           <h1 className="mt-0.5 font-serif text-[3.2rem] leading-none tabular-nums">{formatLisbonTime(date)}</h1>
           <p className="mt-2 max-w-[15rem] text-[13.5px] leading-snug opacity-95">{children}</p>
         </div>

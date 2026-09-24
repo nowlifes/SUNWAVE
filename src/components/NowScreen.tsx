@@ -8,7 +8,7 @@ import { SunTrailService, type SunTrail } from '@/services/SunTrailService';
 import { DayRibbon } from './DayRibbon';
 import { SkyHeader } from './SkyHeader';
 import { formatLisbonTime } from '@/utils/lisbonTime';
-import { categoryLabel, formatGap, statusCopy, statusShort, travelLabel, venueCountLine } from '@/utils/copy';
+import { categoryLabel, formatGap, placeName, statusCopy, statusShort, travelLabel, venueCountLine } from '@/utils/copy';
 import { inviteText, inviteUrl, shareInvite } from '@/utils/share';
 
 // ---------------------------------------------------------------------------
@@ -142,22 +142,24 @@ export function NowScreen({
   const isSun = mode === 'SUN';
   // La nuit, l'ombre est partout : un classement « à l'ombre » n'a plus de sens.
   const nightShade = !isSun && phase !== 'day';
+  const place = placeName(userLocation);
+  const placeInSentence = placeName(userLocation, true);
 
 
   return (
     <div className="absolute inset-0 overflow-y-auto bg-paper pb-24">
       {/* --- le ciel de cette minute, et ce qu'il reste de jour ---------------- */}
-      <SkyHeader date={currentDate} sunrise={sunrise} sunset={sunset} mode={mode} onModeChange={onModeChange}>
+      <SkyHeader date={currentDate} sunrise={sunrise} sunset={sunset} mode={mode} onModeChange={onModeChange} place={place}>
         {phase === 'day' ? (
           <>
-            Le soleil quitte Lisbonne dans <span className="font-semibold">{formatGap(minutesToSunset)}</span>.
+            Le soleil quitte {placeInSentence} dans <span className="font-semibold">{formatGap(minutesToSunset)}</span>.
           </>
         ) : phase === 'before' ? (
           <>
             Le soleil se lève à <span className="font-semibold">{formatLisbonTime(sunrise)}</span>.
           </>
         ) : (
-          <>Le soleil est couché sur Lisbonne.{isSun && ' Voici où il revient en premier demain.'}</>
+          <>Le soleil est couché sur {placeInSentence}.{isSun && ' Voici où il revient en premier demain.'}</>
         )}
       </SkyHeader>
 

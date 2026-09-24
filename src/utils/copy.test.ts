@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Recommendation } from '@/types';
-import { categoryLabel, formatGap, markerLabel, statusCopy, statusShort, travelLabel, travelParts, venueCountLine } from './copy';
+import { categoryLabel, formatGap, markerLabel, statusCopy, statusShort, travelLabel, placeName, travelParts, venueCountLine } from './copy';
 
 // Une seule source pour les phrases de statut : la fiche détail disait
 // « Sunny for 5H » quand l'accueil disait « Perd le soleil dans 4h 30m ».
@@ -158,5 +158,20 @@ describe('promesse du pied de page', () => {
 
   it('des lieux encore à vérifier : comptés à part', () => {
     expect(venueCountLine(73, 62)).toBe('62 lieux vérifiés à pied, 11 encore à vérifier.');
+  });
+});
+
+describe('placeName', () => {
+  // À la Costa da Caparica, l'en-tête disait « Lisbonne » et « le soleil
+  // quitte Lisbonne » : l'app ne savait pas qu'elle avait traversé le Tage.
+  it('nomme la rive où l\'on est', () => {
+    expect(placeName({ lat: 38.7107, lng: -9.1365 })).toBe('Lisbonne');
+    expect(placeName({ lat: 38.6446, lng: -9.2366 })).toBe('Costa da Caparica');
+    expect(placeName({ lat: 38.6790, lng: -9.1580 })).toBe('Almada');
+  });
+
+  it('prend son article dans une phrase', () => {
+    expect(placeName({ lat: 38.6446, lng: -9.2366 }, true)).toBe('la Costa da Caparica');
+    expect(placeName({ lat: 38.7107, lng: -9.1365 }, true)).toBe('Lisbonne');
   });
 });
