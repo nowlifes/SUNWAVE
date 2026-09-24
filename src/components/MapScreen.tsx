@@ -14,12 +14,10 @@ import { VenueSunService } from '@/services/VenueSunService';
 import { WeatherService } from '@/services/WeatherService';
 import { SunService } from '@/services/SunService';
 import { lisbonBuildings } from '@/data/lisbonBuildings';
-import { lisbonMinutesOfDay, lisbonParts } from '@/utils/lisbonTime';
-import { ribbonCells } from '@/utils/ribbon';
-import { categoryLabel, statusCopy, travelLabel } from '@/utils/copy';
+import { lisbonMinutesOfDay } from '@/utils/lisbonTime';
+import { categoryLabel, statusCopy, travelLabel, travelParts } from '@/utils/copy';
 import {
   betterNeighbour,
-  cityLightCurve,
   hereSentence,
   hereWindow,
   hintForVisit,
@@ -30,14 +28,12 @@ import {
 } from '@/utils/mapGuide';
 
 interface MapScreenProps {
-  mode: SunMode;
   currentDate: Date;
   userLocation: GeoPoint;
   locationGranted: boolean;
   selectedVenueId: string | null;
   onVenueSelect: (venueId: string | null) => void;
   onTimeChange: (date: Date) => void;
-  onModeChange: (mode: SunMode) => void;
   onGetDirections: (venueId: string) => void;
   onRecenter: () => void;
   mapCenter: GeoPoint;
@@ -66,6 +62,9 @@ const TOP_INSET = 24;
 /** Hauteur de la barre d'onglets (BottomNav), sous la feuille. */
 const NAV_HEIGHT = 62;
 
+/** La carte cherche le soleil. */
+const MAP_MODE: SunMode = 'SUN';
+
 const STORAGE = { visits: 'sun_map_visits', headline: 'sun_map_last_headline' };
 
 /** Le stockage peut manquer (navigation privée, quota) : l'astuce et la
@@ -89,14 +88,12 @@ function writeStorage(key: string, value: string) {
 const inIt = (r: Recommendation) => r.sunLeavesInMin !== null;
 
 export function MapScreen({
-  mode,
   currentDate,
   userLocation,
   locationGranted,
   selectedVenueId,
   onVenueSelect,
   onTimeChange,
-  onModeChange,
   onGetDirections,
   onRecenter,
   mapCenter,
@@ -106,6 +103,8 @@ export function MapScreen({
   onSave,
   savedVenueIds,
 }: MapScreenProps) {
+  // La carte ne parle que du soleil : plus de bascule Soleil / Ombre ici.
+  const mode: SunMode = MAP_MODE;
   const [activeFilter, setActiveFilter] = useState<VenueCategory | 'all'>('all');
   /** Feuille tirée : 3 lieux, recherche, filtres. Repliée par défaut. */
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -179,6 +178,9 @@ export function MapScreen({
   const sunriseMin = lisbonMinutesOfDay(sunrise);
   const sunsetMin = lisbonMinutesOfDay(sunset);
   const isNow = Math.abs(currentDate.getTime() - Date.now()) < 90000;
+  // Le jour, la carte est claire ; entre coucher et lever du soleil, bleu nuit.
+  const day = nowMin >= sunriseMin && nowMin < sunsetMin;
+  const t = TONE[day ? 'day' : 'night'];
 
   // La question se cale sur le moment où elle sert : le soleil va quitter le
   // lieu (≤ 15 min) ou personne n'y a répondu récemment. Heure réelle, pas
@@ -209,25 +211,6 @@ export function MapScreen({
     setHeadline((prev) => pickHeadline(candidatesKey.split('|'), prev));
   }, [candidatesKey]);
   useEffect(() => writeStorage(STORAGE.headline, headline), [headline]);
-
-  // --- La bande de lumière du quartier (lieux à un quart d'heure).
-  const day = lisbonParts(currentDate);
-  const dayKey = `${day.year}-${day.month}-${day.day}`;
-  const nearVenueIds = useMemo(
-    () => recommendations.filter((r) => r.walkTimeMin <= NEAR_WALK_MIN).map((r) => r.venue.id).join(','),
-    [recommendations]
-  );
-  const cells = useMemo(() => {
-    void dayKey;
-    const curves = nearVenueIds
-      .split(',')
-      .map((id) => VenueService.getVenueById(id))
-      .filter((v): v is Venue => v !== undefined)
-      .map((v) => VenueSunService.getSunExposureByQuarter(v, lisbonBuildings, currentDate));
-    return ribbonCells(cityLightCurve(curves, mode), mode, sunriseMin, sunsetMin);
-    // currentDate : seul son jour compte (dayKey), pas sa minute.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nearVenueIds, dayKey, mode, sunriseMin, sunsetMin]);
 
   // --- « Ici » : l'endroit touché.
   const probe = useMemo<ProbeView | null>(() => {
@@ -345,11 +328,12 @@ export function MapScreen({
   const quietPanel = scrubbing || layer === 'probe';
 
   return (
-    <div className="relative h-full w-full bg-dusk-night">
+    <div className={`relative h-full w-full ${day ? 'bg-day' : 'bg-dusk-night'}`}>
       <MapView
         venues={venues}
         recommendations={recommendations}
         mode={mode}
+        day={day}
         currentDate={currentDate}
         userLocation={userLocation}
         mapCenter={mapCenter}
@@ -378,17 +362,15 @@ export function MapScreen({
         />
       )}
 
-      {/* En bas, à portée du pouce : la feuille, puis le curseur d'heure. */}
+      {/* En bas, à portée du pouce : la suggestion, puis le curseur d'heure. */}
       <div className="absolute inset-x-0 bottom-0 z-20" style={{ paddingBottom: NAV_HEIGHT }}>
-        <div
-          ref={panelRef}
-          className="rounded-t-[28px] border-t border-dusk-line bg-dusk-night pb-2 text-dusk-shell shadow-[0_-8px_24px_rgba(8,20,58,0.45)]"
-        >
+        <div ref={panelRef} className={`rounded-t-[28px] border-t pb-2 ${t.panel}`}>
           {layer === 'place' && selectedRec ? (
             <PlaceCard
               rec={selectedRec}
               mode={mode}
               isNow={isNow}
+              t={t}
               onClose={() => handleVenueSelect(null)}
               onGo={() => onGetDirections(selectedRec.venue.id)}
               onDetail={() => setDetailOpen(true)}
@@ -396,46 +378,47 @@ export function MapScreen({
           ) : (
             <>
               <div
-                className="cursor-grab touch-none select-none px-4 pt-2"
+                className="cursor-grab touch-none select-none px-4"
                 onPointerDown={onHandleDown}
                 onPointerUp={onHandleUp}
                 onPointerCancel={() => { dragStartY.current = null; }}
               >
-                <div className="mx-auto h-1 w-10 rounded-full bg-dusk-edge" aria-hidden="true" />
-                <div className="flex min-h-11 items-center justify-between gap-3">
-                  <button
-                    className="min-h-11 min-w-0 flex-1 text-left"
-                    aria-expanded={sheetOpen}
-                    onClick={() => { gesture(); setSheetOpen((o) => !o); }}
-                  >
-                    <h2 className="truncate font-display text-[19px] font-bold leading-tight [font-stretch:90%]">{headline}</h2>
-                  </button>
-                  {sheetOpen && (
-                  <button
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onPointerUp={(e) => e.stopPropagation()}
-                    onClick={onRecenter}
-                    aria-label="Me recentrer"
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dusk-edge text-dusk-shell active:scale-95 transition-transform motion-reduce:transition-none"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                      <circle cx="12" cy="12" r="4" />
-                      <line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" />
-                      <line x1="2" y1="12" x2="6" y2="12" /><line x1="18" y1="12" x2="22" y2="12" />
-                    </svg>
-                  </button>
-                  )}
-                </div>
+                <button
+                  className="flex min-h-6 w-full items-center justify-center"
+                  aria-expanded={sheetOpen}
+                  aria-label={sheetOpen ? 'Replier la liste' : 'Voir plus de lieux'}
+                  onClick={() => { gesture(); setSheetOpen((o) => !o); }}
+                >
+                  <span className={`block h-1 w-10 rounded-full ${t.handle}`} aria-hidden="true" />
+                </button>
+                {sheetOpen && (
+                  <div className="flex min-h-11 items-center justify-between gap-3">
+                    <h2 className="min-w-0 flex-1 truncate font-display text-[19px] font-bold leading-tight [font-stretch:90%]">{headline}</h2>
+                    <button
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onPointerUp={(e) => e.stopPropagation()}
+                      onClick={onRecenter}
+                      aria-label="Me recentrer"
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border active:scale-95 transition-transform motion-reduce:transition-none ${t.ghost}`}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <circle cx="12" cy="12" r="4" />
+                        <line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" />
+                        <line x1="2" y1="12" x2="6" y2="12" /><line x1="18" y1="12" x2="22" y2="12" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {!quietPanel && (
                 <div className="px-4">
                   {!sheetOpen && best && (
-                    <BestRow rec={best} mode={mode} onOpen={() => handleVenueSelect(best.venue.id)} onGo={() => onGetDirections(best.venue.id)} />
+                    <BestRow rec={best} mode={mode} t={t} onOpen={() => handleVenueSelect(best.venue.id)} onGo={() => onGetDirections(best.venue.id)} />
                   )}
                   {sheetOpen && (
                     <>
-                      <ul className="divide-y divide-dusk-line">
+                      <ul className={`divide-y ${t.divide}`}>
                         {rows.map((r) => (
                           <li key={r.venue.id}>
                             <button
@@ -444,22 +427,22 @@ export function MapScreen({
                             >
                               <span className="min-w-0 flex-1">
                                 <span className="block truncate text-[15px] font-semibold">{r.venue.name}</span>
-                                <span className="block truncate text-[12.5px] text-dusk-sub">
+                                <span className={`block truncate text-[12.5px] ${t.sub}`}>
                                   {categoryLabel(r.venue.category)} · {travelLabel(r)}
                                 </span>
                               </span>
                               <span className="flex shrink-0 flex-col items-end gap-1.5">
-                                <span className={`font-mono text-[13px] font-semibold ${mode === 'SUN' ? 'text-dusk-glow' : 'text-dusk-sub'}`}>
+                                <span className={`font-mono text-[13px] font-semibold ${t.accent}`}>
                                   {inIt(r) ? r.sunWindowEnd : r.sunWindowStart ? `dès ${r.sunWindowStart}` : ''}
                                 </span>
-                                <DayRibbon venue={r.venue} mode={mode} date={currentDate} sunrise={sunrise} sunset={sunset} size="mini" tone="night" />
+                                <DayRibbon venue={r.venue} mode={mode} date={currentDate} sunrise={sunrise} sunset={sunset} size="mini" tone={day ? 'day' : 'night'} />
                               </span>
                             </button>
                           </li>
                         ))}
                       </ul>
                       <div className="mt-2">
-                        <SearchBar tone="night" placeholder="Chercher un lieu" onSelectVenue={handleSearchSelect} />
+                        <SearchBar tone={day ? 'day' : 'night'} placeholder="Chercher un lieu" onSelectVenue={handleSearchSelect} />
                       </div>
                       <div className="no-scrollbar -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4">
                         {FILTER_CATEGORIES.map((cat) => (
@@ -468,7 +451,7 @@ export function MapScreen({
                             onClick={() => { setActiveFilter(cat.value); setSearchVenue(null); }}
                             aria-pressed={activeFilter === cat.value}
                             className={`min-h-11 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold ${
-                              activeFilter === cat.value ? 'bg-dusk-shell text-dusk-night' : 'border border-dusk-line text-dusk-sub'
+                              activeFilter === cat.value ? t.chipOn : `border ${t.chip}`
                             }`}
                           >
                             {cat.label}
@@ -483,14 +466,11 @@ export function MapScreen({
           )}
 
           <TimeSlider
-            mode={mode}
             currentDate={currentDate}
             onTimeChange={onTimeChange}
-            cells={cells}
             onScrubStart={handleScrubStart}
             onScrubEnd={handleScrubEnd}
-            trailing={<ModeToggle mode={mode} onModeChange={onModeChange} />}
-            expanded={sheetOpen}
+            day={day}
             hint={hint}
           />
         </div>
@@ -513,54 +493,84 @@ export function MapScreen({
   );
 }
 
-function ModeToggle({ mode, onModeChange }: { mode: SunMode; onModeChange: (m: SunMode) => void }) {
-  return (
-    <div className="flex shrink-0 rounded-full border border-dusk-line bg-dusk-panel p-0.5" role="group" aria-label="Chercher">
-      {(['SUN', 'SHADE'] as const).map((m) => (
-        <button
-          key={m}
-          onClick={() => onModeChange(m)}
-          aria-pressed={mode === m}
-          className={`min-h-10 rounded-full px-3 text-[13px] font-bold min-[360px]:px-3.5 transition-colors duration-300 motion-reduce:transition-none ${
-            mode === m ? (m === 'SUN' ? 'bg-dusk-fire text-dusk-night' : 'bg-dusk-sub text-dusk-night') : 'text-dusk-sub'
-          }`}
-        >
-          {m === 'SUN' ? 'Soleil' : 'Ombre'}
-        </button>
-      ))}
-    </div>
-  );
+/** Les classes de la feuille du bas : claire le jour, bleu nuit la nuit. */
+interface Tone {
+  panel: string;
+  handle: string;
+  sub: string;
+  accent: string;
+  divide: string;
+  ghost: string;
+  chip: string;
+  chipOn: string;
+  /** Le rond « soleil » / « ombre » devant le nom. */
+  dotSun: string;
+  dotShade: string;
 }
+const TONE: Record<'day' | 'night', Tone> = {
+  day: {
+    panel: 'border-day-line bg-white text-dusk-night shadow-[0_-6px_20px_rgba(11,26,69,0.14)]',
+    handle: 'bg-day-line',
+    sub: 'text-day-sub',
+    accent: 'text-day-ember',
+    divide: 'divide-day-line',
+    ghost: 'border-day-line text-day-sub',
+    chip: 'border-day-line text-day-sub',
+    chipOn: 'bg-dusk-night text-white',
+    dotSun: 'border-day-ember bg-dusk-glow',
+    dotShade: 'border-[#7A88A8] bg-white',
+  },
+  night: {
+    panel: 'border-dusk-line bg-dusk-night text-dusk-shell shadow-[0_-8px_24px_rgba(8,20,58,0.45)]',
+    handle: 'bg-dusk-edge',
+    sub: 'text-dusk-sub',
+    accent: 'text-dusk-glow',
+    divide: 'divide-dusk-line',
+    ghost: 'border-dusk-edge text-dusk-shell',
+    chip: 'border-dusk-line text-dusk-sub',
+    chipOn: 'bg-dusk-shell text-dusk-night',
+    dotSun: 'border-day-ember bg-dusk-glow',
+    dotShade: 'border-dusk-dim bg-dusk-night',
+  },
+};
 
 /** « Au soleil jusqu'à 19:24 », ou la phrase de statut habituelle. */
-function StatusLine({ rec, mode, isNow, lead = false }: { rec: Recommendation; mode: SunMode; isNow: boolean; lead?: boolean }) {
-  const accent = mode === 'SUN' ? 'text-dusk-glow' : 'text-dusk-sub';
-  const cap = (t: string) => (lead ? t.charAt(0).toUpperCase() + t.slice(1) : t.charAt(0).toLowerCase() + t.slice(1));
+function StatusLine({ rec, mode, isNow, t, lead = false }: { rec: Recommendation; mode: SunMode; isNow: boolean; t: Tone; lead?: boolean }) {
+  const cap = (s: string) => (lead ? s.charAt(0).toUpperCase() + s.slice(1) : s.charAt(0).toLowerCase() + s.slice(1));
   if (inIt(rec) && rec.sunWindowEnd) {
     return (
       <>
         {cap(`${isNow ? '' : 'à cette heure, '}${mode === 'SUN' ? 'au soleil' : "à l'ombre"} jusqu'à`)}{' '}
-        <span className={`font-mono font-semibold ${accent}`}>{rec.sunWindowEnd}</span>
+        <span className={`font-mono font-semibold ${t.accent}`}>{rec.sunWindowEnd}</span>
       </>
     );
   }
   return <>{cap(statusCopy(rec, mode).title)}</>;
 }
 
-function BestRow({ rec, mode, onOpen, onGo }: { rec: Recommendation; mode: SunMode; onOpen: () => void; onGo: () => void }) {
+/** « 7 min » (à pied) : la durée seule, la carte dit déjà qu'on marche. */
+function walkShort(rec: Recommendation): string {
+  const p = travelParts(rec);
+  return p.unit === 'min à pied' ? `${p.value} min` : p.value;
+}
+
+function BestRow({ rec, mode, t, onOpen, onGo }: { rec: Recommendation; mode: SunMode; t: Tone; onOpen: () => void; onGo: () => void }) {
   return (
     <div className="flex items-center gap-3 pb-1">
-      <button onClick={onOpen} className="min-h-12 min-w-0 flex-1 text-left active:opacity-70">
-        <span className="block truncate text-[16px] font-semibold">{rec.venue.name}</span>
-        <span className="line-clamp-2 block text-[13px] leading-snug text-dusk-sub">
-          {travelLabel(rec)} · <StatusLine rec={rec} mode={mode} isNow />
+      <button onClick={onOpen} className="flex min-h-12 min-w-0 flex-1 items-center gap-3 text-left active:opacity-70">
+        <span aria-hidden="true" className={`block h-4 w-4 shrink-0 rounded-full border-[2.5px] ${inIt(rec) ? t.dotSun : t.dotShade}`} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[16px] font-bold">
+            {shortVenueName(rec.venue.name)} <span className={`font-medium ${t.sub}`}>· {walkShort(rec)}</span>
+          </span>
+          <span className={`line-clamp-2 block text-[13px] leading-snug ${t.sub}`}>
+            <StatusLine rec={rec} mode={mode} isNow t={t} />
+          </span>
         </span>
       </button>
       <button
         onClick={onGo}
-        className={`min-h-11 shrink-0 rounded-full px-5 text-[15px] font-bold text-dusk-night active:scale-[0.97] transition-transform motion-reduce:transition-none ${
-          mode === 'SUN' ? 'bg-dusk-fire' : 'bg-dusk-sub'
-        }`}
+        className="min-h-11 shrink-0 rounded-full bg-dusk-fire px-5 text-[15px] font-bold text-dusk-night active:scale-[0.97] transition-transform motion-reduce:transition-none"
       >
         Y aller
       </button>
@@ -572,6 +582,7 @@ function PlaceCard({
   rec,
   mode,
   isNow,
+  t,
   onClose,
   onGo,
   onDetail,
@@ -579,6 +590,7 @@ function PlaceCard({
   rec: Recommendation;
   mode: SunMode;
   isNow: boolean;
+  t: Tone;
   onClose: () => void;
   onGo: () => void;
   onDetail: () => void;
@@ -588,17 +600,14 @@ function PlaceCard({
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <h2 className="font-display text-[21px] font-bold leading-tight [font-stretch:90%] [text-wrap:balance]">{rec.venue.name}</h2>
-          <p className="mt-0.5 text-[13.5px] leading-snug text-dusk-sub">
-            <span className="text-dusk-shell">
-              <StatusLine rec={rec} mode={mode} isNow={isNow} lead />
-            </span>{' '}
-            · {travelLabel(rec)}
+          <p className={`mt-0.5 text-[13.5px] leading-snug ${t.sub}`}>
+            <StatusLine rec={rec} mode={mode} isNow={isNow} t={t} lead /> · {travelLabel(rec)}
           </p>
         </div>
         <button
           onClick={onClose}
           aria-label="Fermer"
-          className="-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dusk-edge text-dusk-sub active:scale-95 transition-transform motion-reduce:transition-none"
+          className={`-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border active:scale-95 transition-transform motion-reduce:transition-none ${t.ghost}`}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <line x1="18" y1="6" x2="6" y2="18" />
@@ -609,15 +618,13 @@ function PlaceCard({
       <div className="mt-3 flex gap-2.5">
         <button
           onClick={onGo}
-          className={`min-h-12 flex-1 rounded-full text-[16px] font-bold text-dusk-night active:scale-[0.98] transition-transform motion-reduce:transition-none ${
-            mode === 'SUN' ? 'bg-dusk-fire' : 'bg-dusk-sub'
-          }`}
+          className="min-h-12 flex-1 rounded-full bg-dusk-fire text-[16px] font-bold text-dusk-night active:scale-[0.98] transition-transform motion-reduce:transition-none"
         >
           Y aller
         </button>
         <button
           onClick={onDetail}
-          className="min-h-12 flex-1 rounded-full border border-dusk-edge text-[15px] font-semibold active:scale-[0.98] transition-transform motion-reduce:transition-none"
+          className={`min-h-12 flex-1 rounded-full border text-[15px] font-semibold active:scale-[0.98] transition-transform motion-reduce:transition-none ${t.ghost}`}
         >
           Voir la fiche
         </button>

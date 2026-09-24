@@ -151,9 +151,9 @@ const mPerDegLng = (lat: number) => 111320 * Math.cos((lat * Math.PI) / 180);
  * jusqu'aux `minCount` lieux les plus proches quand l'anneau en compte moins
  * (une carte vide n'explique rien). [[ouest, sud], [est, nord]].
  */
-export function initialFrame(center: GeoPoint, points: GeoPoint[], minCount: number): [[number, number], [number, number]] {
-  const dLat = WALK_RING_M / M_PER_DEG_LAT;
-  const dLng = WALK_RING_M / mPerDegLng(center.lat);
+export function initialFrame(center: GeoPoint, points: GeoPoint[], minCount: number, radiusM: number = WALK_RING_M): [[number, number], [number, number]] {
+  const dLat = radiusM / M_PER_DEG_LAT;
+  const dLng = radiusM / mPerDegLng(center.lat);
   let w = center.lng - dLng;
   let e = center.lng + dLng;
   let s = center.lat - dLat;
@@ -161,7 +161,7 @@ export function initialFrame(center: GeoPoint, points: GeoPoint[], minCount: num
 
   const dist = (p: GeoPoint) =>
     Math.hypot((p.lat - center.lat) * M_PER_DEG_LAT, (p.lng - center.lng) * mPerDegLng(center.lat));
-  const inside = points.filter((p) => dist(p) <= WALK_RING_M).length;
+  const inside = points.filter((p) => dist(p) <= radiusM).length;
   if (inside < minCount) {
     for (const p of [...points].sort((a, b) => dist(a) - dist(b)).slice(0, minCount)) {
       w = Math.min(w, p.lng);

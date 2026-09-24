@@ -245,14 +245,12 @@ export default function App() {
 
         {screen === 'map' && (
           <MapScreen
-            mode={mode}
             currentDate={currentDate}
             userLocation={userLocation}
             locationGranted={locationGranted}
             selectedVenueId={selectedVenueId}
             onVenueSelect={handleVenueSelect}
             onTimeChange={handleTimeChange}
-            onModeChange={handleModeChange}
             onGetDirections={handleGetDirections}
             onRecenter={handleRecenter}
             mapCenter={mapCenter}
