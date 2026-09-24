@@ -330,21 +330,12 @@ export function MapScreen({
         insets={insets}
       />
 
-      {/* En haut, une seule ligne : où l'on est, et ce que veulent dire les couleurs. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-2 px-4 pt-[calc(env(safe-area-inset-top)+12px)]">
+      {/* En haut, une seule chose : où l'on est. La bascule Soleil / Ombre vit
+          en bas, avec l'heure ; une légende ici la répétait. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center px-4 pt-[calc(env(safe-area-inset-top)+12px)]">
         <div className="pointer-events-auto flex min-w-0 items-center gap-1.5 rounded-full border border-dusk-line bg-dusk-panel px-3 py-2 text-[13px] text-dusk-shell">
           <span className="truncate font-semibold">{place}</span>
           <span className="shrink-0 tabular-nums text-dusk-sub">{weather.temperature}&nbsp;°C</span>
-        </div>
-        <div className="pointer-events-auto flex shrink-0 items-center gap-2.5 rounded-full border border-dusk-line bg-dusk-panel px-3 py-2 text-[13px] font-medium text-dusk-shell">
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-3.5 rounded-full bg-dusk-fire" aria-hidden="true" />
-            Soleil
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-3.5 rounded-full border border-dusk-sub bg-[#233F8C]" aria-hidden="true" />
-            Ombre
-          </span>
         </div>
       </div>
 
@@ -372,7 +363,7 @@ export function MapScreen({
                 onPointerCancel={() => { dragStartY.current = null; }}
               >
                 <div className="mx-auto h-1 w-10 rounded-full bg-dusk-edge" aria-hidden="true" />
-                <div className="flex min-h-12 items-center justify-between gap-3 pt-1">
+                <div className="flex min-h-11 items-center justify-between gap-3">
                   <button
                     className="min-h-11 min-w-0 flex-1 text-left"
                     aria-expanded={sheetOpen}
@@ -380,6 +371,7 @@ export function MapScreen({
                   >
                     <h2 className="truncate font-display text-[19px] font-bold leading-tight [font-stretch:90%]">{headline}</h2>
                   </button>
+                  {sheetOpen && (
                   <button
                     onPointerDown={(e) => e.stopPropagation()}
                     onPointerUp={(e) => e.stopPropagation()}
@@ -393,6 +385,7 @@ export function MapScreen({
                       <line x1="2" y1="12" x2="6" y2="12" /><line x1="18" y1="12" x2="22" y2="12" />
                     </svg>
                   </button>
+                  )}
                 </div>
               </div>
 
@@ -450,12 +443,6 @@ export function MapScreen({
             </>
           )}
 
-          {hint && (
-            <p className="px-4 pt-1.5 text-[12.5px] font-medium text-dusk-glow" role="status">
-              {hint}
-            </p>
-          )}
-
           <TimeSlider
             mode={mode}
             currentDate={currentDate}
@@ -464,6 +451,8 @@ export function MapScreen({
             onScrubStart={handleScrubStart}
             onScrubEnd={handleScrubEnd}
             trailing={<ModeToggle mode={mode} onModeChange={onModeChange} />}
+            expanded={sheetOpen}
+            hint={hint}
           />
         </div>
       </div>

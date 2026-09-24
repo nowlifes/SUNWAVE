@@ -20,6 +20,10 @@ interface TimeSliderProps {
   onScrubEnd?: () => void;
   /** À droite de l'heure : la bascule Soleil / Ombre. */
   trailing?: ReactNode;
+  /** Feuille tirée : la ligne de l'heure reste visible sans toucher la bande. */
+  expanded?: boolean;
+  /** L'astuce d'usage, posée sur la bande tant qu'on n'y touche pas. */
+  hint?: string | null;
 }
 
 const SPAN = RIBBON_END_MIN - RIBBON_START_MIN;
@@ -31,7 +35,7 @@ const SETTLE_MS = 1500;
 
 const pctOf = (min: number) => Math.max(0, Math.min(100, ((min - RIBBON_START_MIN) / SPAN) * 100));
 
-export function TimeSlider({ mode, currentDate, onTimeChange, cells, onScrubStart, onScrubEnd, trailing }: TimeSliderProps) {
+export function TimeSlider({ mode, currentDate, onTimeChange, cells, onScrubStart, onScrubEnd, trailing, expanded = false, hint = null }: TimeSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   // Lu dans les gestionnaires de pointeur : une ref, pas un état (un état
   // lu dans onPointerMove serait celui du rendu d'avant).
@@ -118,8 +122,14 @@ export function TimeSlider({ mode, currentDate, onTimeChange, cells, onScrubStar
     [nowMin, setFromMinutes]
   );
 
+  // Repliée, la bande est seule : l'heure et la bascule ne viennent qu'au
+  // toucher, feuille tirée, ou quand l'heure n'est plus maintenant (pour
+  // pouvoir y revenir).
+  const showHeader = active || expanded || !isNow;
+
   return (
     <div className="px-4">
+      {showHeader && (
       <div className="flex min-h-11 items-center justify-between gap-3">
         <div className="flex min-w-0 items-baseline gap-2">
           <span className="font-mono text-[22px] font-semibold leading-none tabular-nums text-dusk-shell">
@@ -139,6 +149,12 @@ export function TimeSlider({ mode, currentDate, onTimeChange, cells, onScrubStar
         </div>
         {trailing}
       </div>
+      )}
+      {hint && !active && (
+        <p className="-mb-2.5 pt-1 text-[12px] font-medium text-dusk-glow" role="status">
+          {hint}
+        </p>
+      )}
 
       <div
         ref={trackRef}
@@ -177,15 +193,12 @@ export function TimeSlider({ mode, currentDate, onTimeChange, cells, onScrubStar
         </div>
       </div>
 
-      <div
-        className={`relative -mt-1 h-4 font-mono text-[11px] tabular-nums text-dusk-dim transition-opacity duration-200 motion-reduce:transition-none ${
-          active ? 'opacity-100' : 'opacity-0'
-        }`}
-        aria-hidden="true"
-      >
-        <span className="absolute left-0">06:00</span>
-        <span className="absolute right-0">21:00</span>
-      </div>
+      {active && (
+        <div className="relative -mt-1 h-4 font-mono text-[11px] tabular-nums text-dusk-dim" aria-hidden="true">
+          <span className="absolute left-0">06:00</span>
+          <span className="absolute right-0">21:00</span>
+        </div>
+      )}
     </div>
   );
 }
