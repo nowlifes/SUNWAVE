@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { beamCone, beamRay, edgePoint, haloLook, isOnScreen, lightColor, beamColor } from './halo';
+import { beamCone, beamRay, coneCss, edgePoint, haloLook, isOnScreen, lightColor, beamColor, rayCss } from './halo';
 
 const hexLum = (hex: string) => parseInt(hex.slice(1, 3), 16) + parseInt(hex.slice(3, 5), 16) + parseInt(hex.slice(5, 7), 16);
 
@@ -120,5 +120,31 @@ describe('halo de bord', () => {
   it('cible au centre : pas de NaN', () => {
     const p = edgePoint({ x: 195, y: 300 }, rect, 30);
     expect(Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.angle)).toBe(true);
+  });
+});
+
+describe('le faisceau ne se repeint que quand la lumière change vraiment', () => {
+  const W = 390;
+  const H = 700;
+  it('un pas de curseur (quelques degrés d’azimut) ne change que la rotation', () => {
+    const a = coneCss(beamCone(200, 41, W, H)!);
+    const b = coneCss(beamCone(204, 42, W, H)!);
+    expect(a.background).toBe(b.background);
+    expect(a.mask).toBe(b.mask);
+    expect(a.transform).not.toBe(b.transform);
+  });
+  it('le carré tourne autour du centre de l’écran et le couvre', () => {
+    const c = beamCone(90, 20, W, H)!;
+    const css = coneCss(c);
+    expect(c.side).toBeGreaterThanOrEqual(Math.hypot(W, H));
+    expect(css.transform).toContain('rotate(90deg)');
+    expect(css.transform).toContain(`translate(${(W - c.side) / 2}px, ${(H - c.side) / 2}px)`);
+  });
+  it('le rayon suit le lieu par transform seulement', () => {
+    const a = rayCss(beamRay(250, 10, { x: 100, y: 200 }, W, H)!);
+    const b = rayCss(beamRay(250, 10, { x: 180, y: 420 }, W, H)!);
+    expect(a.background).toBe(b.background);
+    expect(a.height).toBe(b.height);
+    expect(a.transform).not.toBe(b.transform);
   });
 });

@@ -1,6 +1,18 @@
 import { useId } from 'react';
 import { LIGHT } from '@/utils/palette';
-import { haloParts, type HaloSpec } from '@/utils/haloMarkup';
+import { haloParts, liveParts, type HaloSpec, type HaloTone, type LiveLevel } from '@/utils/haloMarkup';
+
+/** « Il reste des places ? » : pleine = des places, à moitié = presque plein, vide = complet. */
+export function LiveGlyph({ level, size = 20, tone = 'night', className = '' }: { level: LiveLevel; size?: number; tone?: HaloTone; className?: string }) {
+  const { ring, fill, fraction } = liveParts(level, tone);
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className={`block shrink-0 ${className}`}>
+      {fraction === 1 && <circle cx="12" cy="12" r="7" fill={fill} />}
+      {fraction > 0 && fraction < 1 && <path d="M12 5a7 7 0 0 0 0 14z" fill={fill} />}
+      <circle cx="12" cy="12" r="7" fill="none" stroke={fraction === 1 ? fill : ring} strokeWidth="2.4" />
+    </svg>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Le système d'icônes halo, en React. Trois états, une seule grammaire :

@@ -2,6 +2,7 @@ import type { Venue, SunMode } from '@/types';
 import type { LiveAnswer } from '@/services/LiveReportService';
 import { LIVE_ANSWERS } from '@/utils/live';
 import { shortVenueName } from '@/utils/mapGuide';
+import { LiveGlyph } from './Halo';
 
 interface LiveQuestionProps {
   venue: Venue;
@@ -21,7 +22,7 @@ export function LiveQuestion({ venue, mode, onAnswer, onDismiss }: LiveQuestionP
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[12px] font-semibold tracking-wide text-dusk-dim">{shortVenueName(venue.name).toUpperCase()} · TU ES SUR PLACE</p>
+          <p className="text-[12.5px] font-semibold text-dusk-sub">{shortVenueName(venue.name)} · tu es sur place</p>
           <p className="mt-1 text-[16px] font-semibold leading-snug">
             Il reste des places {mode === 'SUN' ? 'au soleil' : "à l'ombre"} ?
           </p>
@@ -39,9 +40,9 @@ export function LiveQuestion({ venue, mode, onAnswer, onDismiss }: LiveQuestionP
           <button
             key={a.answer}
             onClick={() => onAnswer(a.answer)}
-            className="min-h-11 flex-1 rounded-xl bg-dusk-cobalt px-1 py-2 text-[13px] font-semibold active:scale-95 transition-transform"
+            className="min-h-11 flex-1 rounded-xl border border-dusk-line bg-dusk-deep px-1 py-2 text-[13px] font-semibold active:scale-95 transition-transform motion-reduce:transition-none"
           >
-            <span className="block text-lg leading-tight">{a.emoji}</span>
+            <LiveGlyph level={a.answer} size={20} className="mx-auto mb-0.5" />
             {a.label}
           </button>
         ))}

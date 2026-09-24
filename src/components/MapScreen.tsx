@@ -16,7 +16,7 @@ import { SunService } from '@/services/SunService';
 import { lisbonBuildings } from '@/data/lisbonBuildings';
 import { lisbonMinutesOfDay } from '@/utils/lisbonTime';
 import { ribbonCells } from '@/utils/ribbon';
-import { categoryLabel, placeName, statusCopy, travelLabel } from '@/utils/copy';
+import { categoryLabel, statusCopy, travelLabel } from '@/utils/copy';
 import {
   betterNeighbour,
   cityLightCurve,
@@ -60,8 +60,9 @@ const FILTER_CATEGORIES: { value: VenueCategory | 'all'; label: string }[] = [
 
 /** « À pied », pour la feuille : un quart d'heure de marche. */
 const NEAR_WALK_MIN = 15;
-/** En-tête + marge : ni pastille ni cadrage dessous. */
-const TOP_INSET = 64;
+/** Marge du haut (encoche) : ni pastille ni cadrage dessous. Plus d'en-tête :
+ *  à l'arrivée la carte ne montre que ses pastilles, toi et la feuille. */
+const TOP_INSET = 24;
 /** Hauteur de la barre d'onglets (BottomNav), sous la feuille. */
 const NAV_HEIGHT = 62;
 
@@ -327,7 +328,6 @@ export function MapScreen({
   }, []);
   const insets = useMemo(() => ({ top: TOP_INSET, bottom: panelHeight + NAV_HEIGHT }), [panelHeight]);
 
-  const place = placeName(userLocation);
   const layer = selectedRec ? 'place' : probePoint ? 'probe' : 'list';
   const quietPanel = scrubbing || layer === 'probe';
 
@@ -350,18 +350,13 @@ export function MapScreen({
         probe={probe}
         onProbeClose={() => setProbePoint(null)}
         insets={insets}
+        scrubbing={scrubbing}
+        onRecenter={onRecenter}
       />
 
-      {/* En haut, une seule chose : où l'on est. La bascule Soleil / Ombre vit
-          en bas, avec l'heure ; une légende ici la répétait. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center px-4 pt-[calc(env(safe-area-inset-top)+12px)]">
-        <div className="pointer-events-auto flex min-w-0 items-center gap-1.5 rounded-full border border-dusk-line bg-dusk-panel px-3 py-2 text-[13px] text-dusk-shell">
-          <span className="truncate font-semibold">{place}</span>
-          <span className="shrink-0 tabular-nums text-dusk-sub">{weather.temperature}&nbsp;°C</span>
-        </div>
-      </div>
-
-      {askLive && !detailOpen && (
+      {/* « Il reste des places ? » : une couche flottante, jamais par-dessus une
+          autre (lieu choisi, bulle « ici », feuille tirée, glissement d'heure). */}
+      {askLive && !detailOpen && layer === 'list' && !sheetOpen && !scrubbing && (
         <LiveQuestion
           venue={askLive}
           mode={mode}

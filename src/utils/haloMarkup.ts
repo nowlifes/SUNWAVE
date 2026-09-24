@@ -61,6 +61,27 @@ export function haloSvg(spec: HaloSpec, size: number): string {
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true" style="display:block;overflow:visible">${g}${c}</svg>`;
 }
 
+export type LiveLevel = 'plenty' | 'few' | 'none';
+
+/** La jauge « il reste des places » dans la grammaire halo : pleine de
+ *  lumière = des places, à moitié = presque plein, éteinte = complet. Remplace
+ *  le feu tricolore vert/orange/rouge, qui ajoutait deux couleurs à l'app. */
+export function liveParts(level: LiveLevel, tone: HaloTone = 'night') {
+  const ring = tone === 'night' ? NIGHT.sub : DAY.sub;
+  return { ring, fill: LIGHT.pale, fraction: level === 'plenty' ? 1 : level === 'few' ? 0.5 : 0 };
+}
+
+export function liveGlyphSvg(level: LiveLevel, size: number, tone: HaloTone = 'night'): string {
+  const { ring, fill, fraction } = liveParts(level, tone);
+  const inner =
+    fraction === 1
+      ? `<circle cx="12" cy="12" r="7" fill="${fill}"/>`
+      : fraction > 0
+        ? `<path d="M12 5a7 7 0 0 0 0 14z" fill="${fill}"/>`
+        : '';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true" style="display:block">${inner}<circle cx="12" cy="12" r="7" fill="none" stroke="${fraction === 1 ? fill : ring}" stroke-width="2.4"/></svg>`;
+}
+
 /** L'anneau qui bat autour de la destination (classe .halo-pulse, index.css). */
 export function haloPulseMarkup(size: number): string {
   const d = Math.round((size * 19) / 24);

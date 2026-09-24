@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useMemo, useSyncExternalStore } from 'react';
+import { useRef, useEffect, useState, useMemo, useCallback, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl';
 import type { GeoJSONSource } from 'maplibre-gl';
@@ -13,7 +13,7 @@ import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&ur
 import type { Venue, SunMode, GeoPoint, Recommendation } from '@/types';
 import { SunService } from '@/services/SunService';
 import { liveReports } from '@/services/LiveReportService';
-import { LIVE_COLOR, LIVE_SHORT } from '@/utils/live';
+import { LIVE_SHORT } from '@/utils/live';
 import { ShadowService } from '@/services/ShadowService';
 import { lisbonBuildings } from '@/data/lisbonBuildings';
 import { lisbonTerrain30 } from '@/data/lisbonTerrain30';
@@ -21,6 +21,11 @@ import { caparicaTerrain30 } from '@/data/caparicaTerrain30';
 import { almadaTerrain30 } from '@/data/almadaTerrain30';
 import { WALK_RING_M, initialFrame, pillLabel } from '@/utils/mapGuide';
 import { gridRuns } from '@/utils/landMask';
+import { travelParts } from '@/utils/copy';
+import { LIT_MIN_ALT, beamCone, beamRay, coneCss, edgePoint, isOnScreen, rayCss, type BeamCss, type Rect } from '@/utils/halo';
+import { haloPulseMarkup, haloSvg, liveGlyphSvg } from '@/utils/haloMarkup';
+import { LIGHT, NIGHT } from '@/utils/palette';
+import { HaloIcon } from './Halo';
 
 setWorkerUrl(maplibreWorkerUrl);
 
@@ -60,23 +65,22 @@ interface MapViewProps {
   onProbeClose: () => void;
   /** Ce que cachent l'en-tête et la feuille du bas : ni pastille ni cadrage dessous. */
   insets: MapInsets;
+  /** On glisse l'heure : le soleil se montre au bord, côté azimut. */
+  scrubbing?: boolean;
+  /** « Revenir sur moi », quand toi est sorti de l'écran. */
+  onRecenter?: () => void;
 }
 
 // Palette « raccord » : un seul bleu nuit en paliers. L'eau est le palier le
 // plus profond, la ville la nuit, l'ombre un cran plus sombre que le sol ; la
-// seule autre couleur est la lumière.
+// seule autre couleur est la lumière, portée par le faisceau et les halos.
 const C = {
-  night: '#0B1A45',
-  water: '#071233',
-  sunVeil: '#FF6A2B',
-  shadow: '#08143A',
-  building: '#1A2F69',
-  sun: '#FF6A2B',
-  shade: '#AFC0E8',
-  shell: '#FFF6EC',
-  sub: '#AFC0E8',
-  surface: '#122457',
-  edge: '#3A5099',
+  night: NIGHT.night,
+  water: NIGHT.water,
+  shadow: NIGHT.deep,
+  building: NIGHT.p2,
+  sub: NIGHT.sub,
+  shell: NIGHT.shell,
 };
 
 const CARTO_KEY = import.meta.env.VITE_CARTO_API_KEY ?? '';
@@ -86,6 +90,11 @@ const cartoTiles = (style: string) =>
     // silencieusement ignorée et les tuiles servies en quota anonyme.
     (s) => `https://${s}.basemaps.cartocdn.com/rastertiles/${style}/{z}/{x}/{y}@2x.png${CARTO_KEY ? `?key=${CARTO_KEY}` : ''}`
   );
+
+/** Fond CARTO : mi-opacité sur la nuit ; un cran plus bas quand un lieu est
+ *  choisi (le reste de la carte s'assombrit, le rayon ressort). */
+const BASE_OPACITY = 0.45;
+const BASE_OPACITY_CHOSEN = 0.3;
 
 const MAP_STYLE: import('maplibre-gl').StyleSpecification = {
   version: 8,
@@ -106,7 +115,7 @@ const MAP_STYLE: import('maplibre-gl').StyleSpecification = {
     { id: 'night', type: 'background', paint: { 'background-color': C.night } },
     // Le fond CARTO sombre est gris neutre : posé à mi-opacité sur la nuit
     // océan, il en prend la teinte et garde rues, Tage et parcs lisibles.
-    { id: 'base', type: 'raster', source: 'base', paint: { 'raster-opacity': 0.45, 'raster-contrast': 0.3 } },
+    { id: 'base', type: 'raster', source: 'base', paint: { 'raster-opacity': BASE_OPACITY, 'raster-contrast': 0.3 } },
     { id: 'labels', type: 'raster', source: 'labels', paint: { 'raster-opacity': 0.95 }, minzoom: 12 },
   ],
 };
@@ -129,12 +138,11 @@ const FOOTPRINTS = {
 
 const EMPTY = { type: 'FeatureCollection' as const, features: [] };
 
-// Terre et eau d'après les grilles de relief à 30 m (voir landMask.ts).
+// Eau d'après les grilles de relief à 30 m (voir landMask.ts). Plus de voile
+// orange sur la terre : posé sur le bleu il virait au prune ; la lumière est
+// désormais le faisceau.
 const TERRAIN_GRIDS = [lisbonTerrain30, caparicaTerrain30, almadaTerrain30];
-const LAND = gridRuns(TERRAIN_GRIDS, 'land');
 const WATER = gridRuns(TERRAIN_GRIDS, 'water');
-/** Voile soleil : 12 % au plus, sinon la ville entière vire au brun. */
-const SUN_VEIL_OPACITY = 0.12;
 
 /** L'anneau de 10 min à pied, en polygone de 64 côtés. */
 function ringCoords(center: GeoPoint, radiusM: number): [number, number][] {
@@ -160,9 +168,40 @@ const MAX_PILLS = 6;
  *  de lieux dans ce qu'on cherche ; la nuit ou sans soleil, elles comblent. */
 const MAX_QUIET_WITH_LOUD = 1;
 const PILL_GAP_PX = 4;
+/** Glyphe halo d'une pastille, et sa cible tactile. */
+const GLYPH_PX = 30;
+const HIT_PX = 44;
+/** Le halo de bord s'accroche à cette distance du bord visible. */
+const EDGE_INSET = 30;
+/** Le soleil reste au bord ce temps après la fin du glissement. */
+const SUN_EDGE_LINGER_MS = 500;
+/** Sous ce seuil (%), un lieu est à l'ombre : son rond est éteint. */
+const LIT_PCT = 50;
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+
+/** N'écrit un style que s'il change : un fond identique réécrit ferait
+ *  repeindre le faisceau pour rien. */
+function applyBeam(el: HTMLDivElement, css: BeamCss | null, cache: { key: string }) {
+  if (!css) {
+    if (el.style.display !== 'none') el.style.display = 'none';
+    cache.key = '';
+    return;
+  }
+  if (el.style.display === 'none') el.style.display = '';
+  const key = `${css.width}|${css.height}|${css.background}|${css.mask}|${css.transformOrigin}`;
+  if (key !== cache.key) {
+    cache.key = key;
+    el.style.width = `${css.width}px`;
+    el.style.height = `${css.height}px`;
+    el.style.background = css.background;
+    el.style.transformOrigin = css.transformOrigin;
+    el.style.setProperty('mask-image', css.mask);
+    el.style.setProperty('-webkit-mask-image', css.mask);
+  }
+  el.style.transform = css.transform;
+}
 
 export function MapView({
   venues,
@@ -181,6 +220,8 @@ export function MapView({
   probe,
   onProbeClose,
   insets,
+  scrubbing = false,
+  onRecenter,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -196,6 +237,22 @@ export function MapView({
   const [probeEl] = useState(() => document.createElement('div'));
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
+  // Le faisceau : un seul élément, sous les pastilles, piloté hors de React.
+  const [beamEl] = useState(() => {
+    const el = document.createElement('div');
+    el.className = 'beam-breathe';
+    el.setAttribute('aria-hidden', 'true');
+    el.style.cssText = 'position:absolute;left:0;top:0;pointer-events:none;display:none;will-change:transform;';
+    return el;
+  });
+  const beamCache = useRef({ key: '' });
+  const edgeRef = useRef<HTMLButtonElement>(null);
+  const arrowRef = useRef<HTMLSpanElement>(null);
+  // « toi » hors de l'écran : un bouton, pas un halo. Un état React, mais
+  // posé seulement quand la réponse change (pas à chaque image du pan).
+  const [youOff, setYouOff] = useState(false);
+  const youOffRef = useRef(false);
+  const [sunEdge, setSunEdge] = useState(false);
 
   // Les gestionnaires de la carte sont posés une fois ; ils lisent la
   // dernière version des callbacks par ces refs, pas celle du montage.
@@ -203,6 +260,83 @@ export function MapView({
   useEffect(() => {
     callbacksRef.current = { onMapCenterChange, onZoomChange, onMapTap, onUserMove };
   }, [onMapCenterChange, onZoomChange, onMapTap, onUserMove]);
+
+  const sunPos = useMemo(
+    () => SunService.getSunPosition(currentDate, mapCenter.lat, mapCenter.lng),
+    [currentDate, mapCenter]
+  );
+  const isDaytime = sunPos.elevation > 0;
+  const selected = useMemo(() => {
+    if (!selectedVenueId) return null;
+    const venue = venues.find((v) => v.id === selectedVenueId);
+    if (!venue) return null;
+    const rec = recommendations.find((r) => r.venue.id === selectedVenueId) ?? null;
+    return { venue, walk: rec ? travelParts(rec) : null };
+  }, [selectedVenueId, venues, recommendations]);
+
+  // Tout ce que le rendu d'une image lit : une ref, mise à jour à chaque rendu
+  // React, lue par la boucle rAF (jamais d'état périmé, jamais de re-rendu).
+  const frameRef = useRef({ sunPos, selected, userLocation, insets, sunEdge });
+  useEffect(() => {
+    frameRef.current = { sunPos, selected, userLocation, insets, sunEdge };
+  });
+
+  /** Faisceau, halo de bord, « toi hors écran » : au plus une fois par image. */
+  const drawOverlay = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const { sunPos: sp, selected: sel, userLocation: you, insets: ins, sunEdge: showSun } = frameRef.current;
+    const { clientWidth: W, clientHeight: H } = map.getContainer();
+    const visible: Rect = { left: 0, top: ins.top, right: W, bottom: Math.max(ins.top + 40, H - ins.bottom) };
+
+    // Faisceau A (cône depuis le bord) ou B (rayon sur le lieu choisi).
+    const selPx = sel ? map.project([sel.venue.longitude, sel.venue.latitude]) : null;
+    const css = selPx
+      ? (() => {
+          const r = beamRay(sp.azimuth, sp.elevation, { x: selPx.x, y: selPx.y }, W, H);
+          return r ? rayCss(r) : null;
+        })()
+      : (() => {
+          const c = beamCone(sp.azimuth, sp.elevation, W, H);
+          return c ? coneCss(c) : null;
+        })();
+    applyBeam(beamEl, css, beamCache.current);
+
+    // Un seul halo de bord : le soleil pendant qu'on glisse l'heure, sinon la
+    // destination sortie de l'écran.
+    const edge = edgeRef.current;
+    if (edge) {
+      let target: { x: number; y: number } | null = null;
+      if (showSun && sp.elevation > LIT_MIN_ALT) {
+        const a = (sp.azimuth * Math.PI) / 180;
+        target = { x: W / 2 + Math.sin(a) * 4000, y: (visible.top + visible.bottom) / 2 - Math.cos(a) * 4000 };
+      } else if (selPx && !isOnScreen(selPx, visible, 8)) {
+        target = selPx;
+      }
+      if (!target) {
+        if (edge.style.display !== 'none') edge.style.display = 'none';
+      } else {
+        const p = edgePoint(target, visible, EDGE_INSET);
+        edge.style.display = '';
+        // Côté droit : le temps passe à gauche du halo, sinon il sort de l'écran.
+        const rev = p.x > W / 2;
+        edge.style.flexDirection = rev ? 'row-reverse' : 'row';
+        edge.style.paddingLeft = rev && !showSun ? '12px' : '0';
+        edge.style.paddingRight = !rev && !showSun ? '12px' : '0';
+        const x = rev ? p.x + 22 - edge.offsetWidth : p.x - 22;
+        edge.style.transform = `translate(${Math.round(x)}px, ${Math.round(p.y - 22)}px)`;
+        if (arrowRef.current) arrowRef.current.style.transform = `rotate(${Math.round(p.angle)}deg) translateY(-25px)`;
+      }
+    }
+
+    // Toi hors de l'écran → bouton « Revenir sur moi ».
+    const yp = map.project([you.lng, you.lat]);
+    const off = !isOnScreen(yp, visible, 0);
+    if (off !== youOffRef.current) {
+      youOffRef.current = off;
+      setYouOff(off);
+    }
+  }, [beamEl]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -214,12 +348,25 @@ export function MapView({
       attributionControl: false,
       dragRotate: false,
       pitchWithRotate: false,
+      touchPitch: false,
       maxZoom: 18,
       minZoom: 11,
     });
+    // Rotation au doigt coupée : le faisceau suppose le nord en haut.
+    map.touchZoomRotate.disableRotation();
+    // Le faisceau vit dans le conteneur du canvas, avant les marqueurs : il
+    // passe sous les pastilles et suit le cadre de la carte.
+    map.getCanvasContainer().appendChild(beamEl);
+    let raf = 0;
+    const schedule = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        drawOverlay();
+      });
+    };
     map.on('load', () => {
       map.addSource('water', { type: 'geojson', data: WATER });
-      map.addSource('land', { type: 'geojson', data: LAND });
       map.addSource('building-shadows', { type: 'geojson', data: EMPTY });
       map.addSource('footprints', { type: 'geojson', data: FOOTPRINTS });
       map.addSource('walk-ring', { type: 'geojson', data: EMPTY });
@@ -227,10 +374,6 @@ export function MapView({
       // Sous les libellés : les noms de rues restent lisibles.
       map.addLayer(
         { id: 'water', type: 'fill', source: 'water', paint: { 'fill-color': C.water, 'fill-opacity': 0.9, 'fill-antialias': false } },
-        'labels'
-      );
-      map.addLayer(
-        { id: 'sun-veil', type: 'fill', source: 'land', paint: { 'fill-color': C.sunVeil, 'fill-opacity': 0, 'fill-antialias': false } },
         'labels'
       );
       map.addLayer(
@@ -260,7 +403,7 @@ export function MapView({
         id: 'walk-ring',
         type: 'line',
         source: 'walk-ring',
-        paint: { 'line-color': C.shade, 'line-width': 1.5, 'line-opacity': 0.8, 'line-dasharray': [2, 2] },
+        paint: { 'line-color': C.sub, 'line-width': 1.5, 'line-opacity': 0.55, 'line-dasharray': [2, 2] },
       });
       map.addLayer({
         id: 'probe-link',
@@ -276,6 +419,8 @@ export function MapView({
       const msg = e.error?.message ?? '';
       if (!/tile|Failed to fetch|NetworkError|AJAXError/i.test(msg)) setMapError(msg || 'Carte indisponible');
     });
+    map.on('move', schedule);
+    map.on('resize', schedule);
     map.on('moveend', () => {
       const c = map.getCenter();
       callbacksRef.current.onMapCenterChange({ lat: c.lat, lng: c.lng });
@@ -295,6 +440,9 @@ export function MapView({
     map.on('zoomstart', userMoved);
     mapRef.current = map;
     return () => {
+      if (raf) cancelAnimationFrame(raf);
+      map.off('move', schedule);
+      map.off('resize', schedule);
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
       userMarkerRef.current?.remove();
@@ -303,6 +451,7 @@ export function MapView({
       ringLabelRef.current = null;
       probeMarkerRef.current?.remove();
       probeMarkerRef.current = null;
+      beamEl.remove();
       map.remove();
       mapRef.current = null;
     };
@@ -322,18 +471,32 @@ export function MapView({
     }
   }, [mapCenter, mapZoom, mapReady]);
 
-  const sunPos = useMemo(
-    () => SunService.getSunPosition(currentDate, mapCenter.lat, mapCenter.lng),
-    [currentDate, mapCenter]
-  );
-  const isDaytime = sunPos.elevation > 0;
+  // Le soleil au bord : le temps du geste, et un instant après.
+  useEffect(() => {
+    if (scrubbing) {
+      setSunEdge(true);
+      return;
+    }
+    const t = setTimeout(() => setSunEdge(false), SUN_EDGE_LINGER_MS);
+    return () => clearTimeout(t);
+  }, [scrubbing]);
 
-  // Le jour, un voile chaud sur la terre ; les ombres par-dessus, plus sombres.
+  // Le faisceau et le halo de bord suivent l'heure, le lieu choisi, le cadre.
+  useEffect(() => {
+    if (mapReady) drawOverlay();
+  }, [mapReady, drawOverlay, sunPos, selected, insets, sunEdge, userLocation]);
+
+  // Lieu choisi : le reste de la carte s'assombrit un peu, le rayon ressort.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    map.setPaintProperty('base', 'raster-opacity', selectedVenueId ? BASE_OPACITY_CHOSEN : BASE_OPACITY);
+  }, [selectedVenueId, mapReady]);
+
+  // Le jour, les ombres des bâtiments, un cran plus sombres que le sol.
   useEffect(() => {
     if (!mapRef.current || !mapReady) return;
     const map = mapRef.current;
-    map.setPaintProperty('sun-veil', 'fill-opacity', isDaytime ? SUN_VEIL_OPACITY : 0);
-
     const source = map.getSource('building-shadows') as GeoJSONSource | undefined;
     if (!source) return;
     if (!isDaytime || sunPos.elevation <= 1) {
@@ -367,7 +530,7 @@ export function MapView({
     });
   }, [mapReady, userLocation, selectedVenueId, venues, insets]);
 
-  // Toi + l'anneau de 10 min à pied.
+  // Toi (rond vide coquille) + l'anneau de 10 min à pied.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
@@ -380,14 +543,10 @@ export function MapView({
 
     if (!userMarkerRef.current) {
       const el = document.createElement('div');
+      el.setAttribute('role', 'img');
       el.setAttribute('aria-label', 'Toi');
       el.style.pointerEvents = 'none';
-      el.innerHTML =
-        `<div style="position:relative;width:16px;height:16px">` +
-        `<div class="animate-pulse-glow" style="position:absolute;inset:-10px;border-radius:50%;background:rgba(255,246,236,0.18)"></div>` +
-        `<div style="position:absolute;inset:0;border-radius:50%;background:${C.night};border:3px solid ${C.shell}"></div>` +
-        `<div style="position:absolute;top:22px;left:50%;transform:translateX(-50%);font:600 11px Geist,sans-serif;color:${C.shell};text-shadow:0 1px 3px ${C.night}">toi</div>` +
-        `</div>`;
+      el.innerHTML = haloSvg({ kind: 'you', tone: 'night' }, 34);
       userMarkerRef.current = new Marker({ element: el, anchor: 'center' });
     }
     userMarkerRef.current.setLngLat([userLocation.lng, userLocation.lat]).addTo(map);
@@ -395,15 +554,16 @@ export function MapView({
     if (!ringLabelRef.current) {
       const el = document.createElement('div');
       el.textContent = '10 min à pied';
-      el.style.cssText = `pointer-events:none;font:600 12px Geist,sans-serif;color:${C.shade};text-shadow:0 1px 3px ${C.night},0 0 6px ${C.night};white-space:nowrap`;
+      el.style.cssText = `pointer-events:none;font:600 12px Geist,sans-serif;color:${C.sub};text-shadow:0 1px 3px ${C.night},0 0 6px ${C.night};white-space:nowrap`;
       ringLabelRef.current = new Marker({ element: el, anchor: 'bottom', offset: [0, -4] });
     }
     const top = ring[0];
     ringLabelRef.current.setLngLat(top).addTo(map);
   }, [userLocation, mapReady]);
 
-  // Pastilles « nom · heure ». 6 à 8 à l'écran, les meilleures d'abord, sans
-  // chevauchement ; les lieux hors de ce qu'on cherche restent discrets.
+  // Pastilles halo : le rond brille si le lieu est au soleil, éteint à
+  // l'ombre, bat s'il est choisi ; à côté, une étiquette « nom heure ». 6 à
+  // l'écran au plus, les meilleures d'abord, sans chevauchement.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
@@ -415,7 +575,7 @@ export function MapView({
     const candidates = venues
       .map((v) => {
         const rec = recMap.get(v.id);
-        return { venue: v, label: rec ? pillLabel(rec) : null, sunMatch: rec?.sunMatch ?? 0, px: map.project([v.longitude, v.latitude]) };
+        return { venue: v, rec, label: rec ? pillLabel(rec) : null, sunMatch: rec?.sunMatch ?? 0, px: map.project([v.longitude, v.latitude]) };
       })
       .filter((c) => c.venue.id === selectedVenueId || (
         c.px.x > 8 && c.px.x < width - 8 && c.px.y > insets.top + 20 && c.px.y < height - insets.bottom - 20
@@ -429,62 +589,104 @@ export function MapView({
         return b.sunMatch - a.sunMatch;
       });
 
-    // Le libellé « 10 min à pied » réserve sa place : une pastille dessus
-    // le rendait illisible.
+    // Le libellé « 10 min à pied » et « toi » réservent leur place.
     const ringTop = map.project(ringCoords(userLocation, WALK_RING_M)[0]);
+    const you = map.project([userLocation.lng, userLocation.lat]);
     const placed: { x0: number; y0: number; x1: number; y1: number }[] = [
       { x0: ringTop.x - 50, y0: ringTop.y - 24, x1: ringTop.x + 50, y1: ringTop.y },
+      { x0: you.x - 17, y0: you.y - 17, x1: you.x + 17, y1: you.y + 17 },
     ];
+    const overlaps = (b: { x0: number; y0: number; x1: number; y1: number }) =>
+      placed.some((o) => b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
     let quiet = 0;
     const loudAvailable = candidates.filter((c) => c.label?.inIt).length;
-    const good = mode === 'SUN' ? C.sun : C.shade;
     const inWord = mode === 'SUN' ? 'au soleil' : "à l'ombre";
+    const alt = sunPos.elevation;
 
-    for (const { venue: v, label, px: p } of candidates) {
+    for (const { venue: v, rec, label, px: p } of candidates) {
       if (markersRef.current.length >= MAX_PILLS) break;
       const isSelected = v.id === selectedVenueId;
       const name = label?.name ?? v.name;
       const loud = !!label?.inIt;
       if (!loud && !isSelected && loudAvailable >= 3 && quiet >= MAX_QUIET_WITH_LOUD) continue;
 
-      const time = loud ? label?.time ?? null : null;
-      const w = loud ? name.length * 6.6 + (time ? 42 : 0) + 22 : name.length * 6.4 + 22;
-      const h = loud ? 32 : 28;
-      const box = { x0: p.x - w / 2 - PILL_GAP_PX, y0: p.y - h / 2 - PILL_GAP_PX, x1: p.x + w / 2 + PILL_GAP_PX, y1: p.y + h / 2 + PILL_GAP_PX };
-      // Entière à l'écran ou pas du tout : une pastille coupée au bord ne se lit pas.
-      if (!isSelected && (p.x - w / 2 < 6 || p.x + w / 2 > width - 6)) continue;
-      if (!isSelected && placed.some((b) => box.x0 < b.x1 && box.x1 > b.x0 && box.y0 < b.y1 && box.y1 > b.y0)) continue;
-      placed.push(box);
+      // L'heure : la fin de la fenêtre si on y est ; sinon « dès 17:30 » ou
+      // l'état. Orange seulement pour une heure de soleil.
+      const soon = !loud && rec?.sunArrivesInMin != null && !rec.arrivesTomorrow ? rec.sunWindowStart : null;
+      const time = loud ? label?.time ?? null : soon ? `dès ${soon}` : mode === 'SUN' ? 'ombre' : 'soleil';
+      const sunHour = mode === 'SUN' && (loud || !!soon);
+      const lit = alt > LIT_MIN_ALT && (rec?.sunPercentage ?? 0) >= LIT_PCT;
+
+      // Étiquette à droite du rond, sinon à gauche, sinon au-dessus.
+      const w = name.length * 7.4 + (time ? time.length * 7.6 + 5 : 0) + 20;
+      const h = 24;
+      const g = GLYPH_PX / 2;
+      const glyphBox = { x0: p.x - g, y0: p.y - g, x1: p.x + g, y1: p.y + g };
+      const spots = [
+        { side: 'right', x0: p.x + g + 2, y0: p.y - h / 2 },
+        { side: 'left', x0: p.x - g - 2 - w, y0: p.y - h / 2 },
+        { side: 'top', x0: p.x - w / 2, y0: p.y - g - 4 - h },
+      ] as const;
+      if (!isSelected && overlaps(glyphBox)) continue;
+      let spot: (typeof spots)[number] | null = null;
+      for (const s of spots) {
+        const box = { x0: s.x0 - PILL_GAP_PX, y0: s.y0 - PILL_GAP_PX, x1: s.x0 + w + PILL_GAP_PX, y1: s.y0 + h + PILL_GAP_PX };
+        if (s.x0 < 6 || s.x0 + w > width - 6 || s.y0 < insets.top || s.y0 + h > height - insets.bottom) continue;
+        if (overlaps(box)) continue;
+        spot = s;
+        placed.push(box);
+        break;
+      }
+      if (!spot && !isSelected) continue;
+      placed.push(glyphBox);
       if (!loud) quiet++;
 
-      // Bouton transparent de 44 px de haut autour de la gélule : la cible
-      // tactile dépasse le dessin, pas l'inverse.
+      // Bouton de 44 px autour du rond : la cible tactile dépasse le dessin.
       const el = document.createElement('button');
       el.type = 'button';
+      // Ce que disent ceux qui sont sur place (question « il reste des places ? »).
       const live = liveReports.getState(v.id);
       const liveNote = live ? `, ${LIVE_SHORT[live.level].toLowerCase()} d'après ceux sur place` : '';
-      el.setAttribute('aria-label', (time ? `${v.name}, ${inWord} jusqu'à ${time}` : v.name) + liveNote);
-      el.style.cssText = `display:block;padding:${(44 - h) / 2}px 0;background:none;border:0;cursor:pointer;`;
-      const pill = document.createElement('span');
-      pill.style.cssText = loud
-        ? `display:flex;align-items:center;gap:6px;height:${h}px;padding:0 11px;border-radius:999px;background:${good};color:${C.night};font:600 12.5px Geist,sans-serif;box-shadow:0 2px 10px rgba(8,20,58,.55);white-space:nowrap;`
-        : `display:flex;align-items:center;height:${h}px;padding:0 10px;border-radius:999px;background:${C.surface};border:1px solid ${C.edge};color:${C.sub};font:500 12px Geist,sans-serif;white-space:nowrap;`;
-      if (isSelected) pill.style.outline = `3px solid ${C.shell}`;
-      if (isSelected) pill.style.outlineOffset = '2px';
-      if (live) {
-        // Le drapeau : feu tricolore de la place disponible, dit par ceux qui y sont.
-        const flag = document.createElement('span');
-        flag.style.cssText = `flex:none;width:10px;height:10px;border-radius:50%;background:${LIVE_COLOR[live.level]};box-shadow:0 0 0 2px ${C.night};${loud ? '' : 'margin-right:6px;'}`;
-        pill.append(flag);
+      el.setAttribute(
+        'aria-label',
+        (loud && label?.time ? `${v.name}, ${inWord} jusqu'à ${label.time}` : `${v.name}, ${lit ? 'au soleil' : "à l'ombre"}`) + liveNote
+      );
+      // Pas de `position` ici : .maplibregl-marker est déjà absolu (et sert de
+      // repère à l'étiquette) ; « relative » empilait les pastilles dans le flux.
+      el.style.cssText = `display:block;width:${HIT_PX}px;height:${HIT_PX}px;padding:0;background:none;border:0;cursor:pointer;`;
+      if (isSelected) el.setAttribute('aria-current', 'true');
+      const glyph = document.createElement('span');
+      glyph.style.cssText = `position:absolute;left:${(HIT_PX - GLYPH_PX) / 2}px;top:${(HIT_PX - GLYPH_PX) / 2}px;width:${GLYPH_PX}px;height:${GLYPH_PX}px;`;
+      glyph.innerHTML = isSelected
+        ? haloSvg({ kind: 'dest', tone: 'night' }, GLYPH_PX) + haloPulseMarkup(GLYPH_PX)
+        : haloSvg({ kind: lit ? 'sun' : 'shade', tone: 'night', alt }, lit ? GLYPH_PX : 20);
+      if (!isSelected && !lit) {
+        glyph.style.left = `${(HIT_PX - 20) / 2}px`;
+        glyph.style.top = `${(HIT_PX - 20) / 2}px`;
       }
-      pill.append(document.createTextNode(name));
-      if (time) {
-        const t = document.createElement('span');
-        t.textContent = time;
-        t.style.cssText = "font-family:'Geist Mono',monospace;font-weight:600;";
-        pill.append(t);
+      el.append(glyph);
+      if (spot) {
+        const tag = document.createElement('span');
+        const dx = spot.x0 - (p.x - HIT_PX / 2);
+        const dy = spot.y0 - (p.y - HIT_PX / 2);
+        tag.style.cssText = `position:absolute;left:${dx}px;top:${dy}px;height:${h}px;display:flex;align-items:center;gap:5px;padding:0 9px;border-radius:8px;background:rgba(8,20,58,0.88);color:${C.shell};font:600 12.5px Geist,sans-serif;white-space:nowrap;pointer-events:none;`;
+        tag.append(document.createTextNode(name));
+        if (live) {
+          // Plus de feu tricolore : la jauge suit la grammaire halo — pleine =
+          // des places, à moitié = presque plein, vide = complet.
+          const g = document.createElement('span');
+          g.style.cssText = 'display:inline-flex;flex:none;';
+          g.innerHTML = liveGlyphSvg(live.level, 12);
+          tag.append(g);
+        }
+        if (time) {
+          const t = document.createElement('span');
+          t.textContent = time;
+          t.style.cssText = `font:700 12px 'Geist Mono',monospace;color:${sunHour ? LIGHT.inkNight : C.sub};`;
+          tag.append(t);
+        }
+        el.append(tag);
       }
-      el.append(pill);
       el.addEventListener('click', (e) => {
         e.stopPropagation();
         onVenueSelect(v.id);
@@ -496,7 +698,7 @@ export function MapView({
     // mapZoom / mapCenter : non lus directement (map.project reflète déjà la
     // vue), mais le tri visible/caché ne vaut que pour la vue où il a été
     // calculé — sans eux, pan et zoom garderaient les pastilles d'avant.
-  }, [venues, recommendations, mode, selectedVenueId, mapReady, onVenueSelect, mapZoom, mapCenter, insets, userLocation, liveVersion]);
+  }, [venues, recommendations, mode, selectedVenueId, mapReady, onVenueSelect, mapZoom, mapCenter, insets, userLocation, sunPos, liveVersion]);
 
   // La bulle « ici » et le pointillé vers le voisin qui fait mieux.
   useEffect(() => {
@@ -531,6 +733,21 @@ export function MapView({
     );
   }, [probe, mapReady, probeEl]);
 
+  // Toucher le halo de bord : la destination revient au centre.
+  const recenterOnSelected = useCallback(() => {
+    const map = mapRef.current;
+    const sel = frameRef.current.selected;
+    if (!map || !sel) return;
+    map.easeTo({ center: [sel.venue.longitude, sel.venue.latitude], duration: prefersReducedMotion() ? 0 : 450, essential: true });
+  }, []);
+
+  const edgeIsSun = sunEdge && sunPos.elevation > LIT_MIN_ALT;
+  const edgeLabel = selected?.walk
+    ? selected.walk.unit === 'min à pied'
+      ? `${selected.walk.value} min`
+      : selected.walk.value
+    : '';
+
   return (
     <div className="relative h-full w-full overflow-hidden">
       <div ref={containerRef} className="absolute inset-0" style={{ background: C.night }} />
@@ -539,6 +756,46 @@ export function MapView({
           La carte n'a pas pu se charger ({mapError}).
         </p>
       )}
+
+      {/* Le halo de bord : un seul à la fois. Position écrite par drawOverlay. */}
+      <button
+        ref={edgeRef}
+        type="button"
+        onClick={edgeIsSun ? undefined : recenterOnSelected}
+        disabled={edgeIsSun || !selected}
+        aria-label={edgeIsSun ? 'Le soleil est de ce côté' : selected ? `Recentrer sur ${selected.venue.name}${edgeLabel ? `, ${edgeLabel} à pied` : ''}` : ''}
+        className={`absolute left-0 top-0 z-10 flex min-h-11 items-center gap-1.5 rounded-full font-mono text-[13px] font-bold text-dusk-shell ${
+          edgeIsSun ? 'cursor-default' : 'bg-dusk-deep shadow-[0_0_0_1px_#233B7C]'
+        }`}
+        style={{ display: 'none', willChange: 'transform' }}
+      >
+        <span className="relative flex h-11 w-11 shrink-0 items-center justify-center">
+          {edgeIsSun ? (
+            <HaloIcon kind="sun" tone="night" alt={sunPos.elevation} size={38} />
+          ) : (
+            <HaloIcon kind="dest" tone="night" size={30} />
+          )}
+          <span ref={arrowRef} aria-hidden="true" className="absolute left-1/2 top-1/2 -ml-1.5 -mt-1.5 block h-3 w-3">
+            <svg viewBox="0 0 12 12" width="12" height="12" className="block">
+              <path d="M6 1 11 9H1z" fill={NIGHT.shell} />
+            </svg>
+          </span>
+        </span>
+        {!edgeIsSun && edgeLabel}
+      </button>
+
+      {/* Toi hors de l'écran : pas de halo, un bouton. */}
+      {youOff && onRecenter && (
+        <button
+          type="button"
+          onClick={onRecenter}
+          className="absolute right-4 top-[calc(env(safe-area-inset-top)+12px)] z-20 flex min-h-11 items-center gap-2 rounded-full border border-dusk-line bg-dusk-deep pl-2.5 pr-4 text-[13px] font-bold text-dusk-shell active:scale-95 transition-transform motion-reduce:transition-none"
+        >
+          <HaloIcon kind="you" tone="night" size={22} />
+          Revenir sur moi
+        </button>
+      )}
+
       {probe &&
         createPortal(
           <ProbeBubble probe={probe} onClose={onProbeClose} onNeighbour={() => probe.neighbour && onVenueSelect(probe.neighbour.id)} />,

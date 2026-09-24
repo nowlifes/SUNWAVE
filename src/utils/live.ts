@@ -7,13 +7,6 @@ export const LIVE_ANSWERS: { answer: LiveAnswer; emoji: string; label: string; h
   { answer: 'none', emoji: '🔴', label: 'Plus rien', hint: "tout est pris ou à l'ombre" },
 ];
 
-/** Couleur du drapeau sur la carte : feu tricolore, lisible sur fond de nuit. */
-export const LIVE_COLOR: Record<LiveAnswer, string> = {
-  plenty: '#22C55E',
-  few: '#F59E0B',
-  none: '#EF4444',
-};
-
 export const LIVE_SHORT: Record<LiveAnswer, string> = {
   plenty: 'Des places',
   few: 'Presque plein',
