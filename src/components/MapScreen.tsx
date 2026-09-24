@@ -1,13 +1,30 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import type { Venue, SunMode, VenueCategory, GeoPoint, WeatherData } from '@/types';
-import { MapView } from './MapView';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import type { Venue, SunMode, VenueCategory, GeoPoint, WeatherData, Recommendation } from '@/types';
+import { MapView, type ProbeView } from './MapView';
 import { TimeSlider } from './TimeSlider';
-import { BestMatchSheet } from './BestMatchSheet';
+import { DayRibbon } from './DayRibbon';
 import { SearchBar } from './SearchBar';
+import { PlaceDetailSheet } from './PlaceDetailSheet';
 import { RecommendationService } from '@/services/RecommendationService';
 import { VenueService } from '@/services/VenueService';
+import { VenueSunService } from '@/services/VenueSunService';
 import { WeatherService } from '@/services/WeatherService';
-import { formatLisbonTime } from '@/utils/lisbonTime';
+import { SunService } from '@/services/SunService';
+import { lisbonBuildings } from '@/data/lisbonBuildings';
+import { lisbonMinutesOfDay } from '@/utils/lisbonTime';
+import { ribbonCells } from '@/utils/ribbon';
+import { categoryLabel, placeName, statusCopy, travelLabel } from '@/utils/copy';
+import {
+  betterNeighbour,
+  cityLightCurve,
+  hereSentence,
+  hereWindow,
+  hintForVisit,
+  nextVisit,
+  pickHeadline,
+  sheetHeadlines,
+  shortVenueName,
+} from '@/utils/mapGuide';
 
 interface MapScreenProps {
   mode: SunMode;
@@ -38,11 +55,39 @@ const FILTER_CATEGORIES: { value: VenueCategory | 'all'; label: string }[] = [
   { value: 'rooftop', label: 'Rooftops' },
 ];
 
+/** « À pied », pour la feuille : un quart d'heure de marche. */
+const NEAR_WALK_MIN = 15;
+/** En-tête + marge : ni pastille ni cadrage dessous. */
+const TOP_INSET = 64;
+/** Hauteur de la barre d'onglets (BottomNav), sous la feuille. */
+const NAV_HEIGHT = 62;
+
+const STORAGE = { visits: 'sun_map_visits', headline: 'sun_map_last_headline' };
+
+/** Le stockage peut manquer (navigation privée, quota) : l'astuce et la
+ *  variété du titre sont du confort, pas une information — sans stockage,
+ *  on s'en passe sans bruit plutôt que d'afficher une erreur. */
+function readStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+function writeStorage(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // voir readStorage
+  }
+}
+
+const inIt = (r: Recommendation) => r.sunLeavesInMin !== null;
+
 export function MapScreen({
   mode,
   currentDate,
   userLocation,
-  locationGranted,
   selectedVenueId,
   onVenueSelect,
   onTimeChange,
@@ -57,7 +102,11 @@ export function MapScreen({
   savedVenueIds,
 }: MapScreenProps) {
   const [activeFilter, setActiveFilter] = useState<VenueCategory | 'all'>('all');
-  const [sheetExpanded, setSheetExpanded] = useState(false);
+  /** Feuille tirée : 3 lieux, recherche, filtres. Repliée par défaut. */
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [scrubbing, setScrubbing] = useState(false);
+  const [probePoint, setProbePoint] = useState<GeoPoint | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [searchVenue, setSearchVenue] = useState<Venue | null>(null);
   // Non-visual: source real weather from Open-Meteo via WeatherService instead
   // of a static computed value — synchronous cache read on mount, then a real
@@ -72,10 +121,19 @@ export function MapScreen({
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
+  // --- Astuce : une phrase, deux visites, disparaît au premier geste.
+  const [visit] = useState(() => nextVisit(readStorage(STORAGE.visits)));
+  useEffect(() => writeStorage(STORAGE.visits, String(visit)), [visit]);
+  const [hintDone, setHintDone] = useState(false);
+  const hint = hintDone ? null : hintForVisit(visit, mode);
+  const gesture = useCallback(() => setHintDone(true), []);
+
   const categories = useMemo(() => (activeFilter === 'all' ? [] : [activeFilter]), [activeFilter]);
 
+  // Tous les lieux, évalués depuis soi : la carte choisit elle-même lesquels
+  // montrer selon la vue (voir MapView).
   const recommendations = useMemo(
-    () => RecommendationService.getRecommendations(mode, userLocation, currentDate, categories, weather, 50),
+    () => RecommendationService.getRecommendations(mode, userLocation, currentDate, categories, weather, Number.POSITIVE_INFINITY),
     [mode, userLocation, currentDate, categories, weather]
   );
 
@@ -85,24 +143,174 @@ export function MapScreen({
     return all;
   }, [categories, searchVenue]);
 
-  const topRec = recommendations[0] || null;
+  // La réponse de la feuille : ouverts, à pied, dans ce qu'on cherche.
+  const answer = useMemo(
+    () => RecommendationService.getAnswerList(mode, userLocation, currentDate, categories, weather, 50),
+    [mode, userLocation, currentDate, categories, weather]
+  );
+  const nearInIt = useMemo(() => answer.filter((r) => r.walkTimeMin <= NEAR_WALK_MIN && inIt(r)), [answer]);
+  const rows = (nearInIt.length > 0 ? nearInIt : answer).slice(0, 3);
+  const best = rows[0] ?? null;
 
-  // If a venue is selected, show its sheet; otherwise show top recommendation
-  const selectedRec = useMemo(() => {
-    if (selectedVenueId) {
-      return recommendations.find((r) => r.venue.id === selectedVenueId) || null;
+  const nowMin = lisbonMinutesOfDay(currentDate);
+  const sunrise = useMemo(() => SunService.getSunrise(currentDate), [currentDate]);
+  const sunset = useMemo(() => SunService.getSunset(currentDate), [currentDate]);
+  const sunriseMin = lisbonMinutesOfDay(sunrise);
+  const sunsetMin = lisbonMinutesOfDay(sunset);
+  const isNow = Math.abs(currentDate.getTime() - Date.now()) < 90000;
+
+  // --- Titre : suit le contexte, ne redit pas la même accroche d'affilée
+  // (ni d'une visite à l'autre).
+  const candidates = useMemo(
+    () => sheetHeadlines({ mode, count: nearInIt.length, nowMin, sunriseMin, sunsetMin, isNow }),
+    [mode, nearInIt.length, nowMin, sunriseMin, sunsetMin, isNow]
+  );
+  const candidatesKey = candidates.join('|');
+  const [headline, setHeadline] = useState(() => pickHeadline(candidates, readStorage(STORAGE.headline)));
+  const headlineKeyRef = useRef(candidatesKey);
+  useEffect(() => {
+    if (headlineKeyRef.current === candidatesKey) return;
+    headlineKeyRef.current = candidatesKey;
+    setHeadline((prev) => pickHeadline(candidatesKey.split('|'), prev));
+  }, [candidatesKey]);
+  useEffect(() => writeStorage(STORAGE.headline, headline), [headline]);
+
+  // --- La bande de lumière du quartier (lieux à un quart d'heure).
+  const dayKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}-${currentDate.getDate()}`;
+  const nearVenueIds = useMemo(
+    () => recommendations.filter((r) => r.walkTimeMin <= NEAR_WALK_MIN).map((r) => r.venue.id).join(','),
+    [recommendations]
+  );
+  const cells = useMemo(() => {
+    void dayKey;
+    const curves = nearVenueIds
+      .split(',')
+      .map((id) => VenueService.getVenueById(id))
+      .filter((v): v is Venue => v !== undefined)
+      .map((v) => VenueSunService.getSunExposureByQuarter(v, lisbonBuildings, currentDate));
+    return ribbonCells(cityLightCurve(curves, mode), mode, sunriseMin, sunsetMin);
+    // currentDate : seul son jour compte (dayKey), pas sa minute.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nearVenueIds, dayKey, mode, sunriseMin, sunsetMin]);
+
+  // --- « Ici » : l'endroit touché.
+  const probe = useMemo<ProbeView | null>(() => {
+    if (!probePoint) return null;
+    try {
+      const curve = VenueSunService.getPointSunByQuarter(probePoint, lisbonBuildings, currentDate);
+      const w = hereWindow(curve, mode, nowMin, sunriseMin, sunsetMin);
+      const { lead, time } = hereSentence(w, mode);
+      const fromHere = RecommendationService.getRecommendations(mode, probePoint, currentDate, categories, weather, Number.POSITIVE_INFINITY);
+      const n = betterNeighbour(fromHere, w, nowMin);
+      return {
+        point: probePoint,
+        lead,
+        time,
+        error: null,
+        mode,
+        neighbour: n && {
+          id: n.venue.id,
+          name: shortVenueName(n.venue.name),
+          time: n.sunWindowEnd,
+          walkMin: n.walkTimeMin,
+          point: { lat: n.venue.latitude, lng: n.venue.longitude },
+        },
+      };
+    } catch (e) {
+      return {
+        point: probePoint,
+        lead: '',
+        time: null,
+        error: `Impossible de calculer le soleil ici : ${e instanceof Error ? e.message : String(e)}`,
+        mode,
+        neighbour: null,
+      };
     }
-    return topRec;
-  }, [selectedVenueId, recommendations, topRec]);
+  }, [probePoint, currentDate, mode, nowMin, sunriseMin, sunsetMin, categories, weather]);
 
-  const handleSearchSelect = useCallback((venue: Venue) => {
-    setSearchVenue(venue);
-    onVenueSelect(venue.id);
-  }, [onVenueSelect]);
+  const selectedRec = useMemo(() => {
+    if (!selectedVenueId) return null;
+    const found = recommendations.find((r) => r.venue.id === selectedVenueId);
+    if (found) return found;
+    const venue = VenueService.getVenueById(selectedVenueId);
+    return venue ? RecommendationService.getRecommendationFor(venue, mode, userLocation, currentDate, weather) : null;
+  }, [selectedVenueId, recommendations, mode, userLocation, currentDate, weather]);
+
+  // --- Une seule couche à la fois : carte du lieu, OU bulle, OU feuille.
+  const handleVenueSelect = useCallback(
+    (id: string | null) => {
+      setProbePoint(null);
+      setSheetOpen(false);
+      gesture();
+      onVenueSelect(id);
+    },
+    [onVenueSelect, gesture]
+  );
+  const handleMapTap = useCallback(
+    (point: GeoPoint) => {
+      gesture();
+      setSheetOpen(false);
+      setDetailOpen(false);
+      if (selectedVenueId) onVenueSelect(null);
+      setProbePoint(point);
+    },
+    [gesture, selectedVenueId, onVenueSelect]
+  );
+  const handleUserMove = useCallback(() => {
+    gesture();
+    setSheetOpen(false);
+  }, [gesture]);
+  const handleScrubStart = useCallback(() => {
+    gesture();
+    setSheetOpen(false);
+    setScrubbing(true);
+  }, [gesture]);
+  const handleScrubEnd = useCallback(() => setScrubbing(false), []);
+  const handleSearchSelect = useCallback(
+    (venue: Venue) => {
+      setSearchVenue(venue);
+      handleVenueSelect(venue.id);
+    },
+    [handleVenueSelect]
+  );
+
+  // --- La feuille : glisser vers le haut l'ouvre, vers le bas la replie.
+  // Position de départ lue dans les gestionnaires : une ref.
+  const dragStartY = useRef<number | null>(null);
+  const onHandleDown = useCallback((e: React.PointerEvent) => {
+    dragStartY.current = e.clientY;
+  }, []);
+  const onHandleUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (dragStartY.current === null) return;
+      const dy = e.clientY - dragStartY.current;
+      dragStartY.current = null;
+      // Un simple toucher passe par le clic du titre (clavier compris).
+      if (Math.abs(dy) <= 24) return;
+      gesture();
+      setSheetOpen(dy < 0);
+    },
+    [gesture]
+  );
+
+  // Ce que la feuille cache, pour que la carte ne mette rien dessous.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [panelHeight, setPanelHeight] = useState(240);
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setPanelHeight(Math.round(el.getBoundingClientRect().height)));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const insets = useMemo(() => ({ top: TOP_INSET, bottom: panelHeight + NAV_HEIGHT }), [panelHeight]);
+
+  const place = placeName(userLocation);
+  const layer = selectedRec ? 'place' : probePoint ? 'probe' : 'list';
+  const quietPanel = scrubbing || layer === 'probe';
 
   return (
-    <div className="relative w-full h-full">
-      {/* Map fills 100% */}
+    <div className="relative h-full w-full bg-dusk-night">
       <MapView
         venues={venues}
         recommendations={recommendations}
@@ -112,88 +320,279 @@ export function MapScreen({
         mapCenter={mapCenter}
         mapZoom={mapZoom}
         selectedVenueId={selectedVenueId}
-        onVenueSelect={onVenueSelect}
+        onVenueSelect={handleVenueSelect}
         onMapCenterChange={onMapCenterChange}
         onZoomChange={onZoomChange}
-        onRecenter={onRecenter}
-        showUserLocation={true}
-        locationGranted={locationGranted}
+        onMapTap={handleMapTap}
+        onUserMove={handleUserMove}
+        probe={probe}
+        onProbeClose={() => setProbePoint(null)}
+        insets={insets}
       />
 
-      {/* Top overlay — compact */}
-      <div className="absolute top-0 left-0 right-0 z-20 px-3 pt-3 pointer-events-none">
-        <div className="pointer-events-auto space-y-2">
-          {/* Compact header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-sm">
-              <span className="text-xs font-bold text-shade-700">Lisbonne</span>
-              <span className="text-shade-300 text-xs">·</span>
-              <span className="text-xs font-medium text-shade-500">
-                {Math.abs(currentDate.getTime() - Date.now()) < 90000 ? 'Maintenant' : formatLisbonTime(currentDate)}
-              </span>
-            </div>
-            <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/80 backdrop-blur-md shadow-sm">
-              <span className="text-xs">{weather.condition === 'rain' ? '🌧' : weather.condition === 'cloudy' ? '☁' : weather.condition === 'partly_cloudy' ? '⛅' : '☀'}</span>
-              <span className="text-xs font-semibold text-shade-600">{weather.temperature}°C</span>
-            </div>
-          </div>
-
-          {/* Search — compact */}
-          <SearchBar onSelectVenue={handleSearchSelect} />
-
-          {/* Segmented SUN/SHADE toggle */}
-          <div className="flex p-0.5 rounded-xl bg-white/80 backdrop-blur-md shadow-sm smooth-transition">
-            <button
-              onClick={() => onModeChange('SUN')}
-              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all duration-400 ${
-                mode === 'SUN' ? 'bg-sun-500 text-white shadow-sm' : 'text-shade-500'
-              }`}
-            >
-              ☀ Soleil
-            </button>
-            <button
-              onClick={() => onModeChange('SHADE')}
-              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all duration-400 ${
-                mode === 'SHADE' ? 'bg-shade-600 text-white shadow-sm' : 'text-shade-500'
-              }`}
-            >
-              🌑 Ombre
-            </button>
-          </div>
-
-          {/* Category filters — compact horizontal scroll */}
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-            {FILTER_CATEGORIES.map((cat) => (
-              <button
-                key={cat.value}
-                onClick={() => setActiveFilter(cat.value)}
-                className={`px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all active:scale-95 ${
-                  activeFilter === cat.value
-                    ? mode === 'SUN' ? 'bg-sun-100 text-sun-700' : 'bg-shade-200 text-shade-700'
-                    : 'bg-white/80 backdrop-blur-md text-shade-500 shadow-sm'
-                }`}
-              >
-                {cat.label}
-              </button>
-            ))}
-          </div>
+      {/* En haut, une seule ligne : où l'on est, et ce que veulent dire les couleurs. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-2 px-4 pt-[calc(env(safe-area-inset-top)+12px)]">
+        <div className="pointer-events-auto flex min-w-0 items-center gap-1.5 rounded-full border border-dusk-line bg-dusk-panel px-3 py-2 text-[13px] text-dusk-shell">
+          <span className="truncate font-semibold">{place}</span>
+          <span className="shrink-0 tabular-nums text-dusk-sub">{weather.temperature}&nbsp;°C</span>
+        </div>
+        <div className="pointer-events-auto flex shrink-0 items-center gap-2.5 rounded-full border border-dusk-line bg-dusk-panel px-3 py-2 text-[13px] font-medium text-dusk-shell">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-3.5 rounded-full bg-dusk-fire" aria-hidden="true" />
+            Soleil
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-3.5 rounded-full border border-dusk-sub bg-[#233F8C]" aria-hidden="true" />
+            Ombre
+          </span>
         </div>
       </div>
 
-      {/* Bottom overlay — best match sheet + time slider */}
-      <div className="absolute bottom-0 left-0 right-0 z-20 pb-[56px]">
-        <BestMatchSheet
-          recommendation={selectedRec}
-          mode={mode}
-          expanded={sheetExpanded}
-          onToggle={() => setSheetExpanded(!sheetExpanded)}
-          onClose={() => { setSheetExpanded(false); onVenueSelect(null); }}
-          onGetDirections={onGetDirections}
-          isSaved={selectedRec ? savedVenueIds.includes(selectedRec.venue.id) : false}
-          onSave={onSave}
-        />
+      {/* En bas, à portée du pouce : la feuille, puis le curseur d'heure. */}
+      <div className="absolute inset-x-0 bottom-0 z-20" style={{ paddingBottom: NAV_HEIGHT }}>
+        <div
+          ref={panelRef}
+          className="rounded-t-[28px] border-t border-dusk-line bg-dusk-night pb-2 text-dusk-shell shadow-[0_-8px_24px_rgba(8,20,58,0.45)]"
+        >
+          {layer === 'place' && selectedRec ? (
+            <PlaceCard
+              rec={selectedRec}
+              mode={mode}
+              isNow={isNow}
+              onClose={() => handleVenueSelect(null)}
+              onGo={() => onGetDirections(selectedRec.venue.id)}
+              onDetail={() => setDetailOpen(true)}
+            />
+          ) : (
+            <>
+              <div
+                className="cursor-grab touch-none select-none px-4 pt-2"
+                onPointerDown={onHandleDown}
+                onPointerUp={onHandleUp}
+                onPointerCancel={() => { dragStartY.current = null; }}
+              >
+                <div className="mx-auto h-1 w-10 rounded-full bg-dusk-edge" aria-hidden="true" />
+                <div className="flex min-h-12 items-center justify-between gap-3 pt-1">
+                  <button
+                    className="min-h-11 min-w-0 flex-1 text-left"
+                    aria-expanded={sheetOpen}
+                    onClick={() => { gesture(); setSheetOpen((o) => !o); }}
+                  >
+                    <h2 className="truncate font-display text-[19px] font-bold leading-tight [font-stretch:90%]">{headline}</h2>
+                  </button>
+                  <button
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onPointerUp={(e) => e.stopPropagation()}
+                    onClick={onRecenter}
+                    aria-label="Me recentrer"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dusk-edge text-dusk-shell active:scale-95 transition-transform motion-reduce:transition-none"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <circle cx="12" cy="12" r="4" />
+                      <line x1="12" y1="2" x2="12" y2="6" /><line x1="12" y1="18" x2="12" y2="22" />
+                      <line x1="2" y1="12" x2="6" y2="12" /><line x1="18" y1="12" x2="22" y2="12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
 
-        <TimeSlider mode={mode} currentDate={currentDate} onTimeChange={onTimeChange} />
+              {!quietPanel && (
+                <div className="px-4">
+                  {!sheetOpen && best && (
+                    <BestRow rec={best} mode={mode} onOpen={() => handleVenueSelect(best.venue.id)} onGo={() => onGetDirections(best.venue.id)} />
+                  )}
+                  {sheetOpen && (
+                    <>
+                      <ul className="divide-y divide-dusk-line">
+                        {rows.map((r) => (
+                          <li key={r.venue.id}>
+                            <button
+                              onClick={() => handleVenueSelect(r.venue.id)}
+                              className="flex min-h-14 w-full items-center gap-3 py-2 text-left active:opacity-70"
+                            >
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-[15px] font-semibold">{r.venue.name}</span>
+                                <span className="block truncate text-[12.5px] text-dusk-sub">
+                                  {categoryLabel(r.venue.category)} · {travelLabel(r)}
+                                </span>
+                              </span>
+                              <span className="flex shrink-0 flex-col items-end gap-1.5">
+                                <span className={`font-mono text-[13px] font-semibold ${mode === 'SUN' ? 'text-dusk-glow' : 'text-[#6EE0D2]'}`}>
+                                  {inIt(r) ? r.sunWindowEnd : r.sunWindowStart ? `dès ${r.sunWindowStart}` : ''}
+                                </span>
+                                <DayRibbon venue={r.venue} mode={mode} date={currentDate} sunrise={sunrise} sunset={sunset} size="mini" tone="night" />
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-2">
+                        <SearchBar tone="night" placeholder="Chercher un lieu" onSelectVenue={handleSearchSelect} />
+                      </div>
+                      <div className="no-scrollbar -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4">
+                        {FILTER_CATEGORIES.map((cat) => (
+                          <button
+                            key={cat.value}
+                            onClick={() => { setActiveFilter(cat.value); setSearchVenue(null); }}
+                            aria-pressed={activeFilter === cat.value}
+                            className={`min-h-11 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold ${
+                              activeFilter === cat.value ? 'bg-dusk-shell text-dusk-night' : 'border border-dusk-line text-dusk-sub'
+                            }`}
+                          >
+                            {cat.label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {hint && (
+            <p className="px-4 pt-1.5 text-[12.5px] font-medium text-dusk-glow" role="status">
+              {hint}
+            </p>
+          )}
+
+          <TimeSlider
+            mode={mode}
+            currentDate={currentDate}
+            onTimeChange={onTimeChange}
+            cells={cells}
+            onScrubStart={handleScrubStart}
+            onScrubEnd={handleScrubEnd}
+            trailing={<ModeToggle mode={mode} onModeChange={onModeChange} />}
+          />
+        </div>
+      </div>
+
+      {detailOpen && selectedRec && (
+        <PlaceDetailSheet
+          venue={selectedRec.venue}
+          mode={mode}
+          recommendation={selectedRec}
+          userLocation={userLocation}
+          currentDate={currentDate}
+          isSaved={savedVenueIds.includes(selectedRec.venue.id)}
+          onSave={() => onSave(selectedRec.venue.id)}
+          onClose={() => setDetailOpen(false)}
+          onGetDirections={() => onGetDirections(selectedRec.venue.id)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ModeToggle({ mode, onModeChange }: { mode: SunMode; onModeChange: (m: SunMode) => void }) {
+  return (
+    <div className="flex shrink-0 rounded-full border border-dusk-line bg-dusk-panel p-0.5" role="group" aria-label="Chercher">
+      {(['SUN', 'SHADE'] as const).map((m) => (
+        <button
+          key={m}
+          onClick={() => onModeChange(m)}
+          aria-pressed={mode === m}
+          className={`min-h-10 rounded-full px-3 text-[13px] font-bold min-[360px]:px-3.5 transition-colors duration-300 motion-reduce:transition-none ${
+            mode === m ? (m === 'SUN' ? 'bg-dusk-fire text-dusk-night' : 'bg-[#6EE0D2] text-dusk-night') : 'text-dusk-sub'
+          }`}
+        >
+          {m === 'SUN' ? 'Soleil' : 'Ombre'}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** « Au soleil jusqu'à 19:24 », ou la phrase de statut habituelle. */
+function StatusLine({ rec, mode, isNow, lead = false }: { rec: Recommendation; mode: SunMode; isNow: boolean; lead?: boolean }) {
+  const accent = mode === 'SUN' ? 'text-dusk-glow' : 'text-[#6EE0D2]';
+  const cap = (t: string) => (lead ? t.charAt(0).toUpperCase() + t.slice(1) : t.charAt(0).toLowerCase() + t.slice(1));
+  if (inIt(rec) && rec.sunWindowEnd) {
+    return (
+      <>
+        {cap(`${isNow ? '' : 'à cette heure, '}${mode === 'SUN' ? 'au soleil' : "à l'ombre"} jusqu'à`)}{' '}
+        <span className={`font-mono font-semibold ${accent}`}>{rec.sunWindowEnd}</span>
+      </>
+    );
+  }
+  return <>{cap(statusCopy(rec, mode).title)}</>;
+}
+
+function BestRow({ rec, mode, onOpen, onGo }: { rec: Recommendation; mode: SunMode; onOpen: () => void; onGo: () => void }) {
+  return (
+    <div className="flex items-center gap-3 pb-1">
+      <button onClick={onOpen} className="min-h-12 min-w-0 flex-1 text-left active:opacity-70">
+        <span className="block truncate text-[16px] font-semibold">{rec.venue.name}</span>
+        <span className="line-clamp-2 block text-[13px] leading-snug text-dusk-sub">
+          {travelLabel(rec)} · <StatusLine rec={rec} mode={mode} isNow />
+        </span>
+      </button>
+      <button
+        onClick={onGo}
+        className={`min-h-11 shrink-0 rounded-full px-5 text-[15px] font-bold text-dusk-night active:scale-[0.97] transition-transform motion-reduce:transition-none ${
+          mode === 'SUN' ? 'bg-dusk-fire' : 'bg-[#6EE0D2]'
+        }`}
+      >
+        Y aller
+      </button>
+    </div>
+  );
+}
+
+function PlaceCard({
+  rec,
+  mode,
+  isNow,
+  onClose,
+  onGo,
+  onDetail,
+}: {
+  rec: Recommendation;
+  mode: SunMode;
+  isNow: boolean;
+  onClose: () => void;
+  onGo: () => void;
+  onDetail: () => void;
+}) {
+  return (
+    <div className="px-4 pt-3">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display text-[21px] font-bold leading-tight [font-stretch:90%] [text-wrap:balance]">{rec.venue.name}</h2>
+          <p className="mt-0.5 text-[13.5px] leading-snug text-dusk-sub">
+            <span className="text-dusk-shell">
+              <StatusLine rec={rec} mode={mode} isNow={isNow} lead />
+            </span>{' '}
+            · {travelLabel(rec)}
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          aria-label="Fermer"
+          className="-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dusk-edge text-dusk-sub active:scale-95 transition-transform motion-reduce:transition-none"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div className="mt-3 flex gap-2.5">
+        <button
+          onClick={onGo}
+          className={`min-h-12 flex-1 rounded-full text-[16px] font-bold text-dusk-night active:scale-[0.98] transition-transform motion-reduce:transition-none ${
+            mode === 'SUN' ? 'bg-dusk-fire' : 'bg-[#6EE0D2]'
+          }`}
+        >
+          Y aller
+        </button>
+        <button
+          onClick={onDetail}
+          className="min-h-12 flex-1 rounded-full border border-dusk-edge text-[15px] font-semibold active:scale-[0.98] transition-transform motion-reduce:transition-none"
+        >
+          Voir la fiche
+        </button>
       </div>
     </div>
   );

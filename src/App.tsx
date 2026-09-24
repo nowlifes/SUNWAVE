@@ -145,7 +145,8 @@ export default function App() {
       const venue = VenueService.getVenueById(venueId);
       if (venue) {
         setMapCenter({ lat: venue.latitude, lng: venue.longitude });
-        setMapZoom(16);
+        // Assez près pour lire les rues, sans perdre les voisins de vue.
+        setMapZoom((z) => Math.max(z, 15.5));
       }
     }
   }, []);
@@ -303,7 +304,7 @@ export default function App() {
         )}
 
         {/* Bottom navigation */}
-        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} dusk={screen === 'now' && dusk} />
+        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} dusk={(screen === 'now' && dusk) || screen === 'map'} />
       </div>
     </div>
   );

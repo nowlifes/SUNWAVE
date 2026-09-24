@@ -145,6 +145,23 @@ input[type="range"].sun-slider.shade-mode::-moz-range-thumb {
   -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
+/* Verre de nuit : seulement pour les couches éphémères de la carte (bulle
+   « ici »). Opaque quand le flou n'existe pas ou qu'on réduit la transparence. */
+.glass-night {
+  background: rgba(19, 36, 90, 0.92);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-night { background: #13245A; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-night { background: #13245A; backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-glow, .animate-scale-in, .animate-slide-up, .animate-fade-in { animation: none; }
+}
+
 .glass-dark {
   background: rgba(15, 23, 42, 0.75);
   backdrop-filter: blur(20px) saturate(180%);
