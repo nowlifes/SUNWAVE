@@ -24,4 +24,11 @@ describe('resolve', () => {
     expect(LocationService.resolve({ lat: 38.6916, lng: -9.216 }, 10).outsideLisbon).toBe(false);
     expect(LocationService.resolve({ lat: 38.768, lng: -9.094 }, 10).outsideLisbon).toBe(false);
   });
+
+  // La rive sud fait partie de la zone : ses lieux se mesurent depuis la
+  // vraie position, pas depuis le centre de Lisbonne.
+  it('accepte Costa da Caparica et Praia da Morena, au bout de la zone', () => {
+    expect(LocationService.resolve({ lat: 38.6446, lng: -9.2356 }, 10).outsideLisbon).toBe(false);
+    expect(LocationService.resolve({ lat: 38.60326, lng: -9.21082 }, 10).outsideLisbon).toBe(false);
+  });
 });

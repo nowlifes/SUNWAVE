@@ -123,6 +123,13 @@ function parkHours(): WeeklyHours {
   return hours;
 }
 
+/** Mêmes horaires tous les jours ; `days` restreint aux jours ouverts. */
+function dailyHours(open: string, close: string, days: number[] = [0, 1, 2, 3, 4, 5, 6]): WeeklyHours {
+  const hours: WeeklyHours = {};
+  for (let d = 0; d <= 6; d++) hours[d] = days.includes(d) ? { open, close } : null;
+  return hours;
+}
+
 function alwaysOpen(): WeeklyHours {
   const hours: WeeklyHours = {};
   for (let d = 0; d <= 6; d++) hours[d] = { open: '00:00', close: '23:59' };
@@ -150,6 +157,8 @@ interface VenueSpec {
   confidence: Confidence;
   sunProfile: SunProfile;
   description: string;
+  /** `false` pour un lieu relevé dans OSM, pas encore vu sur place. */
+  verified?: false;
 }
 
 /**
@@ -212,6 +221,7 @@ function venue(spec: VenueSpec): Venue {
     sunBand: band,
     heightProvenance: VenueSunService.heightProvenance(target, lisbonBuildings),
     description: spec.description,
+    verifiedOnFoot: spec.verified !== false,
   };
 }
 
@@ -1285,14 +1295,14 @@ const entries: (Venue | null)[] = [
   venue({
     name: 'Ponto Final',
     category: 'restaurant',
-    lat: 38.68502,
-    lng: -9.1577,
+    lat: 38.685056,
+    lng: -9.15762,
     address: 'Cais do Ginjal, Almada',
     rating: 4.7,
     isOpen: true,
     hours: restaurantHours(),
     hasOutdoor: true,
-    polygon: poly(38.68502, -9.1577, 16, 10, 180),
+    polygon: poly(38.685056, -9.15762, 16, 10, 180),
     buildingHeight: 12,
     confidence: 'LOW',
     sunProfile: 'street-open',
@@ -1349,6 +1359,212 @@ const entries: (Venue | null)[] = [
     sunProfile: 'indoor-shaded',
     description:
       'Le légendaire bar-cabinet de curiosités de Lisbonne — uniquement en intérieur, pas de terrasse, un monde merveilleux et sombre.',
+  }),
+  // ------------------------------------------------------------------------
+  // RIVE SUD — ajoutés le 2026-09-23, relevés dans OSM (positions, horaires,
+  // terrasses `outdoor_seating=yes`), PAS visités : `verified: false`, hors
+  // de la promesse « vérifiés à pied ». `rating: 0` = pas de note relevée.
+  // En fin de liste : les ids suivent l'ordre du fichier et vivent déjà dans
+  // des favoris et des liens partagés.
+  // Red Dragon Beach Club écarté : bar de plage saisonnier, aucun horaire publié.
+  // ------------------------------------------------------------------------
+  venue({
+    name: 'Praia de São João',
+    category: 'beach',
+    lat: 38.65646,
+    lng: -9.25191,
+    address: 'Praia de São João, Costa da Caparica',
+    rating: 0,
+    isOpen: true,
+    hours: alwaysOpen(),
+    hasOutdoor: true,
+    polygon: poly(38.65646, -9.25191, 40, 20, 270),
+    buildingHeight: 0,
+    confidence: 'HIGH',
+    sunProfile: 'beach',
+    description:
+      'Plage atlantique au nord de la Costa, plus large et plus calme que le front de mer — en plein ciel du matin au coucher.',
+    verified: false,
+  }),
+  venue({
+    name: 'Praia do Paraíso',
+    category: 'beach',
+    lat: 38.6418,
+    lng: -9.2388,
+    address: 'Praia do Paraíso, Costa da Caparica',
+    rating: 0,
+    isOpen: true,
+    hours: alwaysOpen(),
+    hasOutdoor: true,
+    polygon: poly(38.6418, -9.2388, 40, 20, 270),
+    buildingHeight: 0,
+    confidence: 'HIGH',
+    sunProfile: 'beach',
+    description:
+      'Plage du centre de la Costa, entre deux épis, au pied des bars de plage — soleil toute la journée.',
+    verified: false,
+  }),
+  venue({
+    name: 'Praia do Castelo',
+    category: 'beach',
+    lat: 38.61318,
+    lng: -9.21634,
+    address: 'Praia do Castelo, Costa da Caparica',
+    rating: 0,
+    isOpen: true,
+    hours: alwaysOpen(),
+    hasOutdoor: true,
+    polygon: poly(38.61318, -9.21634, 40, 20, 270),
+    buildingHeight: 0,
+    confidence: 'HIGH',
+    sunProfile: 'beach',
+    description:
+      "Plage au sud de la Costa, adossée à la falaise fossile — dunes, peu de béton, le soleil jusqu'à l'océan.",
+    verified: false,
+  }),
+  venue({
+    name: 'Praia da Morena',
+    category: 'beach',
+    lat: 38.60326,
+    lng: -9.21082,
+    address: 'Praia da Morena, Costa da Caparica',
+    rating: 0,
+    isOpen: true,
+    hours: alwaysOpen(),
+    hasOutdoor: true,
+    polygon: poly(38.60326, -9.21082, 40, 20, 270),
+    buildingHeight: 0,
+    confidence: 'HIGH',
+    sunProfile: 'beach',
+    description:
+      "Plage sauvage du sud de la Caparica, desservie par le petit train de plage — ciel ouvert, rien pour faire de l'ombre.",
+    verified: false,
+  }),
+  venue({
+    name: 'Marcelino Beach Club',
+    category: 'restaurant',
+    lat: 38.647625,
+    lng: -9.243309,
+    address: 'Praia de Santo António, Costa da Caparica',
+    rating: 0,
+    isOpen: true,
+    hours: dailyHours('10:00', '19:00', [2, 3, 4, 5, 6]),
+    hasOutdoor: true,
+    polygon: poly(38.647625, -9.243309, 12, 8, 270),
+    buildingHeight: 4,
+    confidence: 'MEDIUM',
+    sunProfile: 'beach',
+    description:
+      'Bar-restaurant de plage sur le sable de Santo António, esplanade face à la mer.',
+    verified: false,
+  }),
+  venue({
+    name: 'Koa',
+    category: 'cafe',
+    lat: 38.644179,
+    lng: -9.237677,
+    address: 'R. João Inácio 22, Costa da Caparica',
+    rating: 0,
+    isOpen: true,
+    hours: { ...dailyHours('11:00', '19:00'), 0: { open: '10:00', close: '19:00' }, 6: { open: '10:00', close: '19:00' } },
+    hasOutdoor: true,
+    polygon: poly(38.644179, -9.237677, 8, 5, 180),
+    buildingHeight: 9,
+    confidence: 'MEDIUM',
+    sunProfile: 'street-mixed',
+    description:
+      'Café brunch à deux rues de la plage, options végétariennes, quelques tables dehors.',
+    verified: false,
+  }),
+  venue({
+    name: 'Arriba Club',
+    category: 'cafe',
+    lat: 38.644552,
+    lng: -9.239493,
+    address: 'Av. 1º de Maio 46, Costa da Caparica',
+    rating: 0,
+    isOpen: true,
+    hours: dailyHours('08:00', '02:00'),
+    hasOutdoor: true,
+    polygon: poly(38.644552, -9.239493, 10, 6, 180),
+    buildingHeight: 9,
+    confidence: 'MEDIUM',
+    sunProfile: 'street-open',
+    description:
+      "Café-bar du front de mer ouvert du petit-déjeuner à tard dans la nuit, terrasse sur l'avenue.",
+    verified: false,
+  }),
+  venue({
+    name: 'O Pipo',
+    category: 'restaurant',
+    lat: 38.643282,
+    lng: -9.23654,
+    address: 'Rua dos Pescadores 11, Costa da Caparica',
+    rating: 0,
+    isOpen: true,
+    hours: dailyHours('12:00', '23:00'),
+    hasOutdoor: true,
+    polygon: poly(38.643282, -9.23654, 10, 6, 180),
+    buildingHeight: 9,
+    confidence: 'MEDIUM',
+    sunProfile: 'street-mixed',
+    description:
+      'Poisson et fruits de mer dans la rue des pêcheurs, esplanade sur la rue piétonne. Service coupé 16 h – 18 h 30, non modélisé.',
+    verified: false,
+  }),
+  venue({
+    name: 'Miradouro dos Capuchos',
+    category: 'viewpoint',
+    lat: 38.64338,
+    lng: -9.22301,
+    address: 'Largo dos Capuchos, Costa da Caparica',
+    rating: 0,
+    isOpen: true,
+    hours: alwaysOpen(),
+    hasOutdoor: true,
+    polygon: poly(38.64338, -9.22301, 16, 10, 270),
+    buildingHeight: 0,
+    confidence: 'HIGH',
+    sunProfile: 'viewpoint',
+    description:
+      "Belvédère sur la falaise fossile, au-dessus de toute la côte de Caparica — le coucher de soleil sur l'Atlantique, sans rien devant.",
+    verified: false,
+  }),
+  venue({
+    name: 'Cristo Rei',
+    category: 'viewpoint',
+    lat: 38.678746,
+    lng: -9.17133,
+    address: 'Santuário de Cristo Rei, Almada',
+    rating: 0,
+    isOpen: true,
+    hours: dailyHours('10:00', '19:00'),
+    hasOutdoor: true,
+    polygon: poly(38.678746, -9.17133, 20, 12, 0),
+    buildingHeight: 0,
+    confidence: 'HIGH',
+    sunProfile: 'viewpoint',
+    description:
+      "Le parvis du sanctuaire face au Tage, au pont et à tout Lisbonne. Horaires d'été (avril-septembre) ; 10 h – 18 h l'hiver.",
+    verified: false,
+  }),
+  venue({
+    name: 'Miradouro da Casa da Cerca',
+    category: 'viewpoint',
+    lat: 38.68432,
+    lng: -9.15889,
+    address: 'R. da Cerca, Almada',
+    rating: 0,
+    isOpen: true,
+    hours: dailyHours('10:15', '20:00'),
+    hasOutdoor: true,
+    polygon: poly(38.68432, -9.15889, 16, 10, 315),
+    buildingHeight: 0,
+    confidence: 'HIGH',
+    sunProfile: 'viewpoint',
+    description:
+      "Jardin et centre d'art sur la falaise d'Almada Velha, vue plein nord sur le Tage et Lisbonne. Horaires d'été ; 10 h 15 – 17 h 30 de novembre à mars.",
+    verified: false,
   }),
 ];
 

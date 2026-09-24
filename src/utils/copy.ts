@@ -43,6 +43,13 @@ export function travelLabel(rec: Pick<Recommendation, 'walkTimeMin' | 'distanceM
   return `${value} ${unit}`;
 }
 
+/** La promesse de l'accueil. Un lieu relevé dans OSM sans visite ne compte
+ *  pas dans « vérifiés à pied » : il est annoncé à part. */
+export function venueCountLine(total: number, verified: number): string {
+  if (verified === total) return `${total} lieux, tous vérifiés à pied.`;
+  return `${verified} lieux vérifiés à pied, ${total - verified} encore à vérifier.`;
+}
+
 /** « 45 min », « 2h », « 5h 2m » — comme on le dit. */
 export function formatGap(minutes: number): string {
   const min = Math.max(0, Math.round(minutes));

@@ -1,6 +1,8 @@
 import type { GeoPoint } from '@/types';
 import { lisbonTerrain, type TerrainGrid } from '@/data/lisbonTerrain';
 import { lisbonTerrain30 } from '@/data/lisbonTerrain30';
+import { caparicaTerrain30 } from '@/data/caparicaTerrain30';
+import { almadaTerrain30 } from '@/data/almadaTerrain30';
 
 // ---------------------------------------------------------------------------
 // Ground elevation lookup.
@@ -39,7 +41,11 @@ import { lisbonTerrain30 } from '@/data/lisbonTerrain30';
 
 class TerrainServiceClass {
   private coarse: TerrainGrid = lisbonTerrain;
-  private fine: TerrainGrid = lisbonTerrain30;
+  /** Une grille fine par zone bâtie : Lisbonne, puis la rive sud (Costa da
+   *  Caparica avec Capuchos, Almada avec Cristo Rei), ajoutées le 2026-09-23.
+   *  Hors de toutes, Capuchos tombait au niveau de la mer sur un bord de la
+   *  grille grossière. */
+  private fine: TerrainGrid[] = [lisbonTerrain30, caparicaTerrain30, almadaTerrain30];
 
   /** Is the point inside a grid, with no clamping needed? */
   private covers(grid: TerrainGrid, point: GeoPoint): boolean {
@@ -60,7 +66,7 @@ class TerrainServiceClass {
    * poison the whole shadow calc.
    */
   altitudeAt(point: GeoPoint): number {
-    return this.sample(this.covers(this.fine, point) ? this.fine : this.coarse, point);
+    return this.sample(this.fine.find((g) => this.covers(g, point)) ?? this.coarse, point);
   }
 
   private sample(grid: TerrainGrid, point: GeoPoint): number {

@@ -105,3 +105,38 @@ describe('canonicalId', () => {
     expect(VenueService.canonicalId('v_20')).toBe('v_20');
   });
 });
+
+// La rive sud se résumait à une plage et Ponto Final : depuis Caparica,
+// l'app envoyait à 11 km. Les lieux ajoutés viennent d'OSM, pas d'une
+// visite : ils entrent « à vérifier » et ne comptent pas dans la promesse
+// « vérifiés à pied ».
+const SUD_A_VERIFIER = [
+  'Praia de São João', 'Praia do Paraíso', 'Praia do Castelo', 'Praia da Morena',
+  'Marcelino Beach Club', 'Koa', 'Arriba Club', 'O Pipo',
+  'Miradouro dos Capuchos', 'Cristo Rei', 'Miradouro da Casa da Cerca',
+];
+
+describe('rive sud', () => {
+  const venues = VenueService.getVenuesByCategory([]);
+
+  it('Caparica et Almada ont leurs lieux', () => {
+    for (const n of SUD_A_VERIFIER) expect(venues.map((v) => v.name)).toContain(n);
+    for (const v of venues.filter((x) => SUD_A_VERIFIER.includes(x.name))) {
+      expect(['Costa da Caparica', 'Almada'], v.name).toContain(VenueService.getNeighborhood(v));
+    }
+  });
+
+  it('un lieu relevé dans OSM n\'est pas compté vérifié à pied', () => {
+    for (const v of venues) expect(v.verifiedOnFoot, v.name).toBe(!SUD_A_VERIFIER.includes(v.name));
+    expect(venues.filter((v) => v.verifiedOnFoot)).toHaveLength(62);
+  });
+
+  it('Capuchos est calculé depuis la falaise, pas depuis la plage', () => {
+    const capuchos = venues.find((v) => v.name === 'Miradouro dos Capuchos')!;
+    expect(capuchos.altitude).toBeGreaterThan(60);
+  });
+
+  it('les ids des lieux existants ne bougent pas', () => {
+    expect(VenueService.getVenueById('v_64')?.name).toBe('Pavilhão Chinês');
+  });
+});

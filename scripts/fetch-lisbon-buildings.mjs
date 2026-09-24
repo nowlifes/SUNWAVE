@@ -20,10 +20,9 @@ const OUT_FILE = join(__dirname, '../src/data/lisbonBuildings.ts');
 // Clusters — one per neighbourhood actually used by lisbonVenues.ts, radius
 // sized to cover the venues in that cluster + ~300m margin so shadows cast
 // onto/from the edges of the covered area are still correct.
-// Costa da Caparica / Carcavelos beaches are intentionally excluded: they are
-// open sand with buildingHeight 0 in venue data, no nearby buildings matter
-// for their sun-exposure calc, and fetching across the Tagus estuary would
-// blow up the query for zero benefit.
+// Open beaches (Carcavelos, the southern Caparica coast) stay excluded: open
+// sand, no neighbour to cast a shadow. The Costa da Caparica front, Capuchos
+// and Almada are in since 2026-09-23 — they carry cafés, bars and viewpoints.
 // ---------------------------------------------------------------------------
 const CLUSTERS = [
   { name: 'Chiado', lat: 38.7138, lng: -9.142, radiusM: 500 },
@@ -44,7 +43,21 @@ const CLUSTERS = [
   { name: 'Arroios', lat: 38.7295, lng: -9.1335, radiusM: 450 },
   { name: 'Pena', lat: 38.723, lng: -9.135, radiusM: 400 },
   { name: 'Anjos', lat: 38.7245, lng: -9.1355, radiusM: 350 },
+  // Added 2026-09-23: la rive sud, zone jugée importante. Chaque rayon couvre
+  // ses lieux + les 150 m de voisins du moteur d'ombre (NEARBY_RADIUS_M).
+  // Costa : front de mer, Rua dos Pescadores, Marcelino (480 m du centre).
+  { name: 'Costa da Caparica', lat: 38.6445, lng: -9.2375, radiusM: 700, bank: 'south' },
+  // Miradouro dos Capuchos, sur l'arriba, 1,2 km à l'est du front de mer.
+  { name: 'Capuchos', lat: 38.6434, lng: -9.223, radiusM: 250, bank: 'south' },
+  // Cristo Rei (640 m) et Casa da Cerca / Almada Velha (610 m).
+  { name: 'Almada', lat: 38.6815, lng: -9.165, radiusM: 800, bank: 'south' },
 ];
+
+/** Rive d'un cluster. Les médianes par type et la médiane globale se calculent
+ *  PAR RIVE : les barres de Caparica et les maisons basses d'Almada tiraient
+ *  « apartments » de 5 à 4 étages et « house » de 4 à 3 dans tout Lisbonne. */
+const BANK_OF = new Map(CLUSTERS.map((c) => [c.name, c.bank ?? 'north']));
+const bankOf = (cluster) => BANK_OF.get(cluster) ?? 'north';
 
 // Adding `relation` to the query roughly doubled its cost and the main
 // instance started returning 504s. Mirrors are tried in order.
@@ -266,6 +279,7 @@ function deriveLevelTable(samples) {
   const byClusterType = new Map();
   const byCluster = new Map();
   const byType = new Map();
+  const byBank = new Map();
   const all = [];
 
   for (const s of samples) {
@@ -274,8 +288,12 @@ function deriveLevelTable(samples) {
     byClusterType.get(ct).push(s.levels);
     if (!byCluster.has(s.cluster)) byCluster.set(s.cluster, []);
     byCluster.get(s.cluster).push(s.levels);
-    if (!byType.has(s.buildingType)) byType.set(s.buildingType, []);
-    byType.get(s.buildingType).push(s.levels);
+    const bt = `${bankOf(s.cluster)}|${s.buildingType}`;
+    if (!byType.has(bt)) byType.set(bt, []);
+    byType.get(bt).push(s.levels);
+    const bank = bankOf(s.cluster);
+    if (!byBank.has(bank)) byBank.set(bank, []);
+    byBank.get(bank).push(s.levels);
     all.push(s.levels);
   }
 
@@ -292,10 +310,14 @@ function deriveLevelTable(samples) {
     if (v.length >= MIN_CLUSTER_TYPE_SAMPLES) type.set(k, median(v));
   }
 
+  const bankGlobal = new Map();
+  for (const [k, v] of byBank) bankGlobal.set(k, median(v));
+
   return {
     clusterType,
     cluster,
     type,
+    bankGlobal,
     global: median(all) ?? GLOBAL_FALLBACK_LEVELS,
     sampleCount: all.length,
   };
@@ -320,8 +342,9 @@ function nearestCluster(point) {
 function estimateHeight(table, cluster, buildingType, areaM2) {
   let levels =
     table.clusterType.get(`${cluster}|${buildingType}`) ??
-    table.type.get(buildingType) ??
+    table.type.get(`${bankOf(cluster)}|${buildingType}`) ??
     table.cluster.get(cluster) ??
+    table.bankGlobal.get(bankOf(cluster)) ??
     table.global;
 
   // A 30m2 footprint with the neighbourhood's median 5 storeys would be a

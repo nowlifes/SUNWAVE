@@ -8,7 +8,7 @@ import { SunTrailService, type SunTrail } from '@/services/SunTrailService';
 import { DayRibbon } from './DayRibbon';
 import { SkyHeader } from './SkyHeader';
 import { formatLisbonTime } from '@/utils/lisbonTime';
-import { categoryLabel, formatGap, statusCopy, statusShort, travelLabel } from '@/utils/copy';
+import { categoryLabel, formatGap, statusCopy, statusShort, travelLabel, venueCountLine } from '@/utils/copy';
 import { inviteText, inviteUrl, shareInvite } from '@/utils/share';
 
 // ---------------------------------------------------------------------------
@@ -49,7 +49,8 @@ interface RibbonDay {
 }
 
 // Compté, pas écrit en dur : le chiffre suit les ajouts et les retraits.
-const VENUE_COUNT = VenueService.getVenuesByCategory([]).length;
+const ALL_VENUES = VenueService.getVenuesByCategory([]);
+const VENUE_COUNT_LINE = venueCountLine(ALL_VENUES.length, ALL_VENUES.filter((v) => v.verifiedOnFoot).length);
 
 export function NowScreen({
   mode,
@@ -241,7 +242,7 @@ export function NowScreen({
 
         {/* --- la promesse que les gros ne peuvent structurellement pas tenir */}
         <p className="mt-8 px-1 text-center text-[11.5px] leading-relaxed text-mute">
-          <span className="font-semibold text-ink">{VENUE_COUNT} lieux à Lisbonne. Tous vérifiés à pied.</span>
+          <span className="font-semibold text-ink">{VENUE_COUNT_LINE}</span>
           <br />
           Pas 2 000 adresses aspirées d'une base.
           {outsideLisbon ? (

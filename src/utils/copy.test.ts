@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Recommendation } from '@/types';
-import { categoryLabel, formatGap, markerLabel, statusCopy, statusShort, travelLabel, travelParts } from './copy';
+import { categoryLabel, formatGap, markerLabel, statusCopy, statusShort, travelLabel, travelParts, venueCountLine } from './copy';
 
 // Une seule source pour les phrases de statut : la fiche détail disait
 // « Sunny for 5H » quand l'accueil disait « Perd le soleil dans 4h 30m ».
@@ -147,5 +147,16 @@ describe('trajet', () => {
   it('au-delà de 20 min : la distance, jamais « à pied »', () => {
     expect(travelLabel(rec({ walkTimeMin: 136, distanceM: 11050 }))).toBe('11,1 km d\'ici');
     expect(travelParts(rec({ walkTimeMin: 21, distanceM: 1700 }))).toEqual({ value: '1,7 km', unit: 'd\'ici' });
+  });
+});
+
+// La promesse de l'accueil ne compte que ce qui a été vu sur place.
+describe('promesse du pied de page', () => {
+  it('tous vérifiés', () => {
+    expect(venueCountLine(62, 62)).toBe('62 lieux, tous vérifiés à pied.');
+  });
+
+  it('des lieux encore à vérifier : comptés à part', () => {
+    expect(venueCountLine(73, 62)).toBe('62 lieux vérifiés à pied, 11 encore à vérifier.');
   });
 });
