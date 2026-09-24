@@ -20,14 +20,32 @@ class SunServiceClass {
     };
   }
 
+  /** Lever/coucher des derniers instants demandés : les listes les relisent
+   *  pour chaque lieu, à la même minute. Pur (instant + position). */
+  private timesCache = new Map<string, { sunrise: number; sunset: number }>();
+
+  private times(date: Date, lat: number, lng: number) {
+    const key = `${date.getTime()}|${lat}|${lng}`;
+    const hit = this.timesCache.get(key);
+    if (hit) return hit;
+    const t = SunCalc.getTimes(date, lat, lng);
+    const out = {
+      sunrise: t.sunrise ? t.sunrise.getTime() : date.getTime() + 6 * 3600 * 1000,
+      sunset: t.sunset ? t.sunset.getTime() : date.getTime() + 19 * 3600 * 1000,
+    };
+    if (this.timesCache.size >= 64) this.timesCache.delete(this.timesCache.keys().next().value as string);
+    this.timesCache.set(key, out);
+    return out;
+  }
+
+  // Un Date neuf à chaque appel : un appelant qui le modifierait ne doit pas
+  // fausser le cache.
   getSunrise(date: Date, lat: number = LISBON.lat, lng: number = LISBON.lng): Date {
-    const times = SunCalc.getTimes(date, lat, lng);
-    return times.sunrise || new Date(date.getTime() + 6 * 3600 * 1000);
+    return new Date(this.times(date, lat, lng).sunrise);
   }
 
   getSunset(date: Date, lat: number = LISBON.lat, lng: number = LISBON.lng): Date {
-    const times = SunCalc.getTimes(date, lat, lng);
-    return times.sunset || new Date(date.getTime() + 19 * 3600 * 1000);
+    return new Date(this.times(date, lat, lng).sunset);
   }
 
   getSunElevation(date: Date, lat: number = LISBON.lat, lng: number = LISBON.lng): number {

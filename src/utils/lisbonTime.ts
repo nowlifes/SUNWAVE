@@ -32,14 +32,23 @@ interface WallClockParts {
   second: number;
 }
 
-/** Decompose an instant into Lisbon wall-clock fields. */
-export function lisbonParts(date: Date): WallClockParts {
+/** Derniers instants décomposés. Un pas du curseur d'heure évalue ~970 lieux
+ *  à la même minute, et chacun relisait l'heure plusieurs fois par Intl : c'était
+ *  le plus gros coût du pas. Le résultat ne dépend que de l'instant. */
+const PARTS_CACHE_MAX = 64;
+const partsCache = new Map<number, Readonly<WallClockParts>>();
+
+/** Decompose an instant into Lisbon wall-clock fields (gelé : partagé). */
+export function lisbonParts(date: Date): Readonly<WallClockParts> {
+  const t = date.getTime();
+  const hit = partsCache.get(t);
+  if (hit) return hit;
   const parts = partsFormatter.formatToParts(date);
   const read = (type: Intl.DateTimeFormatPartTypes): number => {
     const part = parts.find((p) => p.type === type);
     return part ? Number(part.value) : 0;
   };
-  return {
+  const out = Object.freeze({
     year: read('year'),
     month: read('month'),
     day: read('day'),
@@ -47,7 +56,10 @@ export function lisbonParts(date: Date): WallClockParts {
     hour: read('hour') % 24,
     minute: read('minute'),
     second: read('second'),
-  };
+  });
+  if (partsCache.size >= PARTS_CACHE_MAX) partsCache.delete(partsCache.keys().next().value as number);
+  partsCache.set(t, out);
+  return out;
 }
 
 /** Offset of Europe/Lisbon from UTC, in ms, at the given instant. */

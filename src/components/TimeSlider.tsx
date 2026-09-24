@@ -69,6 +69,9 @@ export function TimeSlider({ mode, currentDate, onTimeChange, cells, onScrubStar
     (min: number) => {
       const clamped = Math.max(RIBBON_START_MIN, Math.min(RIBBON_END_MIN, min));
       const { hour, minute } = snapToQuarter(clamped);
+      // Le doigt bouge de quelques pixels sans changer de quart d'heure :
+      // ne rien émettre, sinon toute la carte se recalcule pour la même heure.
+      if (hour * 60 + minute === lisbonMinutesOfDay(currentDate)) return;
       onTimeChange(setLisbonTime(currentDate, hour, minute));
     },
     [currentDate, onTimeChange]

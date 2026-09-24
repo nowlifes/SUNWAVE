@@ -26,6 +26,7 @@ import { LIT_MIN_ALT, beamCone, beamRay, coneCss, edgePoint, isOnScreen, rayCss,
 import { haloPulseMarkup, haloSvg, liveGlyphSvg } from '@/utils/haloMarkup';
 import { LIGHT, NIGHT } from '@/utils/palette';
 import { HaloIcon } from './Halo';
+import { createShadowScheduler, type ShadowJob, type ShadowScheduler } from '@/utils/shadowScheduler';
 
 setWorkerUrl(maplibreWorkerUrl);
 
@@ -201,6 +202,33 @@ function applyBeam(el: HTMLDivElement, css: BeamCss | null, cache: { key: string
     el.style.setProperty('-webkit-mask-image', css.mask);
   }
   el.style.transform = css.transform;
+}
+
+type ShadowCollection = { type: 'FeatureCollection'; features: { type: 'Feature'; properties: object; geometry: { type: 'Polygon'; coordinates: number[][][] } }[] };
+const NO_SHADOWS = 'none';
+/** Bâtiments projetés par morceau : ~1 ms chacun en CPU x4 plutôt qu'un bloc. */
+const SHADOW_CHUNK = 1500;
+
+/** Le calcul des ombres d'une minute (clé « instant|lat|lng »), en morceaux. */
+function buildShadowJob(key: string): ShadowJob<ShadowCollection> {
+  const features: ShadowCollection['features'] = [];
+  if (key === NO_SHADOWS) return { step: () => true, result: () => ({ type: 'FeatureCollection', features }) };
+  const [t, lat, lng] = key.split('|').map(Number);
+  const date = new Date(t);
+  let i = 0;
+  return {
+    step() {
+      const end = Math.min(lisbonBuildings.length, i + SHADOW_CHUNK);
+      for (; i < end; i++) {
+        const proj = ShadowService.projectBuildingShadow(lisbonBuildings[i], date, lat, lng);
+        const coords = proj.shadowPoints.map((p) => [p.lng, p.lat]);
+        coords.push(coords[0]);
+        features.push({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [coords] } });
+      }
+      return i >= lisbonBuildings.length;
+    },
+    result: () => ({ type: 'FeatureCollection', features }),
+  };
 }
 
 export function MapView({
@@ -494,25 +522,35 @@ export function MapView({
   }, [selectedVenueId, mapReady]);
 
   // Le jour, les ombres des bâtiments, un cran plus sombres que le sol.
+  // 13 800 projections puis un envoi au worker : découpé en morceaux, mis en
+  // cache par minute (le curseur avance au quart d'heure), et pendant le
+  // glissement au plus un calcul tous les 300 ms — le faisceau, les pastilles
+  // et le halo, eux, suivent chaque pas. Au relâchement, les ombres sont celles
+  // de l'heure affichée (voir shadowScheduler.test.ts).
+  const shadowsRef = useRef<ShadowScheduler | null>(null);
   useEffect(() => {
-    if (!mapRef.current || !mapReady) return;
     const map = mapRef.current;
-    const source = map.getSource('building-shadows') as GeoJSONSource | undefined;
-    if (!source) return;
-    if (!isDaytime || sunPos.elevation <= 1) {
-      source.setData(EMPTY);
-      return;
-    }
-    source.setData({
-      type: 'FeatureCollection',
-      features: lisbonBuildings.map((building) => {
-        const proj = ShadowService.projectBuildingShadow(building, currentDate, mapCenter.lat, mapCenter.lng);
-        const coords = proj.shadowPoints.map((p) => [p.lng, p.lat]);
-        coords.push(coords[0]);
-        return { type: 'Feature' as const, properties: {}, geometry: { type: 'Polygon' as const, coordinates: [coords] } };
-      }),
+    if (!map || !mapReady) return;
+    const scheduler = createShadowScheduler<ShadowCollection>({
+      build: buildShadowJob,
+      apply: (_key, data) => {
+        (map.getSource('building-shadows') as GeoJSONSource | undefined)?.setData(data);
+      },
+      onError: (e) => setMapError(`ombres : ${e.message}`),
     });
-  }, [isDaytime, mapReady, sunPos, currentDate, mapCenter]);
+    shadowsRef.current = scheduler;
+    return () => {
+      scheduler.dispose();
+      shadowsRef.current = null;
+    };
+  }, [mapReady]);
+
+  const shadowKey = !isDaytime || sunPos.elevation <= 1
+    ? NO_SHADOWS
+    : `${Math.floor(currentDate.getTime() / 60000) * 60000}|${mapCenter.lat.toFixed(2)}|${mapCenter.lng.toFixed(2)}`;
+  useEffect(() => {
+    shadowsRef.current?.request(shadowKey, scrubbing);
+  }, [shadowKey, scrubbing, mapReady]);
 
   // Arrivée : cadrée sur l'anneau de 10 min à pied, élargie jusqu'aux lieux
   // les plus proches s'il le faut.
