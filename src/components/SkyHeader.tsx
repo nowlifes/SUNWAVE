@@ -4,6 +4,7 @@ import { SunService } from '@/services/SunService';
 import { formatLisbonTime } from '@/utils/lisbonTime';
 import { SHADE_SKY, skyPalette, sunArcProgress } from '@/utils/sky';
 import { LIGHT, NIGHT } from '@/utils/palette';
+import { haloLook } from '@/utils/halo';
 
 // ---------------------------------------------------------------------------
 // Le haut de l'écran d'accueil est le ciel de Lisbonne à cette minute : des
@@ -43,7 +44,8 @@ interface SkyHeaderProps {
 
 export function SkyHeader({ date, sunrise, sunset, mode, onModeChange, place, children }: SkyHeaderProps) {
   const night = mode === 'SHADE';
-  const sky = night ? SHADE_SKY : skyPalette(SunService.getSunElevation(date));
+  const elevation = SunService.getSunElevation(date);
+  const sky = night ? SHADE_SKY : skyPalette(elevation);
   const t = sunArcProgress(date, sunrise, sunset);
   const sun = t === null ? null : arcPoint(t);
   let y = 0;
@@ -71,7 +73,7 @@ export function SkyHeader({ date, sunrise, sunset, mode, onModeChange, place, ch
         {t !== null && !night && (
           <polyline points={arcPath(t)} fill="none" stroke="#FFFFFF" strokeOpacity="0.85" strokeWidth="2" />
         )}
-        {sun && <SkySun x={sun.x} y={sun.y} night={night} />}
+        {sun && <SkySun x={sun.x} y={sun.y} night={night} elevation={elevation} />}
         <text x={X0} y={BASE + 8} fontSize="11" fontWeight="600" fill={ink} className="font-mono">
           {formatLisbonTime(sunrise)}
         </text>
@@ -94,13 +96,16 @@ export function SkyHeader({ date, sunrise, sunset, mode, onModeChange, place, ch
   );
 }
 
-/** Le disque du ciel. */
-function SkySun({ x, y, night }: { x: number; y: number; night: boolean }) {
+/** Le disque du ciel : même halo que partout ; plus le soleil est haut, plus
+ *  il est large et pâle. Sur fond clair le disque reste braise. */
+function SkySun({ x, y, night, elevation }: { x: number; y: number; night: boolean; elevation: number }) {
+  const look = haloLook(Math.max(elevation, 1));
+  const glowR = 28 + 26 * look.glow;
   if (night) {
     return (
       <>
-        <circle cx={x} cy={y} r="46" fill={LIGHT.glow} fillOpacity="0.16" />
-        <circle cx={x} cy={y} r="17" fill={LIGHT.glow} fillOpacity="0.9" />
+        <circle cx={x} cy={y} r={glowR - 4} fill={look.color} fillOpacity="0.16" />
+        <circle cx={x} cy={y} r="17" fill={look.color} fillOpacity="0.9" />
       </>
     );
   }
@@ -108,11 +113,11 @@ function SkySun({ x, y, night }: { x: number; y: number; night: boolean }) {
     <>
       <defs>
         <radialGradient id="sky-sun-glow">
-          <stop offset="0.3" stopColor={LIGHT.glow} stopOpacity="0.75" />
-          <stop offset="1" stopColor={LIGHT.glow} stopOpacity="0" />
+          <stop offset="0.3" stopColor={look.color} stopOpacity="0.75" />
+          <stop offset="1" stopColor={look.color} stopOpacity="0" />
         </radialGradient>
       </defs>
-      <circle cx={x} cy={y} r="51" fill="url(#sky-sun-glow)" />
+      <circle cx={x} cy={y} r={glowR} fill="url(#sky-sun-glow)" />
       <circle cx={x} cy={y} r="17" fill={LIGHT.fire} />
     </>
   );

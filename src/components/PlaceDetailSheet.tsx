@@ -6,8 +6,13 @@ import { VenueService } from '@/services/VenueService';
 import { ReportService } from '@/services/ReportService';
 import { liveReports, type LiveAnswer } from '@/services/LiveReportService';
 import { LIVE_ANSWERS, LIVE_SHORT, isDaylight, liveAge, liveWho } from '@/utils/live';
-import { formatLisbonTime, lisbonHour, lisbonMinutesOfDay } from '@/utils/lisbonTime';
+import { formatLisbonTime, lisbonHour, lisbonMinutesOfDay, setLisbonTime } from '@/utils/lisbonTime';
 import { categoryLabel, statusCopy, travelParts } from '@/utils/copy';
+import { LIGHT } from '@/utils/palette';
+import type { HaloKind } from '@/utils/haloMarkup';
+import { Squiggle } from './Squiggle';
+import { HaloIcon, LiveGlyph } from './Halo';
+import { FicheSky } from './FicheSky';
 
 interface PlaceDetailSheetProps {
   venue: Venue;
@@ -33,13 +38,19 @@ const REPORT_OPTIONS: { type: ReportType; label: string }[] = [
 
 const RAIL_HOURS = 6;
 
-/** Le langage de toutes les applis météo : on lit une icône, pas un pourcentage. */
-function skyEmoji(sunPct: number, isNight: boolean, isSunsetHour: boolean): string {
-  if (isNight) return '🌙';
-  if (isSunsetHour) return '🌅';
-  if (sunPct >= 60) return '☀️';
-  if (sunPct >= 30) return '🌤️';
-  return '🌑';
+/** L'état d'une heure dans la grammaire halo (plus d'emoji météo) : ça brille
+ *  au soleil, éteint à l'ombre ; la nuit, rien ne brille. */
+interface Glyph {
+  kind: HaloKind;
+  alt: number;
+}
+const LIT: Glyph = { kind: 'sun', alt: 30 };
+const OUT: Glyph = { kind: 'shade', alt: 0 };
+
+function hourGlyph(sunPct: number, isNight: boolean, sunAlt: number): Glyph {
+  if (isNight) return OUT;
+  if (sunPct >= 30) return { kind: 'sun', alt: Math.max(1, sunAlt) };
+  return OUT;
 }
 
 export function PlaceDetailSheet({
@@ -103,23 +114,21 @@ export function PlaceDetailSheet({
 
   // Trois lignes : maintenant, à l'arrivée, puis la prochaine bascule.
   const arrivalIn = inIt(arrivalRec);
-  const nextChange = arrivalIn
+  const nextChange: { at: string; word: string; glyph: Glyph } | null = arrivalIn
     ? arrivalRec.sunWindowEnd
-      ? { at: arrivalRec.sunWindowEnd, word: arrivalRec.endsAtSunset ? 'Nuit' : opposite, emoji: '🌙' }
+      ? { at: arrivalRec.sunWindowEnd, word: arrivalRec.endsAtSunset ? 'Nuit' : opposite, glyph: arrivalRec.endsAtSunset || isSun ? OUT : LIT }
       : null
     : arrivalRec.sunWindowStart && !arrivalRec.arrivesTomorrow
-      ? { at: arrivalRec.sunWindowStart, word: wanted, emoji: isSun ? '☀️' : '🌑' }
+      ? { at: arrivalRec.sunWindowStart, word: wanted, glyph: isSun ? LIT : OUT }
       : null;
 
   // Après le coucher, « ombre » serait faux : c'est la nuit, pour tout le monde.
   const sunsetMin = lisbonMinutesOfDay(SunService.getSunset(currentDate));
   const isNightAt = (d: Date) => lisbonMinutesOfDay(d) >= sunsetMin;
-  const stateOf = (yes: boolean, d: Date) =>
+  const stateOf = (yes: boolean, d: Date): { glyph: Glyph; word: string } =>
     !yes && isSun && isNightAt(d)
-      ? { emoji: '🌙', word: 'Nuit' }
-      : yes === isSun
-        ? { emoji: '☀️', word: yes ? wanted : opposite }
-        : { emoji: '🌑', word: yes ? wanted : opposite };
+      ? { glyph: OUT, word: 'Nuit' }
+      : { glyph: yes === isSun ? { kind: 'sun', alt: Math.max(1, SunService.getSunElevation(d)) } : OUT, word: yes ? wanted : opposite };
   const nowState = stateOf(inIt(rec), currentDate);
   const arrivalState = stateOf(arrivalIn, arrivalDate);
   const railHours = Array.from({ length: RAIL_HOURS }, (_, i) => hour + i).filter((h) => h <= 23);
@@ -167,15 +176,14 @@ export function PlaceDetailSheet({
     estimated: 'Les immeubles voisins sont surtout estimés, pas mesurés : le chiffre est approximatif.',
   }[provVerdict];
 
-  const rowBase = 'flex items-center justify-between px-4 py-3';
-  const Row = ({ label, sub, emoji, word, highlight }: { label: string; sub: string; emoji: string; word: string; highlight?: boolean }) => (
-    <div className={`${rowBase} ${highlight ? (isSun ? 'bg-sun-100/70' : 'bg-shade-200/70') : ''}`}>
+  const Row = ({ label, sub, glyph, word, highlight }: { label: string; sub: string; glyph: Glyph; word: string; highlight?: boolean }) => (
+    <div className={`flex items-center justify-between px-4 py-3 ${highlight ? 'bg-day-2' : ''}`}>
       <div>
-        <p className="text-[15px] font-medium text-shade-800 leading-tight">{label}</p>
-        <p className="text-xs text-shade-400 mt-0.5 tabular-nums">{sub}</p>
+        <p className="text-[15px] font-medium leading-tight">{label}</p>
+        <p className="mt-0.5 font-mono text-xs tabular-nums text-day-sub">{sub}</p>
       </div>
-      <div className="flex items-center gap-2 font-semibold text-shade-800">
-        <span className="text-2xl leading-none">{emoji}</span>
+      <div className="flex items-center gap-2 font-semibold">
+        <HaloIcon kind={glyph.kind} tone="day" alt={glyph.alt} size={24} />
         {word}
       </div>
     </div>
@@ -184,206 +192,204 @@ export function PlaceDetailSheet({
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/30 z-40 animate-fade-in"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 z-40 bg-dusk-deep/50 animate-fade-in motion-reduce:animate-none" onClick={onClose} />
 
       {/* Bottom sheet */}
-      <div className="fixed bottom-0 inset-x-0 z-50 animate-slide-up">
-        <div className="glass mx-auto max-w-xl rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar">
+      <div className="fixed bottom-0 inset-x-0 z-50 animate-slide-up motion-reduce:animate-none">
+        <div className="mx-auto max-h-[85vh] max-w-xl overflow-y-auto no-scrollbar rounded-t-[28px] bg-day text-ink shadow-[0_-8px_24px_rgba(8,20,58,0.35)]">
           {/* Drag handle */}
-          <div className="sticky top-0 flex justify-center py-2.5 glass z-10">
-            <div className="w-10 h-1.5 rounded-full bg-shade-300" />
+          <div className="sticky top-0 z-10 flex justify-center bg-day py-2.5">
+            <div className="h-1.5 w-10 rounded-full bg-day-line" />
           </div>
 
           {!showReport ? (
-            <div className="px-5 pb-6">
-              {/* En-tête : qui, où, à combien de marche. */}
-              <div className="flex items-start justify-between gap-3 pt-1">
-                <div className="min-w-0 flex-1">
-                  <h2 className="font-display text-2xl font-bold leading-tight text-shade-900">{venue.name}</h2>
-                  <p className="text-sm text-shade-500 mt-1">
-                    {neighborhood} · {categoryLabel(venue.category)} · {travel.value} {travel.unit}
-                  </p>
-                </div>
+            <div className="pb-6">
+              {/* Le ciel du lieu : son soleil, son horizon, son dernier rayon. */}
+              <div className="relative -mt-1 mb-4">
+                <FicheSky venue={venue} date={currentDate} />
                 <button
                   onClick={onClose}
                   aria-label="Fermer"
-                  className="w-9 h-9 shrink-0 rounded-full bg-shade-100 flex items-center justify-center active:scale-90 transition-transform"
+                  className="absolute right-4 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-ink active:scale-90 transition-transform motion-reduce:transition-none"
                 >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.5" strokeLinecap="round">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF6EC" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
                     <line x1="18" y1="6" x2="6" y2="18" />
                     <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
                 </button>
               </div>
 
-              {/* La réponse : une phrase, lisible en deux secondes. */}
-              <p className={`font-display text-[32px] font-bold leading-[1.05] mt-4 ${isSun ? 'text-ember' : 'text-shade-700'}`}>
-                {status.title}
-              </p>
-              <p className="text-sm text-shade-500 mt-1.5">
-                {rec.isOpen ? 'Ouvert' : 'Fermé'} · {venue.verifiedOnFoot ? '✓ Vérifié à pied' : 'À vérifier sur place'}
-              </p>
+              <div className="px-5">
+                {/* En-tête : qui, où, à combien de marche. */}
+                <h2 className="font-display text-[2.1rem] font-extrabold leading-[1] tracking-[-0.02em] [font-stretch:90%] [text-wrap:balance]">{venue.name}</h2>
+                <Squiggle text={venue.name} color={LIGHT.fire} width={Math.min(260, 20 + venue.name.length * 11)} />
+                <p className="mt-1.5 text-sm text-day-sub">
+                  {neighborhood} · {categoryLabel(venue.category)} · {travel.value} {travel.unit}
+                </p>
 
-              {/* Trois lignes : maintenant, à l'arrivée, plus tard. */}
-              <div className="mt-4 rounded-2xl bg-shade-50 overflow-hidden divide-y divide-shade-100">
-                <Row label="Maintenant" sub={formatLisbonTime(currentDate)} emoji={nowState.emoji} word={nowState.word} />
-                {walkable && (
-                  <Row label="À ton arrivée" sub={formatLisbonTime(arrivalDate)} emoji={arrivalState.emoji} word={arrivalState.word} highlight />
-                )}
-                {nextChange && (
-                  <Row label="Plus tard" sub={`dès ${nextChange.at}`} emoji={nextChange.emoji} word={nextChange.word} />
-                )}
-              </div>
+                {/* La réponse : une phrase, lisible en deux secondes. */}
+                <p className={`mt-4 font-display text-[32px] font-bold leading-[1.05] [font-stretch:90%] ${isSun ? 'text-day-ember' : 'text-ink'}`}>
+                  {status.title}
+                </p>
+                <p className="mt-1.5 text-sm text-day-sub">
+                  {rec.isOpen ? 'Ouvert' : 'Fermé'} · {venue.verifiedOnFoot ? 'Vérifié à pied' : 'À vérifier sur place'}
+                </p>
 
-              {/* Les prochaines heures, comme une appli météo. */}
-              <p className="text-[13px] font-semibold text-shade-500 mt-5 mb-2">Les prochaines heures</p>
-              <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                {railHours.map((h, i) => (
-                  <div
-                    key={h}
-                    className={`shrink-0 w-[52px] text-center py-2.5 rounded-2xl text-xs ${
-                      i === 0 ? 'bg-sun-100 text-shade-900 font-bold ring-2 ring-sun-500' : 'bg-shade-50 text-shade-500'
+                {/* Trois lignes : maintenant, à l'arrivée, plus tard. */}
+                <div className="mt-4 divide-y divide-day-line overflow-hidden rounded-2xl border border-day-line">
+                  <Row label="Maintenant" sub={formatLisbonTime(currentDate)} glyph={nowState.glyph} word={nowState.word} />
+                  {walkable && (
+                    <Row label="À ton arrivée" sub={formatLisbonTime(arrivalDate)} glyph={arrivalState.glyph} word={arrivalState.word} highlight />
+                  )}
+                  {nextChange && <Row label="Plus tard" sub={`dès ${nextChange.at}`} glyph={nextChange.glyph} word={nextChange.word} />}
+                </div>
+
+                {/* Les prochaines heures : le halo de chaque heure. */}
+                <p className="mb-2 mt-5 text-[13px] font-semibold text-day-sub">Les prochaines heures</p>
+                <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                  {railHours.map((h, i) => {
+                    const at = i === 0 ? currentDate : setLisbonTime(currentDate, h, 30);
+                    const g = hourGlyph(venue.sunExposureByHour[h] ?? 0, i === 0 ? isNightAt(currentDate) : h * 60 >= sunsetMin, SunService.getSunElevation(at));
+                    return (
+                      <div
+                        key={h}
+                        className={`w-[52px] shrink-0 rounded-2xl py-2.5 text-center font-mono text-xs ${
+                          i === 0 ? 'border-[1.5px] border-ink font-bold' : 'border border-day-line text-day-sub'
+                        }`}
+                      >
+                        {i === 0 ? <span className="font-sans">Là</span> : `${h}h`}
+                        <span className="mt-1.5 flex justify-center">
+                          <HaloIcon kind={g.kind} tone="day" alt={g.alt} size={24} />
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Sur place, en direct : ce que disent ceux qui y sont. Rien tant
+                    que personne n'a répondu et qu'on n'est pas soi-même là. */}
+                {(live || canAsk) && (
+                  <div className="mt-5 rounded-2xl border border-day-line p-4">
+                    <p className="flex items-center gap-2 text-[13px] font-semibold text-day-sub">
+                      <HaloIcon kind="you" tone="day" size={16} />
+                      Sur place, en direct
+                    </p>
+                    {live && (
+                      <p className="mt-2 flex items-center gap-2 text-base leading-snug">
+                        <LiveGlyph level={live.level} tone="day" size={20} />
+                        <span>
+                          <span className="font-semibold">{LIVE_SHORT[live.level]}</span>
+                          {' · '}
+                          {liveWho(live.count)}, {liveAge(live.ageMin)}
+                        </span>
+                      </p>
+                    )}
+                    {canAsk && !answered && (
+                      <>
+                        <p className="mt-3 text-sm text-day-sub">
+                          Il reste des places {isSun ? 'au soleil' : "à l'ombre"} ? Dis-le aux autres
+                        </p>
+                        <div className="mt-2 flex gap-2">
+                          {LIVE_ANSWERS.map((a) => (
+                            <button
+                              key={a.answer}
+                              onClick={() => answerLive(a.answer)}
+                              className="min-h-11 flex-1 rounded-2xl border border-day-line bg-day-2 py-2.5 text-[13px] font-semibold active:scale-95 transition-transform motion-reduce:transition-none"
+                            >
+                              <LiveGlyph level={a.answer} tone="day" size={20} className="mx-auto mb-0.5" />
+                              {a.label}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {canAsk && answered && (
+                      <p className="mt-3 rounded-xl bg-day-2 px-3 py-2 text-sm font-semibold">Merci, les autres le voient</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Actions : un seul bouton principal, encre au jour. */}
+                <div className="mt-5 flex gap-3">
+                  <button
+                    onClick={onGetDirections}
+                    className="flex min-h-[52px] flex-1 items-center justify-center gap-2 rounded-full bg-ink text-[16px] font-bold text-white active:scale-[0.98] transition-transform motion-reduce:transition-none"
+                  >
+                    M'y emmener
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    aria-label={saved ? 'Retirer des enregistrés' : 'Enregistrer'}
+                    aria-pressed={saved}
+                    className={`flex h-[52px] w-[52px] items-center justify-center rounded-full border-[1.5px] active:scale-95 transition-transform motion-reduce:transition-none ${
+                      saved ? 'border-ink bg-day-2' : 'border-day-line'
                     }`}
                   >
-                    {i === 0 ? 'Là' : `${h}h`}
-                    <span className="block text-[22px] leading-tight mt-1">
-                      {skyEmoji(venue.sunExposureByHour[h] ?? 0, i === 0 ? isNightAt(currentDate) : h * 60 >= sunsetMin, h === Math.floor(sunsetMin / 60))}
-                    </span>
-                  </div>
-                ))}
-              </div>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M7 3.5h10v17l-5-3.5-5 3.5z" />
+                    </svg>
+                  </button>
+                </div>
 
-              {/* Sur place, en direct : ce que disent ceux qui y sont. Rien tant
-                  que personne n'a répondu et qu'on n'est pas soi-même là. */}
-              {(live || canAsk) && (
-                <div className="mt-5 rounded-2xl border border-shade-200 p-4">
-                  <p className="flex items-center gap-2 text-[13px] font-semibold text-shade-500">
-                    <span className="w-2 h-2 rounded-full bg-green-500 ring-4 ring-green-100" />
-                    Sur place, en direct
-                  </p>
-                  {live && (
-                    <p className="mt-2 text-base leading-snug text-shade-800">
-                      {LIVE_ANSWERS.find((a) => a.answer === live.level)?.emoji}{' '}
-                      <span className="font-semibold">{LIVE_SHORT[live.level]}</span>
-                      {' · '}
-                      {liveWho(live.count)}, {liveAge(live.ageMin)}
-                    </p>
-                  )}
-                  {canAsk && !answered && (
-                    <>
-                      <p className="mt-3 text-sm text-shade-500">
-                        Il reste des places {isSun ? 'au soleil' : "à l'ombre"} ? Dis-le aux autres
+                {/* Le reste, à la demande : d'où vient le chiffre, ce qu'est le lieu. */}
+                <div className="mt-2 flex items-center justify-center gap-1 text-[13px] text-day-sub">
+                  <button onClick={() => setShowMore((v) => !v)} className="min-h-11 px-2 active:scale-95 transition-transform motion-reduce:transition-none">
+                    {showMore ? 'Masquer' : "Plus d'infos"}
+                  </button>
+                  <span aria-hidden>·</span>
+                  <button onClick={() => setShowReport(true)} className="min-h-11 px-2 active:scale-95 transition-transform motion-reduce:transition-none">
+                    Signaler une erreur
+                  </button>
+                </div>
+
+                {showMore && (
+                  <div className="mt-2 space-y-2 rounded-2xl border border-day-line bg-day-2 p-4 text-[13px] leading-relaxed text-day-sub">
+                    <p className="text-ink">{venue.description}</p>
+                    <p>{reliability}</p>
+                    {prov.total > 0 && (
+                      <p>
+                        {prov.total} bâtiments autour : {prov.tagged} mesurés, {prov.levels} déduits des étages, {prov.estimated} estimés.
                       </p>
-                      <div className="mt-2 flex gap-2">
-                        {LIVE_ANSWERS.map((a) => (
-                          <button
-                            key={a.answer}
-                            onClick={() => answerLive(a.answer)}
-                            className="flex-1 rounded-2xl bg-shade-50 py-2.5 text-[13px] font-semibold text-shade-800 active:scale-95 transition-transform"
-                          >
-                            <span className="block text-xl leading-tight">{a.emoji}</span>
-                            {a.label}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                  {canAsk && answered && (
-                    <p className="mt-3 rounded-xl bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">
-                      Merci, les autres le voient
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Action buttons */}
-              <div className="flex gap-3 mt-5">
-                <button
-                  onClick={onGetDirections}
-                  className={`flex-1 h-[52px] rounded-2xl font-bold text-base active:scale-95 transition-transform flex items-center justify-center gap-2 ${
-                    isSun ? 'bg-sun-500 text-sun-900' : 'bg-shade-600 text-white'
-                  }`}
-                >
-                  Y aller
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
-                  </svg>
-                </button>
-                <button
-                  onClick={handleSave}
-                  aria-label={saved ? 'Retirer des enregistrés' : 'Enregistrer'}
-                  className={`w-[52px] h-[52px] rounded-2xl text-xl active:scale-95 transition-transform ${
-                    saved ? 'bg-sun-100 text-sun-600' : 'bg-shade-100 text-shade-500'
-                  }`}
-                >
-                  {saved ? '♥' : '♡'}
-                </button>
-              </div>
-
-              {/* Le reste, à la demande : d'où vient le chiffre, ce qu'est le lieu. */}
-              <div className="mt-4 flex items-center justify-center gap-3 text-[13px] text-shade-400">
-                <button onClick={() => setShowMore((v) => !v)} className="active:scale-95 transition-transform">
-                  {showMore ? 'Masquer' : "Plus d'infos"}
-                </button>
-                <span aria-hidden>·</span>
-                <button onClick={() => setShowReport(true)} className="active:scale-95 transition-transform">
-                  Signaler une erreur
-                </button>
-              </div>
-
-              {showMore && (
-                <div className="mt-3 rounded-2xl bg-shade-50 p-4 space-y-2 text-[13px] leading-relaxed text-shade-500">
-                  <p className="text-shade-600">{venue.description}</p>
-                  <p>{reliability}</p>
-                  {prov.total > 0 && (
+                    )}
                     <p>
-                      {prov.total} bâtiments autour : {prov.tagged} mesurés, {prov.levels} déduits des étages, {prov.estimated} estimés.
+                      {showRange
+                        ? `Un étage de plus ou de moins chez les voisins ferait varier ${isSun ? 'le soleil' : "l'ombre"} de ${nowBand.lo} % à ${nowBand.hi} % en ce moment (${displayPct} % calculé).`
+                        : `Un étage de plus ou de moins chez les voisins ne change presque rien à cette heure (${displayPct} %).`}
                     </p>
-                  )}
-                  <p>
-                    {showRange
-                      ? `Un étage de plus ou de moins chez les voisins ferait varier ${isSun ? 'le soleil' : "l'ombre"} de ${nowBand.lo} % à ${nowBand.hi} % en ce moment (${displayPct} % calculé).`
-                      : `Un étage de plus ou de moins chez les voisins ne change presque rien à cette heure (${displayPct} %).`}
-                  </p>
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             /* Report flow */
             <div className="px-5 pb-8 pt-2">
               {!reportSubmitted ? (
                 <>
-                  <h3 className="text-xl font-bold text-shade-800 mb-4">Quelque chose cloche ?</h3>
+                  <h3 className="mb-4 font-display text-[1.6rem] font-bold [font-stretch:90%]">Quelque chose cloche ?</h3>
                   <div className="space-y-2">
                     {REPORT_OPTIONS.map((opt) => (
                       <button
                         key={opt.type}
                         onClick={() => handleSubmitReport(opt.type)}
-                        className="w-full text-left px-4 py-3.5 rounded-2xl bg-shade-50 text-sm font-medium text-shade-700 active:scale-95 transition-all hover:bg-shade-100"
+                        className="min-h-12 w-full rounded-2xl border border-day-line bg-day-2 px-4 py-3 text-left text-sm font-medium active:scale-[0.98] transition-transform motion-reduce:transition-none"
                       >
                         {opt.label}
                       </button>
                     ))}
                   </div>
-                  <button
-                    onClick={() => setShowReport(false)}
-                    className="w-full mt-4 py-2.5 text-xs font-semibold text-shade-400"
-                  >
+                  <button onClick={() => setShowReport(false)} className="mt-4 min-h-11 w-full text-[13px] font-semibold text-day-sub">
                     Annuler
                   </button>
                 </>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 animate-scale-in">
-                  <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <div className="flex flex-col items-center justify-center py-12 animate-scale-in motion-reduce:animate-none">
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-ink">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#FFF6EC" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </div>
-                  <p className="text-lg font-bold text-shade-800">Merci !</p>
-                  <p className="text-sm text-shade-500 mt-1 text-center">On s'en sert pour corriger la carte.</p>
+                  <p className="font-display text-[1.4rem] font-bold">Merci !</p>
+                  <p className="mt-1 text-center text-sm text-day-sub">On s'en sert pour corriger la carte.</p>
                 </div>
               )}
             </div>

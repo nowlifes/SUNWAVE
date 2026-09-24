@@ -14,6 +14,7 @@ import { categoryLabel, formatGap, placeName, statusCopy, statusShort, travelLab
 import { inviteText, inviteUrl, shareInvite } from '@/utils/share';
 import { LIGHT, NIGHT } from '@/utils/palette';
 import { Squiggle } from './Squiggle';
+import { HaloIcon } from './Halo';
 
 // ---------------------------------------------------------------------------
 // L'écran réponse — l'écran d'accueil.
@@ -181,6 +182,7 @@ export function NowScreen({
 
 
   const tone = toneFor(mode);
+  const sunAlt = SunService.getSunElevation(currentDate);
 
   return (
     <div className={`absolute inset-0 overflow-y-auto pb-24 ${tone.screen}`}>
@@ -237,6 +239,7 @@ export function NowScreen({
             rec={pick}
             mode={mode}
             day={ribbonDay}
+            sunAlt={sunAlt}
             onOpen={() => onVenueSelect(pick.venue.id)}
             onDirections={() => onGetDirections(pick.venue.id)}
             onSomethingElse={handleSomethingElse}
@@ -345,6 +348,7 @@ function AnswerCard({
   rec,
   mode,
   day,
+  sunAlt,
   onOpen,
   onDirections,
   onSomethingElse,
@@ -355,6 +359,8 @@ function AnswerCard({
   rec: Recommendation;
   mode: SunMode;
   day: RibbonDay;
+  /** Hauteur du soleil maintenant : couleur et largeur du halo. */
+  sunAlt: number;
   onOpen: () => void;
   onDirections: () => void;
   onSomethingElse: () => void;
@@ -437,8 +443,14 @@ function AnswerCard({
 
       <div className="mt-5">
         <button onClick={onOpen} className="flex min-h-11 flex-col items-start gap-px text-left active:opacity-70 transition-opacity">
-          <span className="font-display text-[22px] font-bold leading-[1.1] [font-stretch:92%] [text-wrap:pretty]">{rec.venue.name}</span>
-          <Squiggle text={rec.venue.name} color={tone.underline} width={Math.min(300, 24 + rec.venue.name.length * 9)} />
+          <span className="flex items-center gap-2">
+            {/* Ça brille : au soleil maintenant. Éteint : à l'ombre. */}
+            <HaloIcon kind={rec.sunPercentage >= IN_IT_THRESHOLD.SUN && sunAlt > 0.5 ? 'sun' : 'shade'} tone={tone.night ? 'night' : 'day'} alt={sunAlt} size={24} />
+            <span className="font-display text-[22px] font-bold leading-[1.1] [font-stretch:92%] [text-wrap:pretty]">{rec.venue.name}</span>
+          </span>
+          <span className="pl-8">
+            <Squiggle text={rec.venue.name} color={tone.underline} width={Math.min(290, 24 + rec.venue.name.length * 9)} />
+          </span>
         </button>
         <p className={`mt-0.5 text-[13px] font-medium ${tone.sub}`}>
           {categoryLabel(rec.venue.category)} · {VenueService.getNeighborhood(rec.venue)} · {travelLabel(rec)}

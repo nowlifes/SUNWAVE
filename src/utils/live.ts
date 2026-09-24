@@ -1,10 +1,10 @@
 import type { LiveAnswer } from '@/services/LiveReportService';
 import { SunService } from '@/services/SunService';
 
-export const LIVE_ANSWERS: { answer: LiveAnswer; emoji: string; label: string; hint: string }[] = [
-  { answer: 'plenty', emoji: '🟢', label: 'Plein de places', hint: 'on peut arriver sans souci' },
-  { answer: 'few', emoji: '🟠', label: 'Quelques-unes', hint: 'mieux vaut se dépêcher' },
-  { answer: 'none', emoji: '🔴', label: 'Plus rien', hint: "tout est pris ou à l'ombre" },
+export const LIVE_ANSWERS: { answer: LiveAnswer; label: string; hint: string }[] = [
+  { answer: 'plenty', label: 'Plein de places', hint: 'on peut arriver sans souci' },
+  { answer: 'few', label: 'Quelques-unes', hint: 'mieux vaut se dépêcher' },
+  { answer: 'none', label: 'Plus rien', hint: "tout est pris ou à l'ombre" },
 ];
 
 export const LIVE_SHORT: Record<LiveAnswer, string> = {
