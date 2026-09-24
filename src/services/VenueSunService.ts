@@ -1,6 +1,7 @@
 import type { BuildingFootprint, ExposureBand, GeoPoint, HeightProvenance, Venue } from '@/types';
 import { ShadowService } from './ShadowService';
 import { ReportService } from './ReportService';
+import { lisbonParts } from '@/utils/lisbonTime';
 
 // ---------------------------------------------------------------------------
 // Bridges the real physics engine (ShadowService + real building footprints)
@@ -79,8 +80,12 @@ class VenueSunServiceClass {
     return nearby;
   }
 
+  /** Le jour de LISBONNE : le jour local du navigateur changeait la clé au
+   *  milieu d'un glissement d'heure hors fuseau (970 courbes recalculées, 2 s
+   *  de gel) et pouvait servir la courbe d'un autre jour. */
   private dateKey(date: Date): string {
-    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    const p = lisbonParts(date);
+    return `${p.year}-${p.month}-${p.day}`;
   }
 
   /** Real 24-value (0-23h) sun-exposure curve for an arbitrary target point,

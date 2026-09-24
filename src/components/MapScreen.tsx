@@ -14,7 +14,7 @@ import { VenueSunService } from '@/services/VenueSunService';
 import { WeatherService } from '@/services/WeatherService';
 import { SunService } from '@/services/SunService';
 import { lisbonBuildings } from '@/data/lisbonBuildings';
-import { lisbonMinutesOfDay } from '@/utils/lisbonTime';
+import { lisbonMinutesOfDay, lisbonParts } from '@/utils/lisbonTime';
 import { ribbonCells } from '@/utils/ribbon';
 import { categoryLabel, statusCopy, travelLabel } from '@/utils/copy';
 import {
@@ -199,7 +199,8 @@ export function MapScreen({
   useEffect(() => writeStorage(STORAGE.headline, headline), [headline]);
 
   // --- La bande de lumière du quartier (lieux à un quart d'heure).
-  const dayKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}-${currentDate.getDate()}`;
+  const day = lisbonParts(currentDate);
+  const dayKey = `${day.year}-${day.month}-${day.day}`;
   const nearVenueIds = useMemo(
     () => recommendations.filter((r) => r.walkTimeMin <= NEAR_WALK_MIN).map((r) => r.venue.id).join(','),
     [recommendations]
