@@ -27,7 +27,7 @@ function hhmm(min: number): string {
 /** Portée à pied de la liste-réponse. Pas les 20 min du libellé : Comoba, à
  *  21 min de Rossio, est l'ombre qui tient tout l'après-midi. Assez large pour
  *  tout un quartier, bien en deçà du Tage (Caparica → Baixa : 136 min). */
-const ANSWER_REACH_MIN = 30;
+export const ANSWER_REACH_MIN = 30;
 
 /** À partir de quel pourcentage un lieu est « au soleil » / « à l'ombre ».
  *  Une seule source : la liste et la fenêtre divergeaient (40 contre 50 en

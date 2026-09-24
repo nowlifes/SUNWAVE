@@ -5,6 +5,8 @@ import { ReliefService } from '@/services/ReliefService';
 import { SunService } from '@/services/SunService';
 import { VenueService } from '@/services/VenueService';
 import { SunTrailService, type SunTrail } from '@/services/SunTrailService';
+import { SunsetService } from '@/services/SunsetService';
+import { SunsetScreen } from './SunsetScreen';
 import { DayRibbon } from './DayRibbon';
 import { SkyHeader } from './SkyHeader';
 import { formatLisbonTime } from '@/utils/lisbonTime';
@@ -38,6 +40,8 @@ interface NowScreenProps {
   onOpenMap: () => void;
   /** Mode choisi par l'app selon cette température, pas encore par la personne. */
   autoTemperature?: number | null;
+  /** L'écran passe à « Plein ouest » (coucher sur l'eau) : la navigation suit. */
+  onDuskChange?: (dusk: boolean) => void;
 }
 
 /** La journée que montrent les bandes de lumière. */
@@ -63,6 +67,7 @@ export function NowScreen({
   onGetDirections,
   onOpenMap,
   autoTemperature = null,
+  onDuskChange,
 }: NowScreenProps) {
   // « Autre chose » descend la liste au lieu de renvoyer à la carte : un
   // premier choix qui ne plaît pas ne doit jamais être une impasse. C'est ce
@@ -144,6 +149,33 @@ export function NowScreen({
   const nightShade = !isSun && phase !== 'day';
   const place = placeName(userLocation);
   const placeInSentence = placeName(userLocation, true);
+
+  // L'heure du coucher, quand un lieu à portée de pied voit le soleil toucher
+  // l'eau : l'écran entier devient la réponse à « où le voir plonger ».
+  const sunsetMoment = useMemo(
+    () => SunsetService.moment(mode, userLocation, currentDate),
+    [mode, userLocation, currentDate]
+  );
+  const dusk = sunsetMoment !== null;
+  useEffect(() => {
+    onDuskChange?.(dusk);
+  }, [dusk, onDuskChange]);
+  useEffect(() => () => onDuskChange?.(false), [onDuskChange]);
+
+  if (sunsetMoment) {
+    return (
+      <SunsetScreen
+        moment={sunsetMoment}
+        now={currentDate}
+        userLocation={userLocation}
+        place={place}
+        mode={mode}
+        onModeChange={onModeChange}
+        onDirections={onGetDirections}
+        onVenueSelect={onVenueSelect}
+      />
+    );
+  }
 
 
   return (

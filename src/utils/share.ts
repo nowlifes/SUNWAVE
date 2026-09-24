@@ -41,6 +41,11 @@ export function inviteText(rec: Recommendation, mode: SunMode, trail: SunTrail |
   return `${opener} ${rec.venue.name}${when ? `, ${when}` : ''}${next}.`;
 }
 
+/** L'invitation du moment coucher : un lieu, une minute. */
+export function sunsetInviteText(venueName: string, time: string): string {
+  return `Le soleil plonge dans l'océan à ${time}, vu de ${venueName}. On y va ?`;
+}
+
 export function inviteUrl(origin: string, venueId: string): string {
   return `${origin}/?${PARAM}=${encodeURIComponent(venueId)}`;
 }

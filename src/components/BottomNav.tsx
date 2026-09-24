@@ -3,6 +3,8 @@ import type { ScreenName } from '@/types';
 interface BottomNavProps {
   activeScreen: ScreenName;
   onScreenChange: (screen: ScreenName) => void;
+  /** L'accueil est en « Plein ouest » : la barre passe à la nuit océan. */
+  dusk?: boolean;
 }
 
 const NAV_ITEMS: { screen: ScreenName; label: string; icon: string }[] = [
@@ -13,8 +15,8 @@ const NAV_ITEMS: { screen: ScreenName; label: string; icon: string }[] = [
   { screen: 'profile', label: 'Profil', icon: 'user' },
 ];
 
-function NavIcon({ icon, active }: { icon: string; active: boolean }) {
-  const color = active ? '#B45309' : '#5B6B7F';
+function NavIcon({ icon, active, dusk = false }: { icon: string; active: boolean; dusk?: boolean }) {
+  const color = dusk ? (active ? '#FF6A2B' : '#8FA3D6') : active ? '#B45309' : '#5B6B7F';
   const paths: Record<string, React.ReactNode> = {
     sun: (
       <>
@@ -62,9 +64,13 @@ function NavIcon({ icon, active }: { icon: string; active: boolean }) {
   );
 }
 
-export function BottomNav({ activeScreen, onScreenChange }: BottomNavProps) {
+export function BottomNav({ activeScreen, onScreenChange, dusk = false }: BottomNavProps) {
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-30 glass border-t border-shade-200/50">
+    <div
+      className={`absolute bottom-0 left-0 right-0 z-30 border-t ${
+        dusk ? 'border-dusk-sky bg-dusk-deep' : 'glass border-shade-200/50'
+      }`}
+    >
       <div className="flex items-center px-1 py-1.5 pb-[env(safe-area-inset-bottom)]">
         {NAV_ITEMS.map((item) => {
           const active = activeScreen === item.screen;
@@ -74,10 +80,10 @@ export function BottomNav({ activeScreen, onScreenChange }: BottomNavProps) {
               onClick={() => onScreenChange(item.screen)}
               className="flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 active:scale-90 transition-transform"
             >
-              <NavIcon icon={item.icon} active={active} />
+              <NavIcon icon={item.icon} active={active} dusk={dusk} />
               {/* Cinq onglets sur 320 px = 64 px chacun : libellés en casse
                   normale, sans espacement, sinon « MAINTENANT » déborde. */}
-              <span className={`max-w-full truncate text-[10px] font-semibold transition-colors ${active ? 'text-ember' : 'text-mute'}`}>
+              <span className={`max-w-full truncate text-[10px] font-semibold transition-colors ${active ? (dusk ? 'text-dusk-fire' : 'text-ember') : dusk ? 'text-dusk-dim' : 'text-mute'}`}>
                 {item.label}
               </span>
             </button>

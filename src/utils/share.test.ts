@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Recommendation } from '@/types';
 import type { SunTrail } from '@/services/SunTrailService';
-import { inviteText, inviteUrl, venueIdFromUrl } from './share';
+import { inviteText, inviteUrl, venueIdFromUrl, sunsetInviteText } from './share';
 
 function rec(name: string, over: Partial<Recommendation> = {}): Recommendation {
   return {
@@ -59,5 +59,13 @@ describe('lien d\'invitation', () => {
 
   it('rien quand le lien ne porte pas de lieu', () => {
     expect(venueIdFromUrl('https://sunwave-olive.vercel.app/')).toBeNull();
+  });
+});
+
+describe('sunsetInviteText', () => {
+  it("donne le lieu et la minute où le soleil touche l'eau", () => {
+    expect(sunsetInviteText('Praia do Paraíso', '19:35')).toBe(
+      "Le soleil plonge dans l'océan à 19:35, vu de Praia do Paraíso. On y va ?"
+    );
   });
 });

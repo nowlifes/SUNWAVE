@@ -60,6 +60,7 @@ export default function App() {
   const [autoTemperature, setAutoTemperature] = useState<number | null>(null);
   // L'app ouvre sur la réponse, pas sur la carte : voir NowScreen.
   const [screen, setScreen] = useState<ScreenName>('now');
+  const [dusk, setDusk] = useState(false);
   const [mode, setMode] = useState<SunMode>(() => loadFromStorage(STORAGE_KEYS.mode, 'SUN'));
   const [currentDate, setCurrentDate] = useState(new Date());
   const [userLocation, setUserLocation] = useState<GeoPoint>(LISBON_CENTER);
@@ -225,6 +226,7 @@ export default function App() {
             onVenueSelect={handleVenueSelect}
             onGetDirections={handleGetDirections}
             onOpenMap={() => handleScreenChange('map')}
+            onDuskChange={setDusk}
           />
         )}
 
@@ -301,7 +303,7 @@ export default function App() {
         )}
 
         {/* Bottom navigation */}
-        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} />
+        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} dusk={screen === 'now' && dusk} />
       </div>
     </div>
   );

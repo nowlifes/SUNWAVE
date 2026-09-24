@@ -48,3 +48,42 @@ describe('le dernier rayon, horizon réel', () => {
     expect(list.map((r) => r.venue.name)).toContain('Praia do Paraíso');
   });
 });
+
+describe('le moment du coucher', () => {
+  const CAPARICA = { lat: 38.6446, lng: -9.2366 };
+  const BAIXA = { lat: 38.7107, lng: -9.1365 };
+
+  it("45 min avant, depuis Caparica en mode Soleil : un spot à portée de pied où le soleil touche l'eau", () => {
+    const m = SunsetService.moment('SUN', CAPARICA, at('2026-09-23T18:47:00+01:00'));
+    expect(m).not.toBeNull();
+    expect(m!.picks.length).toBeGreaterThan(0);
+    for (const p of m!.picks) {
+      expect(p.light.over).toBe('water');
+      expect(p.walkMin).toBeLessThanOrEqual(30);
+      // On arrive avant le dernier rayon.
+      expect(p.light.time.getTime()).toBeGreaterThan(at('2026-09-23T18:47:00+01:00').getTime() + p.walkMin * 60000);
+    }
+    // Le plus proche d'abord.
+    for (let i = 1; i < m!.picks.length; i++) expect(m!.picks[i].walkMin).toBeGreaterThanOrEqual(m!.picks[i - 1].walkMin);
+  });
+
+  it("pas de moment en mode Ombre, ni trop tôt, ni une fois le soleil parti", () => {
+    expect(SunsetService.moment('SHADE', CAPARICA, at('2026-09-23T18:47:00+01:00'))).toBeNull();
+    expect(SunsetService.moment('SUN', CAPARICA, at('2026-09-23T17:00:00+01:00'))).toBeNull();
+    expect(SunsetService.moment('SUN', CAPARICA, at('2026-09-23T19:50:00+01:00'))).toBeNull();
+  });
+
+  it("depuis la Baixa, aucun spot sur l'eau à portée de pied en septembre : l'écran normal reste", () => {
+    expect(SunsetService.moment('SUN', BAIXA, at('2026-09-23T18:47:00+01:00'))).toBeNull();
+  });
+
+  it("en juin, pas de coucher sur l'eau depuis Caparica", () => {
+    expect(SunsetService.moment('SUN', CAPARICA, at('2026-06-21T20:20:00+01:00'))).toBeNull();
+  });
+
+  it("« ailleurs ce soir » : d'autres couchers sur l'eau, hors de la sélection", () => {
+    const m = SunsetService.moment('SUN', CAPARICA, at('2026-09-23T18:47:00+01:00'))!;
+    const picked = new Set(m.picks.map((p) => p.light.venue.id));
+    for (const e of m.elsewhere) expect(picked.has(e.venue.id)).toBe(false);
+  });
+});

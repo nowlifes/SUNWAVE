@@ -1,5 +1,7 @@
-import type { Venue } from '@/types';
+import type { GeoPoint, SunMode, Venue } from '@/types';
 import { SunService } from './SunService';
+import { VenueService } from './VenueService';
+import { RecommendationService, ANSWER_REACH_MIN } from './RecommendationService';
 import { SUNSET_AZ_MAX, SUNSET_AZ_MIN, sunsetHorizons } from '@/data/sunsetHorizons';
 
 /** Ce qui cache le soleil au dernier rayon. */
@@ -25,6 +27,25 @@ export interface LastLight {
   over: HorizonKind;
   /** Positif : après l'heure officielle (horizon marin dégagé). */
   minutesAfterOfficial: number;
+}
+
+/** Le moment commence une heure avant le coucher officiel : assez pour
+ *  marcher jusqu'à la plage, pas assez pour que « va voir le coucher »
+ *  remplace la réponse de l'après-midi. */
+const MOMENT_LEAD_MIN = 60;
+
+export interface SunsetPick {
+  light: LastLight;
+  walkMin: number;
+}
+
+export interface SunsetMoment {
+  /** Couchers sur l'eau à portée de pied, où l'on arrive avant le dernier
+   *  rayon, le plus proche d'abord. */
+  picks: SunsetPick[];
+  /** D'autres couchers sur l'eau ce soir, hors de portée de pied. */
+  elsewhere: LastLight[];
+  officialSunset: Date;
 }
 
 class SunsetServiceClass {
@@ -58,6 +79,38 @@ class SunsetServiceClass {
       if (h) return { venue, time: h.t, over: h.kind, minutesAfterOfficial: m };
     }
     return null;
+  }
+
+  /**
+   * Le moment « va voir le soleil plonger » : mode Soleil, dans l'heure qui
+   * précède le coucher, et seulement s'il existe un lieu ouvert, à portée de
+   * pied, d'où le soleil touche l'eau APRÈS qu'on y soit arrivé. Sinon `null`
+   * et l'écran de réponse habituel reste — depuis la Baixa, ou en juin quand
+   * le soleil se couche derrière Sintra.
+   */
+  moment(mode: SunMode, userLocation: GeoPoint, now: Date): SunsetMoment | null {
+    if (mode !== 'SUN') return null;
+    const officialSunset = SunService.getSunset(now);
+    const toSunset = (officialSunset.getTime() - now.getTime()) / 60000;
+    if (toSunset > MOMENT_LEAD_MIN) return null;
+
+    const water = this.waterSunsets(VenueService.getAllVenues(), now).filter((l) => l.time > now);
+    if (water.length === 0) return null;
+
+    const picks: SunsetPick[] = [];
+    const elsewhere: LastLight[] = [];
+    for (const light of water) {
+      const rec = RecommendationService.getRecommendationFor(light.venue, 'SUN', userLocation, now);
+      const arrives = now.getTime() + rec.walkTimeMin * 60000;
+      if (rec.isOpen && rec.walkTimeMin <= ANSWER_REACH_MIN && arrives < light.time.getTime()) {
+        picks.push({ light, walkMin: rec.walkTimeMin });
+      } else {
+        elsewhere.push(light);
+      }
+    }
+    if (picks.length === 0) return null;
+    picks.sort((a, b) => a.walkMin - b.walkMin || b.light.time.getTime() - a.light.time.getTime());
+    return { picks, elsewhere: elsewhere.slice(0, 2), officialSunset };
   }
 
   /** Les lieux d'où l'on voit le soleil toucher l'eau, les plus tardifs d'abord. */

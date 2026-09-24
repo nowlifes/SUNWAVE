@@ -22,6 +22,22 @@ export default {
         mute: '#5B6B7F',
         line: '#E4E0D8',
         ember: '#B45309',
+        // « Plein ouest » : l'heure du coucher, nuit océan et orange de braise.
+        dusk: {
+          deep: '#08143A',
+          night: '#0B1A45',
+          sky: '#0F2263',
+          cobalt: '#1A3383',
+          panel: '#16296A',
+          line: '#24397A',
+          edge: '#3A5099',
+          dim: '#8FA3D6',
+          sub: '#AFC0E8',
+          mist: '#D6DEF5',
+          shell: '#FFF6EC',
+          fire: '#FF6A2B',
+          glow: '#FFAA57',
+        },
         shade: {
           50: '#F8FAFC',
           100: '#F1F5F9',
@@ -38,6 +54,8 @@ export default {
       fontFamily: {
         sans: ['Geist', 'system-ui', '-apple-system', 'sans-serif'],
         serif: ['"Instrument Serif"', 'Georgia', 'serif'],
+        display: ['"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
+        mono: ['"Geist Mono"', 'ui-monospace', 'monospace'],
       },
       borderRadius: {
         '2.5xl': '1.25rem',
