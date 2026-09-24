@@ -1,4 +1,5 @@
 import type { Recommendation, SunMode } from '@/types';
+import { MapService } from '@/services/MapService';
 
 // ---------------------------------------------------------------------------
 // Les phrases que l'app dit sur un lieu — une seule source.
@@ -24,6 +25,22 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 export function categoryLabel(category: string): string {
   return CATEGORY_LABEL[category] ?? category.charAt(0).toUpperCase() + category.slice(1);
+}
+
+/** Au-delà, « N min à pied » ne décrit plus un trajet que quelqu'un fera —
+ *  depuis Caparica, un café de Lisbonne était à « 136 min à pied ». */
+const MAX_WALK_MIN = 20;
+
+/** Le trajet en deux morceaux, pour les écrans qui grossissent le chiffre. */
+export function travelParts(rec: Pick<Recommendation, 'walkTimeMin' | 'distanceM'>): { value: string; unit: string } {
+  if (rec.walkTimeMin <= MAX_WALK_MIN) return { value: String(rec.walkTimeMin), unit: 'min à pied' };
+  return { value: MapService.formatDistance(rec.distanceM), unit: 'd\'ici' };
+}
+
+/** « 12 min à pied », ou « 11,1 km d'ici » quand ce n'est plus de la marche. */
+export function travelLabel(rec: Pick<Recommendation, 'walkTimeMin' | 'distanceM'>): string {
+  const { value, unit } = travelParts(rec);
+  return `${value} ${unit}`;
 }
 
 /** « 45 min », « 2h », « 5h 2m » — comme on le dit. */

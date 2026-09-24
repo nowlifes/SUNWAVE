@@ -1,7 +1,7 @@
 import type { DiscoverCategory, SunMode } from '@/types';
 import { RecommendationService } from '@/services/RecommendationService';
 import { VenueService } from '@/services/VenueService';
-import { statusShort } from '@/utils/copy';
+import { statusShort, travelLabel } from '@/utils/copy';
 
 interface DiscoverScreenProps {
   currentDate: Date;
@@ -56,7 +56,7 @@ export function DiscoverScreen({ currentDate, userLocation, onCategorySelect }: 
                 {top && (
                   <div className="text-right">
                     <p className="text-xs font-semibold text-white/90 truncate max-w-[120px]">{top.venue.name}</p>
-                    <p className="text-[11px] text-white/70">{top.walkTimeMin} min à pied</p>
+                    <p className="text-[11px] text-white/70">{travelLabel(top)}</p>
                     <p className="text-[11px] font-semibold text-white/90">{statusShort(top, mode)}</p>
                   </div>
                 )}
@@ -139,7 +139,7 @@ export function DiscoverResults({ category, currentDate, userLocation, onBack, o
               </div>
               <div className="flex items-center gap-2 mt-2 ml-5">
                 <span className={`text-[11px] font-semibold ${mode === 'SUN' ? 'text-sun-600' : 'text-shade-600'}`}>{displayPct} %</span>
-                <span className="text-[11px] text-shade-400">· {rec.walkTimeMin} min à pied · {statusShort(rec, mode)}</span>
+                <span className="text-[11px] text-shade-400">· {travelLabel(rec)} · {statusShort(rec, mode)}</span>
               </div>
             </button>
           );

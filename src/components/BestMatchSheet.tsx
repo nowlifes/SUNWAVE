@@ -1,6 +1,6 @@
 import type { Recommendation, SunMode } from '@/types';
 import { VenueService } from '@/services/VenueService';
-import { categoryLabel, statusCopy } from '@/utils/copy';
+import { categoryLabel, statusCopy, travelLabel, travelParts } from '@/utils/copy';
 
 interface BestMatchSheetProps {
   recommendation: Recommendation | null;
@@ -35,7 +35,7 @@ export function BestMatchSheet({
     );
   }
 
-  const { venue, sunPercentage, shadePercentage, walkTimeMin, isOpen } = rec;
+  const { venue, sunPercentage, shadePercentage, isOpen } = rec;
   const displayPct = mode === 'SUN' ? sunPercentage : shadePercentage;
   const icon = mode === 'SUN' ? '☀' : '🌑';
   const accentText = mode === 'SUN' ? 'text-sun-600' : 'text-shade-600';
@@ -72,7 +72,7 @@ export function BestMatchSheet({
             </div>
 
             <p className="mt-0.5 truncate text-left text-[10px] text-shade-400">
-              {walkTimeMin} min à pied · {status.title}
+              {travelLabel(rec)} · {status.title}
             </p>
           </button>
 
@@ -134,8 +134,8 @@ export function BestMatchSheet({
             </div>
             <div className="w-px h-8 bg-shade-200" />
             <div>
-              <span className="text-2xl font-bold text-shade-700">{walkTimeMin}</span>
-              <p className="text-[10px] text-shade-400">min à pied</p>
+              <span className="text-2xl font-bold text-shade-700">{travelParts(rec).value}</span>
+              <p className="text-[10px] text-shade-400">{travelParts(rec).unit}</p>
             </div>
           </div>
 

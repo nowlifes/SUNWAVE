@@ -8,7 +8,7 @@ import { SunTrailService, type SunTrail } from '@/services/SunTrailService';
 import { DayRibbon } from './DayRibbon';
 import { SkyHeader } from './SkyHeader';
 import { formatLisbonTime } from '@/utils/lisbonTime';
-import { categoryLabel, formatGap, statusCopy, statusShort } from '@/utils/copy';
+import { categoryLabel, formatGap, statusCopy, statusShort, travelLabel } from '@/utils/copy';
 import { inviteText, inviteUrl, shareInvite } from '@/utils/share';
 
 // ---------------------------------------------------------------------------
@@ -325,7 +325,7 @@ function AnswerCard({
       </button>
 
       <p className="mt-2 text-sm text-mute">
-        {categoryLabel(rec.venue.category)} · {VenueService.getNeighborhood(rec.venue)} · {rec.walkTimeMin} min à pied
+        {categoryLabel(rec.venue.category)} · {VenueService.getNeighborhood(rec.venue)} · {travelLabel(rec)}
       </p>
 
       {/* Le compte à rebours — le chiffre qu'aucune autre app ne peut imprimer —
@@ -474,7 +474,7 @@ function AlternativeRow({
       <div className="min-w-0 flex-1">
         <p className="truncate text-[15px] font-semibold text-ink">{rec.venue.name}</p>
         <p className="text-[12.5px] text-mute">
-          {rec.walkTimeMin} min à pied · {statusShort(rec, mode)}
+          {travelLabel(rec)} · {statusShort(rec, mode)}
         </p>
       </div>
       <DayRibbon venue={rec.venue} mode={mode} {...day} size="mini" />

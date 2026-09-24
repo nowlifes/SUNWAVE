@@ -5,7 +5,7 @@ import { VenueService } from '@/services/VenueService';
 import { ReportService } from '@/services/ReportService';
 import { MapService } from '@/services/MapService';
 import { lisbonHour } from '@/utils/lisbonTime';
-import { categoryLabel, statusCopy } from '@/utils/copy';
+import { categoryLabel, statusCopy, travelParts } from '@/utils/copy';
 
 interface PlaceDetailSheetProps {
   venue: Venue;
@@ -174,8 +174,10 @@ export function PlaceDetailSheet({
                   <span className="text-[10px] font-medium text-shade-500">{mode === 'SUN' ? 'au soleil' : "à l'ombre"}</span>
                 </div>
                 <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-shade-100">
-                  <span className="text-sm font-bold text-shade-700">{rec.walkTimeMin} min</span>
-                  <span className="text-[10px] font-medium text-shade-500">à pied · {MapService.formatDistance(rec.distanceM)}</span>
+                  <span className="text-sm font-bold text-shade-700">{travelParts(rec).value}</span>
+                  <span className="text-[10px] font-medium text-shade-500">
+                    {travelParts(rec).unit === 'min à pied' ? `min à pied · ${MapService.formatDistance(rec.distanceM)}` : travelParts(rec).unit}
+                  </span>
                 </div>
               </div>
 

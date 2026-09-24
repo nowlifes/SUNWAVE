@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Recommendation } from '@/types';
-import { categoryLabel, formatGap, markerLabel, statusCopy, statusShort } from './copy';
+import { categoryLabel, formatGap, markerLabel, statusCopy, statusShort, travelLabel, travelParts } from './copy';
 
 // Une seule source pour les phrases de statut : la fiche détail disait
 // « Sunny for 5H » quand l'accueil disait « Perd le soleil dans 4h 30m ».
@@ -132,5 +132,20 @@ describe('markerLabel', () => {
   it('rien de prévu : le pourcentage', () => {
     const r = rec({ sunPercentage: 20, sunLeavesInMin: null, sunArrivesInMin: null });
     expect(markerLabel(r, 'SUN')).toBe('20 %');
+  });
+});
+
+// Depuis Costa da Caparica, un café de Lisbonne s'affichait « 136 min à
+// pied » : personne ne marche deux heures pour un café, et le pont ne se
+// traverse pas à pied. Au-delà de 20 min, la distance dit la vérité.
+describe('trajet', () => {
+  it('à distance de marche : les minutes à pied', () => {
+    expect(travelLabel(rec({ walkTimeMin: 12, distanceM: 950 }))).toBe('12 min à pied');
+    expect(travelLabel(rec({ walkTimeMin: 20, distanceM: 1620 }))).toBe('20 min à pied');
+  });
+
+  it('au-delà de 20 min : la distance, jamais « à pied »', () => {
+    expect(travelLabel(rec({ walkTimeMin: 136, distanceM: 11050 }))).toBe('11,1 km d\'ici');
+    expect(travelParts(rec({ walkTimeMin: 21, distanceM: 1700 }))).toEqual({ value: '1,7 km', unit: 'd\'ici' });
   });
 });
