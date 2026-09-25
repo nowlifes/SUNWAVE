@@ -26,6 +26,7 @@ import { LIT_MIN_ALT, beamCone, beamRay, coneCss, edgePoint, isOnScreen, rayCss,
 import { haloPulseMarkup, haloSvg, liveGlyphSvg } from '@/utils/haloMarkup';
 import { LIGHT, NIGHT } from '@/utils/palette';
 import { lightPaint } from '@/utils/light';
+import { litEdges } from '@/utils/litEdges';
 import { lisbonMinutesOfDay } from '@/utils/lisbonTime';
 import { HaloIcon } from './Halo';
 import { createShadowScheduler, type ShadowJob, type ShadowScheduler } from '@/utils/shadowScheduler';
@@ -212,16 +213,28 @@ function applyBeam(el: HTMLDivElement, css: BeamCss | null, cache: { key: string
 }
 
 type ShadowCollection = { type: 'FeatureCollection'; features: { type: 'Feature'; properties: object; geometry: { type: 'Polygon'; coordinates: number[][][] } }[] };
+type EdgeCollection = { type: 'FeatureCollection'; features: { type: 'Feature'; properties: object; geometry: { type: 'MultiLineString'; coordinates: [number, number][][] } }[] };
+/** Ce que calcule une minute : les ombres portées et les arêtes allumées. */
+type ShadowResult = { shadows: ShadowCollection; edges: EdgeCollection };
 const NO_SHADOWS = 'none';
 /** Bâtiments projetés par morceau : ~1 ms chacun en CPU x4 plutôt qu'un bloc. */
 const SHADOW_CHUNK = 1500;
 
 /** Le calcul des ombres d'une minute (clé « instant|lat|lng »), en morceaux. */
-function buildShadowJob(key: string): ShadowJob<ShadowCollection> {
+function buildShadowJob(key: string): ShadowJob<ShadowResult> {
   const features: ShadowCollection['features'] = [];
-  if (key === NO_SHADOWS) return { step: () => true, result: () => ({ type: 'FeatureCollection', features }) };
+  const lines: [number, number][][] = [];
+  const result = (): ShadowResult => ({
+    shadows: { type: 'FeatureCollection', features },
+    edges: {
+      type: 'FeatureCollection',
+      features: lines.length ? [{ type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: lines } }] : [],
+    },
+  });
+  if (key === NO_SHADOWS) return { step: () => true, result };
   const [t, lat, lng] = key.split('|').map(Number);
   const date = new Date(t);
+  const azimuth = SunService.getSunPosition(date, lat, lng).azimuth;
   let i = 0;
   return {
     step() {
@@ -231,10 +244,11 @@ function buildShadowJob(key: string): ShadowJob<ShadowCollection> {
         const coords = proj.shadowPoints.map((p) => [p.lng, p.lat]);
         coords.push(coords[0]);
         features.push({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [coords] } });
+        lines.push(...litEdges(lisbonBuildings[i].points, azimuth));
       }
       return i >= lisbonBuildings.length;
     },
-    result: () => ({ type: 'FeatureCollection', features }),
+    result,
   };
 }
 
@@ -404,6 +418,7 @@ export function MapView({
       map.addSource('land', { type: 'geojson', data: LAND });
       map.addSource('water', { type: 'geojson', data: WATER });
       map.addSource('building-shadows', { type: 'geojson', data: EMPTY });
+      map.addSource('lit-edges', { type: 'geojson', data: EMPTY });
       map.addSource('footprints', { type: 'geojson', data: FOOTPRINTS });
       map.addSource('walk-ring', { type: 'geojson', data: EMPTY });
       map.addSource('probe-link', { type: 'geojson', data: EMPTY });
@@ -437,6 +452,17 @@ export function MapView({
           // Les bâtiments en retrait, proches du sol : du relief sans bruit,
           // pour que les pastilles ressortent.
           paint: { 'fill-color': ROOF, 'fill-opacity': 0.9 },
+        },
+        'labels'
+      );
+      // L'arête au soleil : un trait fin de lumière sur les toits.
+      map.addLayer(
+        {
+          id: 'lit-edges',
+          type: 'line',
+          source: 'lit-edges',
+          paint: { 'line-color': LIGHT.pale, 'line-width': 0.9, 'line-opacity': 0.75 },
+          layout: { 'line-cap': 'butt' },
         },
         'labels'
       );
@@ -554,10 +580,11 @@ export function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-    const scheduler = createShadowScheduler<ShadowCollection>({
+    const scheduler = createShadowScheduler<ShadowResult>({
       build: buildShadowJob,
       apply: (_key, data) => {
-        (map.getSource('building-shadows') as GeoJSONSource | undefined)?.setData(data);
+        (map.getSource('building-shadows') as GeoJSONSource | undefined)?.setData(data.shadows);
+        (map.getSource('lit-edges') as GeoJSONSource | undefined)?.setData(data.edges);
       },
       onError: (e) => setMapError(`ombres : ${e.message}`),
     });
