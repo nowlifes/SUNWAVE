@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { GeoPoint, Recommendation, SunMode } from '@/types';
 import { IN_IT_THRESHOLD, RecommendationService } from '@/services/RecommendationService';
 import { ReliefService } from '@/services/ReliefService';
@@ -13,7 +13,9 @@ import { formatLisbonTime } from '@/utils/lisbonTime';
 import { categoryLabel, formatGap, placeName, statusCopy, statusShort, travelLabel, venueCountLine } from '@/utils/copy';
 import { inviteText, inviteUrl, shareInvite } from '@/utils/share';
 import { LIGHT, NIGHT } from '@/utils/palette';
-import { HaloIcon } from './Halo';
+import { HaloIcon, LiveGlyph } from './Halo';
+import { liveReports } from '@/services/LiveReportService';
+import { LIVE_SHORT, liveAge, liveWho } from '@/utils/live';
 import { lightCut } from '@/utils/lightCut';
 
 // ---------------------------------------------------------------------------
@@ -427,6 +429,13 @@ function AnswerCard({
     [currentDate, sunAlt]
   );
 
+  // Ce que disent ceux qui sont sur place : l'algo prédit, eux confirment.
+  useSyncExternalStore(
+    (cb) => liveReports.subscribe(cb),
+    () => liveReports.getVersion()
+  );
+  const live = liveReports.getState(rec.venue.id);
+
   return (
     <section className="mt-5">
       <div
@@ -470,6 +479,19 @@ function AnswerCard({
             </p>
           )}
           <p className={`mt-1.5 text-[13.5px] font-medium leading-snug ${tone.sub}`}>{status.detail}</p>
+
+          {/* Le signal de la communauté : éclat = frais, éteint = personne n'a encore confirmé. */}
+          <p className="mt-2.5 flex items-center gap-2 text-[13px] leading-snug">
+            <LiveGlyph level={live?.level ?? 'none'} size={20} tone={tone.night ? 'night' : 'day'} className={live ? '' : 'opacity-40'} />
+            {live ? (
+              <span>
+                <span className="font-bold">{LIVE_SHORT[live.level]}</span>
+                <span className={tone.sub}> · {liveWho(live.count)}, {liveAge(live.ageMin)}</span>
+              </span>
+            ) : (
+              <span className={tone.sub}>Pas encore confirmé sur place. Sois le premier.</span>
+            )}
+          </p>
 
           <div className="mt-3.5">
             <DayRibbon venue={rec.venue} mode={mode} {...day} tone={tone.night ? 'night' : 'day'} />
