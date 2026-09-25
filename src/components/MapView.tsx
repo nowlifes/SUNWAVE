@@ -25,6 +25,8 @@ import { travelParts } from '@/utils/copy';
 import { LIT_MIN_ALT, beamCone, beamRay, coneCss, edgePoint, isOnScreen, rayCss, type BeamCss, type Rect } from '@/utils/halo';
 import { haloPulseMarkup, haloSvg, liveGlyphSvg } from '@/utils/haloMarkup';
 import { LIGHT, NIGHT } from '@/utils/palette';
+import { lightPaint } from '@/utils/light';
+import { lisbonMinutesOfDay } from '@/utils/lisbonTime';
 import { HaloIcon } from './Halo';
 import { createShadowScheduler, type ShadowJob, type ShadowScheduler } from '@/utils/shadowScheduler';
 
@@ -144,6 +146,11 @@ const EMPTY = { type: 'FeatureCollection' as const, features: [] };
 // désormais le faisceau.
 const TERRAIN_GRIDS = [lisbonTerrain30, caparicaTerrain30, almadaTerrain30];
 const WATER = gridRuns(TERRAIN_GRIDS, 'water');
+// La terre reçoit la lumière (calque « light ») ; l'eau, les ombres portées et
+// les toits sont redessinés par-dessus et la laissent voir « découpée ».
+const LAND = gridRuns(TERRAIN_GRIDS, 'land');
+/** Les toits : la ville bleue, sur la lumière du sol. */
+const ROOF = '#0F2156';
 
 /** L'anneau de 10 min à pied, en polygone de 64 côtés. */
 function ringCoords(center: GeoPoint, radiusM: number): [number, number][] {
@@ -394,14 +401,20 @@ export function MapView({
       });
     };
     map.on('load', () => {
+      map.addSource('land', { type: 'geojson', data: LAND });
       map.addSource('water', { type: 'geojson', data: WATER });
       map.addSource('building-shadows', { type: 'geojson', data: EMPTY });
       map.addSource('footprints', { type: 'geojson', data: FOOTPRINTS });
       map.addSource('walk-ring', { type: 'geojson', data: EMPTY });
       map.addSource('probe-link', { type: 'geojson', data: EMPTY });
       // Sous les libellés : les noms de rues restent lisibles.
+      // La lumière : tout le sol, puis l'eau et les ombres la recouvrent.
       map.addLayer(
-        { id: 'water', type: 'fill', source: 'water', paint: { 'fill-color': C.water, 'fill-opacity': 0.9, 'fill-antialias': false } },
+        { id: 'light', type: 'fill', source: 'land', paint: { 'fill-color': LIGHT.glow, 'fill-opacity': 0, 'fill-antialias': false } },
+        'labels'
+      );
+      map.addLayer(
+        { id: 'water', type: 'fill', source: 'water', paint: { 'fill-color': C.water, 'fill-opacity': 1, 'fill-antialias': false } },
         'labels'
       );
       map.addLayer(
@@ -423,7 +436,7 @@ export function MapView({
           source: 'footprints',
           // Les bâtiments en retrait, proches du sol : du relief sans bruit,
           // pour que les pastilles ressortent.
-          paint: { 'fill-color': C.building, 'fill-opacity': 0.35 },
+          paint: { 'fill-color': ROOF, 'fill-opacity': 0.9 },
         },
         'labels'
       );
@@ -520,6 +533,16 @@ export function MapView({
     if (!map || !mapReady) return;
     map.setPaintProperty('base', 'raster-opacity', selectedVenueId ? BASE_OPACITY_CHOSEN : BASE_OPACITY);
   }, [selectedVenueId, mapReady]);
+
+  // La couleur du sol éclairé suit l'heure ; éteint quand le soleil est couché.
+  // Une propriété de peinture : rien n'est recalculé.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const p = lightPaint(sunPos.elevation, lisbonMinutesOfDay(currentDate));
+    map.setPaintProperty('light', 'fill-color', p.color);
+    map.setPaintProperty('light', 'fill-opacity', p.opacity);
+  }, [mapReady, currentDate, sunPos.elevation]);
 
   // Le jour, les ombres des bâtiments, un cran plus sombres que le sol.
   // 13 800 projections puis un envoi au worker : découpé en morceaux, mis en
