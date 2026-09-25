@@ -57,7 +57,39 @@ export function SkyHeader({ date, sunrise, sunset, mode, onModeChange, place, ch
   const ink = night ? NIGHT.sub : NIGHT.night;
 
   return (
-    <header className="relative overflow-hidden pt-[env(safe-area-inset-top)]" style={{ background: sky.top }}>
+    <header
+      className="relative overflow-hidden pt-[env(safe-area-inset-top)]"
+      style={
+        night
+          ? { background: sky.top }
+          : {
+              backgroundColor: NIGHT.night,
+              backgroundImage: 'url(/da/tram.jpg)',
+              backgroundSize: 'cover',
+              backgroundPosition: '50% 30%',
+            }
+      }
+    >
+      {/* Le jour : une photo, chauffée d'autant plus que le soleil est bas. */}
+      {!night && (
+        <>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{ background: 'linear-gradient(180deg, rgba(11,26,69,0.6) 0%, rgba(11,26,69,0) 46%, rgba(11,26,69,0.35) 100%)' }}
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              mixBlendMode: 'soft-light',
+              opacity: Math.min(0.6, Math.max(0.1, (35 - elevation) / 35)),
+              background: 'radial-gradient(70% 45% at 65% 22%, #ffb04a, transparent 70%)',
+            }}
+          />
+        </>
+      )}
+      {night && (
       <svg viewBox={`0 0 ${W} ${H}`} className="pointer-events-none absolute inset-x-0 bottom-0 block w-full" aria-hidden="true">
         {bands.map((b) => (
           <rect key={b.y} x="0" y={b.y} width={W} height={b.h} fill={b.fill} />
@@ -81,8 +113,9 @@ export function SkyHeader({ date, sunrise, sunset, mode, onModeChange, place, ch
           {formatLisbonTime(sunset)}
         </text>
       </svg>
+      )}
 
-      <div className="relative flex min-h-[250px] items-start justify-between gap-3 pl-6 pr-5 pt-[46px]">
+      <div className={`relative flex ${night ? 'min-h-[250px]' : 'min-h-[340px]'} items-start justify-between gap-3 pl-6 pr-5 pt-[46px]`}>
         <div className={`min-w-0 ${night ? 'text-dusk-shell' : 'text-white'}`}>
           <p className="text-[13px] font-semibold">{place}</p>
           <h1 className="mt-0.5 font-mono text-[38px] font-semibold leading-none tracking-[-0.02em] tabular-nums">

@@ -45,10 +45,12 @@ export default {
         },
         // Encre du jour = la nuit.
         ink: '#0B1A45',
+        // Direction « Contre-jour » : la carte crème, éclairée par le soleil.
+        cream: '#FFF1D6',
       },
       fontFamily: {
-        sans: ['Geist', 'system-ui', '-apple-system', 'sans-serif'],
-        display: ['"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
+        sans: ['"Schibsted Grotesk"', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['"Funnel Display"', '"Schibsted Grotesk"', 'system-ui', 'sans-serif'],
         mono: ['"Geist Mono"', 'ui-monospace', 'monospace'],
       },
       borderRadius: {

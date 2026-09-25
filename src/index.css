@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,600..800&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Funnel+Display:wght@400..800&family=Schibsted+Grotesk:wght@400..800&family=Geist+Mono:wght@500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -16,7 +16,7 @@ html, body {
 }
 
 body {
-  font-family: 'Geist', system-ui, -apple-system, sans-serif;
+  font-family: 'Schibsted Grotesk', system-ui, -apple-system, sans-serif;
   background: #08143A;
   color: #0B1A45;
 }

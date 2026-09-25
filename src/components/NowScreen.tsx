@@ -13,8 +13,8 @@ import { formatLisbonTime } from '@/utils/lisbonTime';
 import { categoryLabel, formatGap, placeName, statusCopy, statusShort, travelLabel, venueCountLine } from '@/utils/copy';
 import { inviteText, inviteUrl, shareInvite } from '@/utils/share';
 import { LIGHT, NIGHT } from '@/utils/palette';
-import { Squiggle } from './Squiggle';
 import { HaloIcon } from './Halo';
+import { lightCut } from '@/utils/lightCut';
 
 // ---------------------------------------------------------------------------
 // L'écran réponse — l'écran d'accueil.
@@ -201,16 +201,20 @@ export function NowScreen({
         )}
       </SkyHeader>
 
-      <div className="px-6">
+      <div className={`relative z-10 px-6 ${!isSun ? '-mt-6' : autoTemperature !== null ? '-mt-24' : '-mt-14'}`}>
         {/* Premier lancement : dire pourquoi soleil ou ombre, et offrir l'autre. */}
         {autoTemperature !== null && (
-          <div className={`mt-4 flex items-center justify-between gap-2.5 rounded-2xl border py-2 pl-3.5 pr-2 ${tone.card}`}>
+          <div
+            className={`flex items-center justify-between gap-2.5 rounded-2xl border py-2 pl-3.5 pr-2 ${
+              isSun ? 'border-white/25 bg-ink/60 text-white backdrop-blur-md' : `mt-4 ${tone.card}`
+            }`}
+          >
             <p className="text-[13px] leading-snug">
               Il fait {autoTemperature} °C : on te montre {isSun ? 'le soleil' : "l'ombre"}.
             </p>
             <button
               onClick={() => onModeChange(isSun ? 'SHADE' : 'SUN')}
-              className={`min-h-11 shrink-0 rounded-xl px-2.5 text-[12.5px] font-semibold active:scale-95 transition-transform motion-reduce:transition-none ${tone.link}`}
+              className={`min-h-11 shrink-0 rounded-xl px-2.5 text-[12.5px] font-semibold active:scale-95 transition-transform motion-reduce:transition-none ${isSun ? 'text-dusk-pale' : tone.link}`}
             >
               {isSun ? "L'ombre plutôt ?" : 'Le soleil plutôt ?'}
             </button>
@@ -240,6 +244,7 @@ export function NowScreen({
             mode={mode}
             day={ribbonDay}
             sunAlt={sunAlt}
+            currentDate={currentDate}
             onOpen={() => onVenueSelect(pick.venue.id)}
             onDirections={() => onGetDirections(pick.venue.id)}
             onSomethingElse={handleSomethingElse}
@@ -323,6 +328,11 @@ function toneFor(mode: SunMode) {
         primary: 'bg-ink text-white',
         secondary: 'border-[1.5px] border-ink text-ink',
         underline: LIGHT.fire,
+        // La carte réponse : crème, coupée à l'angle du soleil, ombre dure.
+        answer: 'border-ink bg-cream text-ink',
+        shadowColor: NIGHT.night,
+        cutColor: 'rgba(11,26,69,0.13)',
+        cta: 'border-ink bg-dusk-fire text-ink shadow-[3px_3px_0_#0B1A45] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none',
       }
     : {
         night: true,
@@ -334,6 +344,10 @@ function toneFor(mode: SunMode) {
         primary: 'bg-dusk-sub text-dusk-night',
         secondary: 'border-[1.5px] border-dusk-edge text-dusk-shell',
         underline: NIGHT.sub,
+        answer: 'border-dusk-edge bg-dusk-panel text-dusk-shell',
+        shadowColor: 'rgba(0,0,0,0.55)',
+        cutColor: 'rgba(0,0,0,0.18)',
+        cta: 'border-dusk-edge bg-dusk-sub text-dusk-night shadow-[3px_3px_0_rgba(0,0,0,0.55)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none',
       };
 }
 
@@ -349,6 +363,7 @@ function AnswerCard({
   mode,
   day,
   sunAlt,
+  currentDate,
   onOpen,
   onDirections,
   onSomethingElse,
@@ -361,6 +376,7 @@ function AnswerCard({
   day: RibbonDay;
   /** Hauteur du soleil maintenant : couleur et largeur du halo. */
   sunAlt: number;
+  currentDate: Date;
   onOpen: () => void;
   onDirections: () => void;
   onSomethingElse: () => void;
@@ -404,93 +420,93 @@ function AnswerCard({
     [isSun, inItNow, rec.venue.latitude, rec.venue.longitude]
   );
 
+  // La carte est coupée à l'angle du soleil de cette minute ; son ombre tombe
+  // à l'opposé. Trois nombres, aucun état : voir utils/lightCut.
+  const cut = useMemo(
+    () => lightCut(SunService.getSunAzimuth(currentDate), sunAlt),
+    [currentDate, sunAlt]
+  );
+
   return (
     <section className="mt-5">
-      <div className="-mr-2.5 flex items-start justify-between gap-2">
-        <h2
-          className={`font-display text-[clamp(2.25rem,11.5vw,2.9rem)] leading-[0.94] tracking-[-0.025em] [text-wrap:balance] ${
-            isSun ? 'font-extrabold [font-stretch:90%]' : 'font-medium [font-stretch:78%]'
-          }`}
-        >
-          {headline}
-        </h2>
-        <button
-          onClick={onShare}
-          aria-label="Inviter quelqu'un"
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full active:scale-90 transition-transform motion-reduce:transition-none ${tone.sub}`}
-        >
-          <ShareIcon />
-        </button>
-      </div>
+      <div
+        className={`relative rounded-[20px] border-[1.5px] p-4 ${tone.answer}`}
+        style={{ boxShadow: `${cut.dx}px ${cut.dy}px 0 ${tone.shadowColor}` }}
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 rounded-[inherit]"
+          style={{ background: `linear-gradient(${cut.angle}deg, transparent ${cut.cut}%, ${tone.cutColor} ${cut.cut}%)` }}
+        />
+        <div className="relative">
+          <div className="-mr-2 -mt-1 flex items-start justify-between gap-2">
+            <p className={`pt-1 text-[10.5px] font-bold uppercase tracking-[0.1em] [text-wrap:balance] ${isSun ? 'text-day-ember' : 'text-dusk-ember'}`}>
+              {headline.replace(/\.$/, '')}
+            </p>
+            <button
+              onClick={onShare}
+              aria-label="Inviter quelqu'un"
+              className={`-mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full active:scale-90 transition-transform motion-reduce:transition-none ${tone.sub}`}
+            >
+              <ShareIcon />
+            </button>
+          </div>
 
-      {bigTime && (
-        <div className="mt-3.5 flex items-end gap-3">
-          <p
-            className={`font-mono text-[clamp(4rem,22vw,5.4rem)] leading-[0.86] tracking-[-0.05em] tabular-nums ${
-              isSun ? 'font-bold text-ink' : 'font-semibold text-dusk-sub'
-            }`}
-          >
-            {bigTime}
-          </p>
-          <p className={`mb-1 text-[13px] font-semibold leading-tight ${captionColor}`}>
-            {cap1}
-            <br />
-            {cap2}
-          </p>
-        </div>
-      )}
-      <p className={`mt-2.5 text-[14px] font-medium leading-snug ${tone.sub}`}>{status.detail}</p>
-
-      <div className="mt-5">
-        <button onClick={onOpen} className="flex min-h-11 flex-col items-start gap-px text-left active:opacity-70 transition-opacity">
-          <span className="flex items-center gap-2">
+          <button onClick={onOpen} className="-mt-2 flex min-h-11 items-center gap-2 text-left active:opacity-70 transition-opacity">
             {/* Ça brille : au soleil maintenant. Éteint : à l'ombre. */}
             <HaloIcon kind={rec.sunPercentage >= IN_IT_THRESHOLD.SUN && sunAlt > 0.5 ? 'sun' : 'shade'} tone={tone.night ? 'night' : 'day'} alt={sunAlt} size={24} />
-            <span className="font-display text-[22px] font-bold leading-[1.1] [font-stretch:92%] [text-wrap:pretty]">{rec.venue.name}</span>
-          </span>
-          <span className="pl-8">
-            <Squiggle text={rec.venue.name} color={tone.underline} width={Math.min(290, 24 + rec.venue.name.length * 9)} />
-          </span>
-        </button>
-        <p className={`mt-0.5 text-[13px] font-medium ${tone.sub}`}>
-          {categoryLabel(rec.venue.category)} · {VenueService.getNeighborhood(rec.venue)} · {travelLabel(rec)}
-        </p>
-      </div>
-
-      <div className="mt-4">
-        <DayRibbon venue={rec.venue} mode={mode} {...day} tone={tone.night ? 'night' : 'day'} />
-      </div>
-
-      {relief && (
-        <p className={`mt-3.5 flex items-start gap-2 text-[12.5px] leading-snug ${tone.sub}`}>
-          <ReliefIcon />
-          <span>{relief}</span>
-        </p>
-      )}
-
-      {shareState !== 'idle' && (
-        <p role="status" className="mt-3.5 text-center text-[12.5px] font-semibold">
-          {shareState === 'copied'
-            ? "Invitation copiée — colle-la dans ta conversation."
-            : "Copie impossible sur cet appareil."}
-        </p>
-      )}
-
-      <div className="mt-5 flex gap-2.5">
-        <button
-          onClick={onDirections}
-          className={`min-h-[52px] flex-1 rounded-full text-[16px] font-bold active:scale-[0.98] transition-transform motion-reduce:transition-none ${tone.primary}`}
-        >
-          M'y emmener
-        </button>
-        {hasAlternatives && (
-          <button
-            onClick={onSomethingElse}
-            className={`min-h-[52px] rounded-full px-5 text-[15px] font-semibold active:scale-[0.98] transition-transform motion-reduce:transition-none ${tone.secondary}`}
-          >
-            Autre chose
+            <span className="font-display text-[26px] font-extrabold leading-none tracking-[-0.02em] [text-wrap:pretty]">{rec.venue.name}</span>
           </button>
-        )}
+          <p className={`mt-1 text-[13px] font-medium ${tone.sub}`}>
+            {categoryLabel(rec.venue.category)} · {VenueService.getNeighborhood(rec.venue)} · {travelLabel(rec)}
+          </p>
+
+          {bigTime && (
+            <p className="mt-3 flex items-baseline gap-2">
+              <span className="font-display text-[22px] font-extrabold leading-none tracking-[-0.01em] tabular-nums">{bigTime}</span>
+              <span className={`text-[12.5px] font-semibold leading-tight ${captionColor}`}>
+                {cap1} {cap2}
+              </span>
+            </p>
+          )}
+          <p className={`mt-1.5 text-[13.5px] font-medium leading-snug ${tone.sub}`}>{status.detail}</p>
+
+          <div className="mt-3.5">
+            <DayRibbon venue={rec.venue} mode={mode} {...day} tone={tone.night ? 'night' : 'day'} />
+          </div>
+
+          {relief && (
+            <p className={`mt-3 flex items-start gap-2 text-[12.5px] leading-snug ${tone.sub}`}>
+              <ReliefIcon />
+              <span>{relief}</span>
+            </p>
+          )}
+
+          {shareState !== 'idle' && (
+            <p role="status" className="mt-3 text-center text-[12.5px] font-semibold">
+              {shareState === 'copied'
+                ? "Invitation copiée — colle-la dans ta conversation."
+                : "Copie impossible sur cet appareil."}
+            </p>
+          )}
+
+          <div className="mt-4 flex gap-2.5">
+            <button
+              onClick={onDirections}
+              className={`min-h-12 flex-1 rounded-[14px] border-[1.5px] font-display text-[16px] font-extrabold transition-[transform,box-shadow] motion-reduce:transition-none ${tone.cta}`}
+            >
+              M'y emmener
+            </button>
+            {hasAlternatives && (
+              <button
+                onClick={onSomethingElse}
+                className={`min-h-12 rounded-[14px] px-4 text-[14px] font-bold active:scale-[0.98] transition-transform motion-reduce:transition-none ${tone.secondary}`}
+              >
+                Autre chose
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </section>
   );
