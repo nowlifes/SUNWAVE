@@ -6,6 +6,8 @@ import { DayRibbon } from './DayRibbon';
 import { SearchBar } from './SearchBar';
 import { PlaceDetailSheet } from './PlaceDetailSheet';
 import { LiveQuestion } from './LiveQuestion';
+import { NotificationPrompt } from './NotificationPrompt';
+import { useNotificationPrompt } from '@/hooks/useNotifications';
 import { liveThanks } from '@/utils/live';
 import type { LiveAnswer } from '@/services/LiveReportService';
 import { liveReports } from '@/services/LiveReportService';
@@ -127,7 +129,14 @@ export function MapScreen({
   const [dismissedLiveId, setDismissedLiveId] = useState<string | null>(null);
   // Après le tap : la carte reste 3 s avec ce que la réponse a produit.
   const [justAnswered, setJustAnswered] = useState<{ venue: Venue; answer: LiveAnswer; thanks: string; total: number } | null>(null);
-  const closeThanks = useCallback(() => setJustAnswered(null), []);
+  // Fin du sticker de remerciement = première réponse donnée : c'est là, et
+  // seulement là, qu'on propose la notification golden hour.
+  const notif = useNotificationPrompt();
+  const armNotif = notif.arm;
+  const closeThanks = useCallback(() => {
+    setJustAnswered(null);
+    armNotif();
+  }, [armNotif]);
   const hereVenue = useMemo(
     () =>
       locationGranted
@@ -384,6 +393,10 @@ export function MapScreen({
           answered={justAnswered}
           onDone={closeThanks}
         />
+      )}
+
+      {notif.visible && !justAnswered && !askLive && (
+        <NotificationPrompt phase={notif.phase} error={notif.error} onAccept={notif.accept} onDecline={notif.decline} />
       )}
 
       {/* En bas, à portée du pouce : la feuille, puis le curseur d'heure. */}

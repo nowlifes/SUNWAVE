@@ -1,4 +1,5 @@
 import type { SunMode } from '@/types';
+import { useNotificationSetting } from '@/hooks/useNotifications';
 
 interface ProfileScreenProps {
   mode: SunMode;
@@ -11,6 +12,7 @@ interface ProfileScreenProps {
 // écrivait `preferences.mode`, que rien ne lisait — on touchait « Ombre » et
 // l'accueil restait au soleil.
 export function ProfileScreen({ mode, onModeChange, locationLabel, locationGranted }: ProfileScreenProps) {
+  const notif = useNotificationSetting();
   return (
     <div className="h-full overflow-y-auto no-scrollbar bg-day pb-24 text-ink">
       <div className="px-6 pt-10 pb-4">
@@ -55,6 +57,55 @@ export function ProfileScreen({ mode, onModeChange, locationLabel, locationGrant
               {m === 'SUN' ? 'Soleil' : 'Ombre'}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Notifications : une par jour, 20 min avant la golden hour */}
+      <div className="px-6 mb-6">
+        <h2 className="mb-2 text-[13px] font-semibold text-day-sub">Notifications</h2>
+        <div className="rounded-[20px] border border-day-line bg-day-2 p-4">
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p id="notif-label" className="text-sm font-bold">Notifications</p>
+              <p id="notif-sub" className="text-xs text-day-sub">Une par jour, 20 min avant la golden hour</p>
+            </div>
+            <button
+              role="switch"
+              aria-checked={notif.on}
+              aria-labelledby="notif-label"
+              aria-describedby="notif-sub"
+              disabled={!notif.supported || notif.busy}
+              onClick={notif.toggle}
+              className="flex h-11 w-16 shrink-0 items-center justify-center disabled:opacity-40"
+            >
+              <span
+                className={`relative h-7 w-[52px] rounded-full border-[1.5px] border-ink transition-colors motion-reduce:transition-none ${
+                  notif.on ? 'bg-dusk-fire' : 'bg-white'
+                }`}
+              >
+                <span
+                  className={`absolute top-[2px] h-5 w-5 rounded-full border-[1.5px] border-ink bg-cream transition-[left] motion-reduce:transition-none ${
+                    notif.on ? 'left-[26px]' : 'left-[2px]'
+                  }`}
+                />
+              </span>
+            </button>
+          </div>
+          {notif.installHint && (
+            <p className="mt-3 text-xs font-medium leading-snug text-day-sub">
+              Sur iPhone : ajoute SUNWAVE à l’écran d’accueil pour les recevoir
+            </p>
+          )}
+          {!notif.supported && !notif.installHint && (
+            <p className="mt-3 text-xs font-medium leading-snug text-day-sub">
+              Les notifications ne sont pas disponibles sur ce navigateur.
+            </p>
+          )}
+          {notif.error && (
+            <p role="alert" className="mt-3 text-xs font-bold leading-snug text-day-ember">
+              {notif.error}
+            </p>
+          )}
         </div>
       </div>
 
