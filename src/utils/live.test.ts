@@ -1,25 +1,28 @@
 import { describe, it, expect } from 'vitest';
-import { isDaylight, liveAge, liveLabel, liveQuestion, liveWho } from './live';
+import { liveCount, liveThanks } from './live';
 
-describe('live', () => {
-  it('ne pose la question que de jour', () => {
-    expect(isDaylight(new Date('2026-09-24T12:00:00Z'))).toBe(true);
-    expect(isDaylight(new Date('2026-09-24T23:00:00Z'))).toBe(false);
-    expect(isDaylight(new Date('2026-09-24T03:00:00Z'))).toBe(false);
+describe('liveThanks', () => {
+  it('ne promet pas un nombre de personnes aidées', () => {
+    for (const a of [null, { same: 1, total: 1 }, { same: 3, total: 4 }, { same: 1, total: 3 }]) {
+      expect(liveThanks(a)).not.toMatch(/aidé/);
+    }
   });
-
-  it('dit la fraîcheur et le nombre comme on le dit', () => {
-    expect(liveAge(0)).toBe("à l'instant");
-    expect(liveAge(6)).toBe('il y a 6 min');
-    expect(liveWho(1)).toBe('confirmé par 1 personne');
-    expect(liveWho(3)).toBe('confirmé par 3 personnes');
+  it('dit qu’on est le premier quand personne d’autre n’a répondu', () => {
+    expect(liveThanks({ same: 1, total: 1 })).toMatch(/premier/);
+    expect(liveThanks(null)).toMatch(/premier/);
   });
+  it('accorde au singulier et au pluriel', () => {
+    expect(liveThanks({ same: 2, total: 2 })).toMatch(/1 autre personne a confirmé/);
+    expect(liveThanks({ same: 3, total: 4 })).toMatch(/2 autres personnes ont confirmé/);
+  });
+  it('signale des réponses différentes sans compter comme confirmation', () => {
+    expect(liveThanks({ same: 1, total: 3 })).toMatch(/différentes/);
+  });
+});
 
-  it('nomme ce qu\'on cherche : une table en terrasse, un coin ailleurs', () => {
-    expect(liveQuestion('cafe', 'SUN')).toBe('Il reste des tables au soleil ?');
-    expect(liveQuestion('beach', 'SHADE')).toBe("Il reste des coins à l'ombre ?");
-    expect(liveLabel('plenty')).toBe('Oui, plein');
-    expect(liveLabel('few')).toBe('Il en reste');
-    expect(liveLabel('none')).toBe('Tout est pris');
+describe('liveCount', () => {
+  it('sépare la seule confirmation de la nôtre du total', () => {
+    expect(liveCount(1)).toBe('1 confirmation : la tienne');
+    expect(liveCount(4)).toBe('Ce lieu compte maintenant 4 confirmations');
   });
 });

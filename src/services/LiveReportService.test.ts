@@ -30,6 +30,23 @@ describe('LiveReportService', () => {
     expect(svc.isInZone(venue, north(LIVE_ZONE_M + 50))).toBe(false);
   });
 
+  it("compte les voix qui disent comme nous, la nôtre comprise", () => {
+    const others: LiveRecord[] = [
+      { venueId: 'v1', answer: 'plenty', at: NOW, deviceId: 'a' },
+      { venueId: 'v1', answer: 'plenty', at: NOW, deviceId: 'b' },
+      { venueId: 'v1', answer: 'none', at: NOW, deviceId: 'c' },
+    ];
+    const withOthers = new LiveReportService(memoryStore(others), 'me');
+    expect(withOthers.getAgreement('v1', NOW)).toBeNull();
+    withOthers.submit(venue, 'plenty', north(20), NOW);
+    expect(withOthers.getAgreement('v1', NOW)).toEqual({ same: 3, total: 4 });
+  });
+
+  it('dit qu\'on est seul quand personne d\'autre n\'a répondu', () => {
+    svc.submit(venue, 'few', north(20), NOW);
+    expect(svc.getAgreement('v1', NOW)).toEqual({ same: 1, total: 1 });
+  });
+
   it('refuse une réponse envoyée de loin', () => {
     expect(svc.submit(venue, 'plenty', north(500), NOW)).toBe(false);
     expect(svc.getState('v1', NOW)).toBeNull();

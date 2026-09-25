@@ -224,6 +224,16 @@ export class LiveReportService {
     return { level, count: rows.length, ageMin: Math.floor((now - latest) / 60_000) };
   }
 
+  /** Combien de voix valides disent comme nous sur ce lieu (la nôtre comprise),
+   *  et combien de voix en tout. Sert au retour après le tap : « 2 autres ont
+   *  confirmé la même chose » est vrai, « tu as aidé 14 personnes » ne l'est pas. */
+  getAgreement(venueId: string, now: number = Date.now()): { same: number; total: number } | null {
+    const rows = this.active(venueId, now);
+    const mine = rows.find((r) => r.deviceId === this.deviceId);
+    if (!mine) return null;
+    return { same: rows.filter((r) => r.answer === mine.answer).length, total: rows.length };
+  }
+
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);

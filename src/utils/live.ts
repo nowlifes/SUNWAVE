@@ -28,6 +28,20 @@ export function liveLabel(answer: LiveAnswer): string {
 /** Pourquoi on demande : sans cette ligne, la question a l'air d'un sondage. */
 export const LIVE_WHY = 'Ta réponse aide ceux qui hésitent à venir.';
 
+/** Le retour après le tap : ce que la réponse a produit, sans chiffre inventé. */
+export function liveThanks(agreement: { same: number; total: number } | null): string {
+  if (!agreement || agreement.total <= 1) {
+    return 'Merci — tu es le premier ici. Ton avis sera vu pendant 45 min par ceux qui cherchent autour de toi.';
+  }
+  const others = agreement.same - 1;
+  if (others === 0) return 'Merci — ton avis compte : les autres réponses ici sont différentes. Il reste affiché 45 min.';
+  return `Merci — ${others === 1 ? '1 autre personne a confirmé' : `${others} autres personnes ont confirmé`} la même chose. Ton avis reste affiché 45 min.`;
+}
+
+export function liveCount(total: number): string {
+  return total <= 1 ? '1 confirmation : la tienne' : `Ce lieu compte maintenant ${total} confirmations`;
+}
+
 export const LIVE_SHORT: Record<LiveAnswer, string> = {
   plenty: 'Des places',
   few: 'Presque plein',

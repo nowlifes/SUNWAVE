@@ -5,7 +5,9 @@ import { TimeSlider } from './TimeSlider';
 import { DayRibbon } from './DayRibbon';
 import { SearchBar } from './SearchBar';
 import { PlaceDetailSheet } from './PlaceDetailSheet';
-import { LiveQuestion, LiveThanks } from './LiveQuestion';
+import { LiveQuestion } from './LiveQuestion';
+import { liveThanks } from '@/utils/live';
+import type { LiveAnswer } from '@/services/LiveReportService';
 import { liveReports } from '@/services/LiveReportService';
 import { isDaylight } from '@/utils/live';
 import { RecommendationService } from '@/services/RecommendationService';
@@ -123,8 +125,9 @@ export function MapScreen({
     () => liveReports.getVersion()
   );
   const [dismissedLiveId, setDismissedLiveId] = useState<string | null>(null);
-  const [thanked, setThanked] = useState(false);
-  const closeThanks = useCallback(() => setThanked(false), []);
+  // Après le tap : la carte reste 3 s avec ce que la réponse a produit.
+  const [justAnswered, setJustAnswered] = useState<{ venue: Venue; answer: LiveAnswer; thanks: string; total: number } | null>(null);
+  const closeThanks = useCallback(() => setJustAnswered(null), []);
   const hereVenue = useMemo(
     () =>
       locationGranted
@@ -364,11 +367,24 @@ export function MapScreen({
         <LiveQuestion
           venue={askLive}
           mode={mode}
-          onAnswer={(answer) => setThanked(liveReports.submit(askLive, answer, userLocation))}
+          onAnswer={(answer) => {
+            if (!liveReports.submit(askLive, answer, userLocation)) return;
+            const agreement = liveReports.getAgreement(askLive.id);
+            setJustAnswered({ venue: askLive, answer, thanks: liveThanks(agreement), total: agreement?.total ?? 1 });
+          }}
           onDismiss={() => setDismissedLiveId(askLive.id)}
         />
       )}
-      {thanked && !askLive && <LiveThanks onDone={closeThanks} />}
+      {justAnswered && !askLive && (
+        <LiveQuestion
+          venue={justAnswered.venue}
+          mode={mode}
+          onAnswer={closeThanks}
+          onDismiss={closeThanks}
+          answered={justAnswered}
+          onDone={closeThanks}
+        />
+      )}
 
       {/* En bas, à portée du pouce : la feuille, puis le curseur d'heure. */}
       <div className="absolute inset-x-0 bottom-0 z-20" style={{ paddingBottom: NAV_HEIGHT }}>
