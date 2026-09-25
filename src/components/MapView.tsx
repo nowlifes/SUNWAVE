@@ -100,6 +100,12 @@ const cartoTiles = (style: string) =>
 const BASE_OPACITY = 0.45;
 const BASE_OPACITY_CHOSEN = 0.3;
 
+// Spike « photo » : `?ortho=1` pose une orthophoto désaturée par-dessus la
+// lumière et les ombres calculées. La photo donne la matière, le calcul garde
+// l'heure : ses propres ombres (prises vers midi) sont noyées par la teinte.
+const ORTHO = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('ortho');
+const ORTHO_TILES = ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'];
+
 const MAP_STYLE: import('maplibre-gl').StyleSpecification = {
   version: 8,
   sources: {
@@ -451,10 +457,28 @@ export function MapView({
           source: 'footprints',
           // Les bâtiments en retrait, proches du sol : du relief sans bruit,
           // pour que les pastilles ressortent.
-          paint: { 'fill-color': ROOF, 'fill-opacity': 0.9 },
+          paint: { 'fill-color': ROOF, 'fill-opacity': ORTHO ? 0.35 : 0.9 },
         },
         'labels'
       );
+      if (ORTHO) {
+        map.addSource('ortho', { type: 'raster', tiles: ORTHO_TILES, tileSize: 256, maxzoom: 19, attribution: '&copy; Esri, Maxar' });
+        map.addLayer(
+          {
+            id: 'ortho',
+            type: 'raster',
+            source: 'ortho',
+            // Grise et contrastée, à faible opacité : la texture se lit sans
+            // salir l'orange. Plus présente de près, où la photo a du détail.
+            paint: {
+              'raster-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.18, 17, 0.38],
+              'raster-saturation': -1,
+              'raster-contrast': 0.45,
+            },
+          },
+          'labels'
+        );
+      }
       // L'arête au soleil : un trait fin de lumière sur les toits.
       map.addLayer(
         {
