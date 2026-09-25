@@ -5,7 +5,7 @@ import { SunService } from '@/services/SunService';
 import { VenueService } from '@/services/VenueService';
 import { ReportService } from '@/services/ReportService';
 import { liveReports, type LiveAnswer } from '@/services/LiveReportService';
-import { LIVE_ANSWERS, LIVE_SHORT, isDaylight, liveAge, liveWho } from '@/utils/live';
+import { LIVE_ANSWERS, LIVE_SHORT, LIVE_WHY, isDaylight, liveAge, liveLabel, liveQuestion, liveWho } from '@/utils/live';
 import { formatLisbonTime, lisbonHour, lisbonMinutesOfDay, setLisbonTime } from '@/utils/lisbonTime';
 import { categoryLabel, statusCopy, travelParts } from '@/utils/copy';
 import { LIGHT } from '@/utils/palette';
@@ -287,7 +287,7 @@ export function PlaceDetailSheet({
                     {canAsk && !answered && (
                       <>
                         <p className="mt-3 text-sm text-day-sub">
-                          Il reste des places {isSun ? 'au soleil' : "à l'ombre"} ? Dis-le aux autres
+                          {liveQuestion(venue.category, mode)} {LIVE_WHY}
                         </p>
                         <div className="mt-2 flex gap-2">
                           {LIVE_ANSWERS.map((a) => (
@@ -297,7 +297,7 @@ export function PlaceDetailSheet({
                               className="min-h-11 flex-1 rounded-2xl border border-day-line bg-day-2 py-2.5 text-[13px] font-semibold active:scale-95 transition-transform motion-reduce:transition-none"
                             >
                               <LiveGlyph level={a.answer} tone="day" size={20} className="mx-auto mb-0.5" />
-                              {a.label}
+                              {liveLabel(a.answer)}
                             </button>
                           ))}
                         </div>

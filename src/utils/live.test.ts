@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isDaylight, liveAge, liveWho } from './live';
+import { isDaylight, liveAge, liveLabel, liveQuestion, liveWho } from './live';
 
 describe('live', () => {
   it('ne pose la question que de jour', () => {
@@ -13,5 +13,13 @@ describe('live', () => {
     expect(liveAge(6)).toBe('il y a 6 min');
     expect(liveWho(1)).toBe('confirmé par 1 personne');
     expect(liveWho(3)).toBe('confirmé par 3 personnes');
+  });
+
+  it('nomme ce qu\'on cherche : une table en terrasse, un coin ailleurs', () => {
+    expect(liveQuestion('cafe', 'SUN')).toBe('Il reste des tables au soleil ?');
+    expect(liveQuestion('beach', 'SHADE')).toBe("Il reste des coins à l'ombre ?");
+    expect(liveLabel('plenty')).toBe('Oui, plein');
+    expect(liveLabel('few')).toBe('Il en reste');
+    expect(liveLabel('none')).toBe('Tout est pris');
   });
 });

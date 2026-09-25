@@ -1,6 +1,6 @@
 import type { Venue, SunMode } from '@/types';
 import type { LiveAnswer } from '@/services/LiveReportService';
-import { LIVE_ANSWERS } from '@/utils/live';
+import { LIVE_ANSWERS, LIVE_WHY, liveLabel, liveQuestion } from '@/utils/live';
 import { shortVenueName } from '@/utils/mapGuide';
 import { LiveGlyph } from './Halo';
 
@@ -11,7 +11,7 @@ interface LiveQuestionProps {
   onDismiss: () => void;
 }
 
-/** « Il reste des places au soleil ? » — posée à celui qui est sur place, un tap
+/** « Il reste des tables au soleil ? » — posée à celui qui est sur place, un tap
  *  pour répondre, un tap pour passer. Elle ne revient pas tant qu'on a répondu. */
 export function LiveQuestion({ venue, mode, onAnswer, onDismiss }: LiveQuestionProps) {
   return (
@@ -23,9 +23,8 @@ export function LiveQuestion({ venue, mode, onAnswer, onDismiss }: LiveQuestionP
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[12.5px] font-semibold text-dusk-sub">{shortVenueName(venue.name)} · tu es sur place</p>
-          <p className="mt-1 text-[16px] font-semibold leading-snug">
-            Il reste des places {mode === 'SUN' ? 'au soleil' : "à l'ombre"} ?
-          </p>
+          <p className="mt-1 text-[16px] font-semibold leading-snug">{liveQuestion(venue.category, mode)}</p>
+          <p className="mt-0.5 text-[12.5px] text-dusk-sub">{LIVE_WHY}</p>
         </div>
         <button
           onClick={onDismiss}
@@ -43,7 +42,7 @@ export function LiveQuestion({ venue, mode, onAnswer, onDismiss }: LiveQuestionP
             className="min-h-11 flex-1 rounded-xl border border-dusk-line bg-dusk-deep px-1 py-2 text-[13px] font-semibold active:scale-95 transition-transform motion-reduce:transition-none"
           >
             <LiveGlyph level={a.answer} size={20} className="mx-auto mb-0.5" />
-            {a.label}
+            {liveLabel(a.answer)}
           </button>
         ))}
       </div>
