@@ -7,7 +7,7 @@ import { SearchBar } from './SearchBar';
 import { PlaceDetailSheet } from './PlaceDetailSheet';
 import { LiveQuestion } from './LiveQuestion';
 import { liveReports } from '@/services/LiveReportService';
-import { isDaylight, shouldAskLive } from '@/utils/live';
+import { isDaylight } from '@/utils/live';
 import { RecommendationService } from '@/services/RecommendationService';
 import { VenueService } from '@/services/VenueService';
 import { VenueSunService } from '@/services/VenueSunService';
@@ -129,6 +129,8 @@ export function MapScreen({
         : null,
     [locationGranted, userLocation]
   );
+  const askLive =
+    hereVenue && isDaylight(new Date()) && dismissedLiveId !== hereVenue.id && !liveReports.hasAnswered(hereVenue.id) ? hereVenue : null;
   // Non-visual: source real weather from Open-Meteo via WeatherService instead
   // of a static computed value — synchronous cache read on mount, then a real
   // fetch (+ periodic refresh) updates it in the background. See
@@ -179,20 +181,6 @@ export function MapScreen({
   const sunriseMin = lisbonMinutesOfDay(sunrise);
   const sunsetMin = lisbonMinutesOfDay(sunset);
   const isNow = Math.abs(currentDate.getTime() - Date.now()) < 90000;
-
-  // La question se cale sur le moment où elle sert : le soleil va quitter le
-  // lieu (≤ 15 min) ou personne n'y a répondu récemment. Heure réelle, pas
-  // celle du curseur.
-  const askLive = (() => {
-    if (!hereVenue || dismissedLiveId === hereVenue.id || liveReports.hasAnswered(hereVenue.id)) return null;
-    const real = new Date();
-    if (!isDaylight(real)) return null;
-    const realMin = lisbonMinutesOfDay(real);
-    const curve = VenueSunService.getSunExposureByQuarter(hereVenue, lisbonBuildings, real);
-    const w = hereWindow(curve, mode, realMin, lisbonMinutesOfDay(SunService.getSunrise(real)), lisbonMinutesOfDay(SunService.getSunset(real)));
-    const leavesIn = w.state === 'in' && w.untilMin !== null ? w.untilMin - realMin : null;
-    return shouldAskLive(leavesIn, liveReports.getState(hereVenue.id)?.ageMin ?? null) ? hereVenue : null;
-  })();
 
   // --- Titre : suit le contexte, ne redit pas la même accroche d'affilée
   // (ni d'une visite à l'autre).

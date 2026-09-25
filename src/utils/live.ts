@@ -26,13 +26,3 @@ export function liveWho(count: number): string {
 export function isDaylight(now: Date): boolean {
   return now >= SunService.getSunrise(now) && now < SunService.getSunset(now);
 }
-
-/** La question sert quand le soleil va quitter le lieu, ou quand personne n'a
- *  répondu depuis un moment — pas dès qu'on pose le pied, de jour. */
-export const LIVE_LEAVING_MIN = 15;
-export const LIVE_STALE_MIN = 20;
-
-export function shouldAskLive(sunLeavesInMin: number | null, lastAnswerAgeMin: number | null): boolean {
-  if (sunLeavesInMin !== null && sunLeavesInMin <= LIVE_LEAVING_MIN) return true;
-  return lastAnswerAgeMin === null || lastAnswerAgeMin >= LIVE_STALE_MIN;
-}
