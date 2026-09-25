@@ -109,3 +109,38 @@ body {
 [data-anim-paused] .halo-pulse,
 [data-anim-paused] .beam-breathe { animation-play-state: paused; }
 
+/* Repère « toi » de la carte claire (`?clair=1`) : le halo respire, les rayons
+   tournent lentement — vivant sans attirer l'œil comme une alerte. */
+@media (prefers-reduced-motion: no-preference) {
+  .toi-glow { animation: toiBreathe 3.2s ease-in-out infinite alternate; will-change: transform, opacity; }
+  .toi-rays { animation: toiSpin 40s linear infinite; will-change: transform; }
+}
+@keyframes toiBreathe { from { transform: scale(0.88); opacity: 0.75; } to { transform: scale(1.08); opacity: 1; } }
+@keyframes toiSpin { to { transform: rotate(360deg); } }
+[data-anim-paused] .toi-glow,
+[data-anim-paused] .toi-rays { animation-play-state: paused; }
+
+
+/* Spike `?clair=1` : la feuille de la carte dans la DA Contre-jour — carte
+   crème cernée d'encre, bouton à ombre dure, textes en encre et braise. */
+.clair-sheet {
+  background: #FFF1D6 !important;
+  color: #0B1A45 !important;
+  border-top: 1.5px solid #0B1A45 !important;
+  box-shadow: 0 -4px 0 rgba(11, 26, 69, 0.08) !important;
+}
+.clair-sheet .text-dusk-shell { color: #0B1A45 !important; }
+.clair-sheet .text-dusk-sub,
+.clair-sheet .text-dusk-dim { color: #34487A !important; }
+.clair-sheet .text-dusk-glow { color: #A83400 !important; }
+.clair-sheet .bg-dusk-edge { background-color: #0B1A45 !important; }
+.clair-sheet .border-dusk-edge,
+.clair-sheet .border-dusk-line,
+.clair-sheet .border-dusk-shell { border-color: #0B1A45 !important; }
+.clair-sheet .bg-dusk-night { background-color: #FFF1D6 !important; }
+.clair-sheet .bg-dusk-panel { background-color: #FFE6B8 !important; }
+.clair-sheet .bg-dusk-fire {
+  color: #0B1A45 !important;
+  border: 1.5px solid #0B1A45;
+  box-shadow: 3px 3px 0 #0B1A45;
+}

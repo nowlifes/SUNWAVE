@@ -28,6 +28,7 @@ import { LIGHT, NIGHT } from '@/utils/palette';
 import { lightPaint } from '@/utils/light';
 import { litEdges } from '@/utils/litEdges';
 import { lisbonMinutesOfDay } from '@/utils/lisbonTime';
+import { CLAIR } from '@/utils/mapFlags';
 import { HaloIcon } from './Halo';
 import { createShadowScheduler, type ShadowJob, type ShadowScheduler } from '@/utils/shadowScheduler';
 
@@ -100,29 +101,57 @@ const cartoTiles = (style: string) =>
 const BASE_OPACITY = 0.45;
 const BASE_OPACITY_CHOSEN = 0.3;
 
-// Spike « photo » : `?ortho=1` pose une orthophoto désaturée par-dessus la
-// lumière et les ombres calculées. La photo donne la matière, le calcul garde
-// l'heure : ses propres ombres (prises vers midi) sont noyées par la teinte.
-const ORTHO = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('ortho');
-const ORTHO_TILES = ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'];
+// Carte de jour (façon Bump, dans la DA Contre-jour) : sol crème, bâtiments
+// blancs cernés de bleu jour ; le soleil en or pâle, l'ombre en bleu jour.
+const DAYMAP = {
+  ground: '#FFF7E8',
+  water: '#8EA6E0',
+  sun: '#FFD28A',
+  shadow: '#AEBDE3',
+  building: '#FFFFFF',
+  outline: '#C5D1EC',
+  ink: '#0B1A45',
+  ember: '#A83400',
+  sub: '#34487A',
+};
+const TONE = CLAIR ? ('day' as const) : ('night' as const);
+
+/** Le repère « toi » de la carte claire. Point encre cerclé de crème à
+ *  ombre dure, comme les étiquettes, sur une clairière crème couronnée de
+ *  rayons braise (qui respirent et tournent, index.css). Le cône `.toi-cone`
+ *  montre où tu regardes : caché tant que la boussole n'a pas répondu. */
+function toiMarkup(): string {
+  const { ink } = DAYMAP;
+  const f = (n: number) => n.toFixed(1);
+  const rays = Array.from({ length: 12 }, (_, i) => {
+    const a = (i * Math.PI) / 6;
+    const [r1, r2] = i % 2 ? [17, 22] : [16, 26];
+    return `<line x1="${f(Math.sin(a) * r1)}" y1="${f(-Math.cos(a) * r1)}" x2="${f(Math.sin(a) * r2)}" y2="${f(-Math.cos(a) * r2)}"/>`;
+  }).join('');
+  const glow = `<span class="toi-glow" style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,#FFF1D6 0 30%,rgba(255,241,214,.75) 40%,rgba(255,241,214,0) 62%)"></span>`;
+  const cone = `<svg class="toi-cone" width="96" height="96" viewBox="-48 -48 96 96" aria-hidden="true" style="position:absolute;inset:0;overflow:visible;opacity:0;transition:transform .25s ease-out,opacity .3s"><defs><radialGradient id="toi-cone-g" cx="0" cy="0" r="46" gradientUnits="userSpaceOnUse"><stop offset="0.2" stop-color="${ink}" stop-opacity="0.6"/><stop offset="1" stop-color="${ink}" stop-opacity="0"/></radialGradient></defs><path d="M0 0 L-27 -38 A46 46 0 0 1 27 -38 Z" fill="url(#toi-cone-g)"/></svg>`;
+  const rayRing = `<svg class="toi-rays" width="96" height="96" viewBox="-48 -48 96 96" aria-hidden="true" style="position:absolute;inset:0;overflow:visible"><g stroke="#F07A2B" stroke-width="3" stroke-linecap="round">${rays}</g></svg>`;
+  const dot = `<span style="position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:${ink};border:3.5px solid #FFF1D6;box-shadow:0 0 0 1.5px ${ink},2.5px 2.5px 0 1.5px ${ink};box-sizing:border-box"></span>`;
+  return glow + cone + rayRing + dot;
+}
 
 const MAP_STYLE: import('maplibre-gl').StyleSpecification = {
   version: 8,
   sources: {
     base: {
       type: 'raster',
-      tiles: cartoTiles('dark_nolabels'),
+      tiles: cartoTiles(CLAIR ? 'voyager_nolabels' : 'dark_nolabels'),
       tileSize: 256,
       attribution: '&copy; OSM &copy; CARTO',
     },
     labels: {
       type: 'raster',
-      tiles: cartoTiles('dark_only_labels'),
+      tiles: cartoTiles(CLAIR ? 'voyager_only_labels' : 'dark_only_labels'),
       tileSize: 256,
     },
   },
   layers: [
-    { id: 'night', type: 'background', paint: { 'background-color': C.night } },
+    { id: 'night', type: 'background', paint: { 'background-color': CLAIR ? DAYMAP.ground : C.night } },
     // Le fond CARTO sombre est gris neutre : posé à mi-opacité sur la nuit
     // océan, il en prend la teinte et garde rues, Tage et parcs lisibles.
     { id: 'base', type: 'raster', source: 'base', paint: { 'raster-opacity': BASE_OPACITY, 'raster-contrast': 0.3 } },
@@ -457,28 +486,10 @@ export function MapView({
           source: 'footprints',
           // Les bâtiments en retrait, proches du sol : du relief sans bruit,
           // pour que les pastilles ressortent.
-          paint: { 'fill-color': ROOF, 'fill-opacity': ORTHO ? 0.35 : 0.9 },
+          paint: { 'fill-color': ROOF, 'fill-opacity': 0.9 },
         },
         'labels'
       );
-      if (ORTHO) {
-        map.addSource('ortho', { type: 'raster', tiles: ORTHO_TILES, tileSize: 256, maxzoom: 19, attribution: '&copy; Esri, Maxar' });
-        map.addLayer(
-          {
-            id: 'ortho',
-            type: 'raster',
-            source: 'ortho',
-            // Grise et contrastée, à faible opacité : la texture se lit sans
-            // salir l'orange. Plus présente de près, où la photo a du détail.
-            paint: {
-              'raster-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.18, 17, 0.38],
-              'raster-saturation': -1,
-              'raster-contrast': 0.45,
-            },
-          },
-          'labels'
-        );
-      }
       // L'arête au soleil : un trait fin de lumière sur les toits.
       map.addLayer(
         {
@@ -490,11 +501,20 @@ export function MapView({
         },
         'labels'
       );
+      if (CLAIR) {
+        map.setPaintProperty('base', 'raster-contrast', 0);
+        map.setPaintProperty('water', 'fill-color', DAYMAP.water);
+        map.setPaintProperty('building-shadows', 'fill-color', DAYMAP.shadow);
+        map.setPaintProperty('footprints', 'fill-color', DAYMAP.building);
+        map.setPaintProperty('footprints', 'fill-opacity', 1);
+        map.setPaintProperty('footprints', 'fill-outline-color', DAYMAP.outline);
+        map.setPaintProperty('lit-edges', 'line-opacity', 0);
+      }
       map.addLayer({
         id: 'walk-ring',
         type: 'line',
         source: 'walk-ring',
-        paint: { 'line-color': C.sub, 'line-width': 1.5, 'line-opacity': 0.55, 'line-dasharray': [2, 2] },
+        paint: { 'line-color': CLAIR ? DAYMAP.sub : C.sub, 'line-width': 1.5, 'line-opacity': 0.55, 'line-dasharray': [2, 2] },
       });
       map.addLayer({
         id: 'probe-link',
@@ -581,7 +601,7 @@ export function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-    map.setPaintProperty('base', 'raster-opacity', selectedVenueId ? BASE_OPACITY_CHOSEN : BASE_OPACITY);
+    map.setPaintProperty('base', 'raster-opacity', CLAIR ? 1 : selectedVenueId ? BASE_OPACITY_CHOSEN : BASE_OPACITY);
   }, [selectedVenueId, mapReady]);
 
   // La couleur du sol éclairé suit l'heure ; éteint quand le soleil est couché.
@@ -590,8 +610,8 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !mapReady) return;
     const p = lightPaint(sunPos.elevation, lisbonMinutesOfDay(currentDate));
-    map.setPaintProperty('light', 'fill-color', p.color);
-    map.setPaintProperty('light', 'fill-opacity', p.opacity);
+    map.setPaintProperty('light', 'fill-color', CLAIR ? DAYMAP.sun : p.color);
+    map.setPaintProperty('light', 'fill-opacity', CLAIR ? Math.min(p.opacity, 0.65) : p.opacity);
   }, [mapReady, currentDate, sunPos.elevation]);
 
   // Le jour, les ombres des bâtiments, un cran plus sombres que le sol.
@@ -642,6 +662,27 @@ export function MapView({
     });
   }, [mapReady, userLocation, selectedVenueId, venues, insets]);
 
+  // Carte claire : le cône du repère suit la boussole de l'appareil. Sans
+  // boussole (ordi, iOS sans permission), il reste caché : le halo suffit.
+  useEffect(() => {
+    if (!CLAIR) return;
+    const onOrient = (e: DeviceOrientationEvent) => {
+      const ios = (e as DeviceOrientationEvent & { webkitCompassHeading?: number }).webkitCompassHeading;
+      const heading = ios ?? (e.absolute && e.alpha != null ? 360 - e.alpha : null);
+      const map = mapRef.current;
+      const cone = userMarkerRef.current?.getElement().querySelector<SVGElement>('.toi-cone');
+      if (heading == null || !cone || !map) return;
+      cone.style.transform = `rotate(${heading - map.getBearing()}deg)`;
+      cone.style.opacity = '1';
+    };
+    window.addEventListener('deviceorientationabsolute', onOrient as EventListener);
+    window.addEventListener('deviceorientation', onOrient);
+    return () => {
+      window.removeEventListener('deviceorientationabsolute', onOrient as EventListener);
+      window.removeEventListener('deviceorientation', onOrient);
+    };
+  }, []);
+
   // Toi (rond vide coquille) + l'anneau de 10 min à pied.
   useEffect(() => {
     const map = mapRef.current;
@@ -650,7 +691,7 @@ export function MapView({
     (map.getSource('walk-ring') as GeoJSONSource | undefined)?.setData({
       type: 'Feature',
       properties: {},
-      geometry: { type: 'LineString', coordinates: ring },
+      geometry: { type: 'Polygon', coordinates: [ring] },
     });
 
     if (!userMarkerRef.current) {
@@ -658,7 +699,12 @@ export function MapView({
       el.setAttribute('role', 'img');
       el.setAttribute('aria-label', 'Toi');
       el.style.pointerEvents = 'none';
-      el.innerHTML = haloSvg({ kind: 'you', tone: 'night' }, 34);
+      if (CLAIR) {
+        el.style.cssText += ';position:relative;width:96px;height:96px';
+        el.innerHTML = toiMarkup();
+      } else {
+        el.innerHTML = haloSvg({ kind: 'you', tone: TONE }, 34);
+      }
       userMarkerRef.current = new Marker({ element: el, anchor: 'center' });
     }
     userMarkerRef.current.setLngLat([userLocation.lng, userLocation.lat]).addTo(map);
@@ -666,7 +712,9 @@ export function MapView({
     if (!ringLabelRef.current) {
       const el = document.createElement('div');
       el.textContent = '10 min à pied';
-      el.style.cssText = `pointer-events:none;font:600 12px Geist,sans-serif;color:${C.sub};text-shadow:0 1px 3px ${C.night},0 0 6px ${C.night};white-space:nowrap`;
+      el.style.cssText = CLAIR
+        ? `pointer-events:none;font:700 12px 'Funnel Display',sans-serif;color:${DAYMAP.ink};background:#FFF1D6;border:1.5px solid ${DAYMAP.ink};border-radius:8px;padding:1px 7px;white-space:nowrap`
+        : `pointer-events:none;font:600 12px Geist,sans-serif;color:${C.sub};text-shadow:0 1px 3px ${C.night},0 0 6px ${C.night};white-space:nowrap`;
       ringLabelRef.current = new Marker({ element: el, anchor: 'bottom', offset: [0, -4] });
     }
     const top = ring[0];
@@ -770,8 +818,8 @@ export function MapView({
       const glyph = document.createElement('span');
       glyph.style.cssText = `position:absolute;left:${(HIT_PX - GLYPH_PX) / 2}px;top:${(HIT_PX - GLYPH_PX) / 2}px;width:${GLYPH_PX}px;height:${GLYPH_PX}px;`;
       glyph.innerHTML = isSelected
-        ? haloSvg({ kind: 'dest', tone: 'night' }, GLYPH_PX) + haloPulseMarkup(GLYPH_PX)
-        : haloSvg({ kind: lit ? 'sun' : 'shade', tone: 'night', alt }, lit ? GLYPH_PX : 20);
+        ? haloSvg({ kind: 'dest', tone: TONE }, GLYPH_PX) + haloPulseMarkup(GLYPH_PX)
+        : haloSvg({ kind: lit ? 'sun' : 'shade', tone: TONE, alt }, lit ? GLYPH_PX : 20);
       if (!isSelected && !lit) {
         glyph.style.left = `${(HIT_PX - 20) / 2}px`;
         glyph.style.top = `${(HIT_PX - 20) / 2}px`;
@@ -781,7 +829,7 @@ export function MapView({
         const tag = document.createElement('span');
         const dx = spot.x0 - (p.x - HIT_PX / 2);
         const dy = spot.y0 - (p.y - HIT_PX / 2);
-        tag.style.cssText = `position:absolute;left:${dx}px;top:${dy}px;height:${h}px;display:flex;align-items:center;gap:5px;padding:0 9px;border-radius:8px;background:rgba(8,20,58,0.88);color:${C.shell};font:600 12.5px Geist,sans-serif;white-space:nowrap;pointer-events:none;`;
+        tag.style.cssText = `position:absolute;left:${dx}px;top:${dy}px;height:${h}px;display:flex;align-items:center;gap:5px;padding:0 9px;${CLAIR ? `border-radius:10px;background:#FFF1D6;color:${DAYMAP.ink};border:1.5px solid ${DAYMAP.ink};box-shadow:2px 2px 0 ${DAYMAP.ink};font:700 13px 'Funnel Display',sans-serif;` : `border-radius:8px;background:rgba(8,20,58,0.88);color:${C.shell};font:600 12.5px Geist,sans-serif;`}white-space:nowrap;pointer-events:none;`;
         tag.append(document.createTextNode(name));
         if (live) {
           // Plus de feu tricolore : la jauge suit la grammaire halo — pleine =
@@ -794,7 +842,7 @@ export function MapView({
         if (time) {
           const t = document.createElement('span');
           t.textContent = time;
-          t.style.cssText = `font:700 12px 'Geist Mono',monospace;color:${sunHour ? LIGHT.inkNight : C.sub};`;
+          t.style.cssText = `font:700 12px 'Geist Mono',monospace;color:${CLAIR ? (sunHour ? DAYMAP.ember : DAYMAP.sub) : sunHour ? LIGHT.inkNight : C.sub};`;
           tag.append(t);
         }
         el.append(tag);
