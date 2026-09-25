@@ -28,7 +28,7 @@ import { LIGHT, NIGHT } from '@/utils/palette';
 import { lightPaint } from '@/utils/light';
 import { litEdges } from '@/utils/litEdges';
 import { lisbonMinutesOfDay } from '@/utils/lisbonTime';
-import { CLAIR } from '@/utils/mapFlags';
+import { BULLE, CLAIR } from '@/utils/mapFlags';
 import { HaloIcon } from './Halo';
 import { createShadowScheduler, type ShadowJob, type ShadowScheduler } from '@/utils/shadowScheduler';
 
@@ -778,15 +778,15 @@ export function MapView({
       const lit = alt > LIT_MIN_ALT && (rec?.sunPercentage ?? 0) >= LIT_PCT;
 
       // Étiquette à droite du rond, sinon à gauche, sinon au-dessus.
-      const w = name.length * 7.4 + (time ? time.length * 7.6 + 5 : 0) + 20;
+      const w = name.length * 7.4 + (time ? time.length * 7.6 + 5 : 0) + 20 + (BULLE === 'c' ? 14 : 0);
       const h = 24;
-      const g = GLYPH_PX / 2;
+      // Épingle (c) : plus de rond à côté, la pointe de la bulle est le lieu.
+      const g = BULLE === 'c' ? 5 : GLYPH_PX / 2;
       const glyphBox = { x0: p.x - g, y0: p.y - g, x1: p.x + g, y1: p.y + g };
-      const spots = [
-        { side: 'right', x0: p.x + g + 2, y0: p.y - h / 2 },
-        { side: 'left', x0: p.x - g - 2 - w, y0: p.y - h / 2 },
-        { side: 'top', x0: p.x - w / 2, y0: p.y - g - 4 - h },
-      ] as const;
+      const top = { side: 'top', x0: p.x - w / 2, y0: p.y - g - (BULLE === 'a' ? 4 : 9) - h } as const;
+      const right = { side: 'right', x0: p.x + g + (BULLE === 'b' ? 8 : 2), y0: p.y - h / 2 } as const;
+      const left = { side: 'left', x0: p.x - g - (BULLE === 'b' ? 8 : 2) - w, y0: p.y - h / 2 } as const;
+      const spots = BULLE === 'c' ? [top] : BULLE === 'b' ? [top, right, left] : [right, left, top];
       if (!isSelected && overlaps(glyphBox)) continue;
       let spot: (typeof spots)[number] | null = null;
       for (const s of spots) {
@@ -817,10 +817,12 @@ export function MapView({
       if (isSelected) el.setAttribute('aria-current', 'true');
       const glyph = document.createElement('span');
       glyph.style.cssText = `position:absolute;left:${(HIT_PX - GLYPH_PX) / 2}px;top:${(HIT_PX - GLYPH_PX) / 2}px;width:${GLYPH_PX}px;height:${GLYPH_PX}px;`;
-      glyph.innerHTML = isSelected
-        ? haloSvg({ kind: 'dest', tone: TONE }, GLYPH_PX) + haloPulseMarkup(GLYPH_PX)
-        : haloSvg({ kind: lit ? 'sun' : 'shade', tone: TONE, alt }, lit ? GLYPH_PX : 20);
-      if (!isSelected && !lit) {
+      glyph.innerHTML = BULLE === 'c'
+        ? `<span style="position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:${DAYMAP.ink};border:2px solid #FFF1D6;box-sizing:border-box"></span>`
+        : isSelected
+          ? haloSvg({ kind: 'dest', tone: TONE }, GLYPH_PX) + haloPulseMarkup(GLYPH_PX)
+          : haloSvg({ kind: lit ? 'sun' : 'shade', tone: TONE, alt }, lit ? GLYPH_PX : 20);
+      if (!isSelected && !lit && BULLE !== 'c') {
         glyph.style.left = `${(HIT_PX - 20) / 2}px`;
         glyph.style.top = `${(HIT_PX - 20) / 2}px`;
       }
@@ -830,6 +832,25 @@ export function MapView({
         const dx = spot.x0 - (p.x - HIT_PX / 2);
         const dy = spot.y0 - (p.y - HIT_PX / 2);
         tag.style.cssText = `position:absolute;left:${dx}px;top:${dy}px;height:${h}px;display:flex;align-items:center;gap:5px;padding:0 9px;${CLAIR ? `border-radius:10px;background:#FFF1D6;color:${DAYMAP.ink};border:1.5px solid ${DAYMAP.ink};box-shadow:2px 2px 0 ${DAYMAP.ink};font:700 13px 'Funnel Display',sans-serif;` : `border-radius:8px;background:rgba(8,20,58,0.88);color:${C.shell};font:600 12.5px Geist,sans-serif;`}white-space:nowrap;pointer-events:none;`;
+        if (BULLE === 'c') {
+          // Le soleil passe dans la bulle : disque braise, ou rond vide à l'ombre.
+          const s = document.createElement('span');
+          s.style.cssText = `flex:none;width:9px;height:9px;border-radius:50%;${lit ? `background:${LIGHT.fire}` : `border:1.8px solid ${DAYMAP.sub}`};box-sizing:border-box;`;
+          tag.append(s);
+        }
+        if (BULLE !== 'a') {
+          // La queue : un carré crème tourné, cerné d'encre sur ses deux côtés visibles.
+          const q = document.createElement('span');
+          const at =
+            spot.side === 'top'
+              ? `left:50%;bottom:-5.5px;margin-left:-5px;border-right:1.5px solid ${DAYMAP.ink};border-bottom:1.5px solid ${DAYMAP.ink};`
+              : spot.side === 'right'
+                ? `left:-5.5px;top:50%;margin-top:-5px;border-left:1.5px solid ${DAYMAP.ink};border-bottom:1.5px solid ${DAYMAP.ink};`
+                : `right:-5.5px;top:50%;margin-top:-5px;border-right:1.5px solid ${DAYMAP.ink};border-top:1.5px solid ${DAYMAP.ink};`;
+          q.style.cssText = `position:absolute;${at}width:9px;height:9px;background:#FFF1D6;transform:rotate(45deg);`;
+          tag.append(q);
+        }
+        if (isSelected && BULLE !== 'a') tag.style.transform = 'scale(1.12)';
         tag.append(document.createTextNode(name));
         if (live) {
           // Plus de feu tricolore : la jauge suit la grammaire halo — pleine =

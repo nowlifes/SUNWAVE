@@ -12,6 +12,7 @@ import { DiscoverScreen, DiscoverResults } from '@/components/DiscoverScreen';
 import { SavedScreen } from '@/components/SavedScreen';
 import { ProfileScreen } from '@/components/ProfileScreen';
 import { BottomNav } from '@/components/BottomNav';
+import { CLAIR } from '@/utils/mapFlags';
 import { PlaceDetailSheet } from '@/components/PlaceDetailSheet';
 
 const LISBON_CENTER: GeoPoint = { lat: 38.7223, lng: -9.1393 };
@@ -316,7 +317,7 @@ export default function App() {
         )}
 
         {/* Bottom navigation */}
-        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} dusk={(screen === 'now' && (dusk || mode === 'SHADE')) || screen === 'map'} />
+        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} dusk={(screen === 'now' && (dusk || mode === 'SHADE')) || (screen === 'map' && !CLAIR)} />
       </div>
     </div>
   );
