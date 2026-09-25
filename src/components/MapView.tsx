@@ -778,17 +778,17 @@ export function MapView({
       const lit = alt > LIT_MIN_ALT && (rec?.sunPercentage ?? 0) >= LIT_PCT;
 
       // Nuit : étiquette à droite du rond, sinon à gauche, sinon au-dessus.
-      // Carte claire : bulle à queue, au-dessus de préférence — la queue dit
-      // à quel lieu va le nom.
-      const w = name.length * 7.4 + (time ? time.length * 7.6 + 5 : 0) + 20;
+      // Carte claire : une épingle — la bulle se pose sur le lieu, sa pointe
+      // sur un petit point encre, et le soleil passe dans la bulle. Un seul
+      // signe par lieu : pas de halo à côté d'une étiquette.
+      const w = name.length * 7.4 + (time ? time.length * 7.6 + 5 : 0) + 20 + (CLAIR ? 14 : 0);
       const h = 24;
-      const g = GLYPH_PX / 2;
+      const g = CLAIR ? 5 : GLYPH_PX / 2;
       const glyphBox = { x0: p.x - g, y0: p.y - g, x1: p.x + g, y1: p.y + g };
-      const tail = CLAIR ? 6 : 0;
-      const top = { side: 'top', x0: p.x - w / 2, y0: p.y - g - 4 - tail - h } as const;
-      const right = { side: 'right', x0: p.x + g + 2 + tail, y0: p.y - h / 2 } as const;
-      const left = { side: 'left', x0: p.x - g - 2 - tail - w, y0: p.y - h / 2 } as const;
-      const spots = CLAIR ? [top, right, left] : [right, left, top];
+      const top = { side: 'top', x0: p.x - w / 2, y0: p.y - g - (CLAIR ? 9 : 4) - h } as const;
+      const right = { side: 'right', x0: p.x + g + 2, y0: p.y - h / 2 } as const;
+      const left = { side: 'left', x0: p.x - g - 2 - w, y0: p.y - h / 2 } as const;
+      const spots = CLAIR ? [top] : [right, left, top];
       if (!isSelected && overlaps(glyphBox)) continue;
       let spot: (typeof spots)[number] | null = null;
       for (const s of spots) {
@@ -819,10 +819,13 @@ export function MapView({
       if (isSelected) el.setAttribute('aria-current', 'true');
       const glyph = document.createElement('span');
       glyph.style.cssText = `position:absolute;left:${(HIT_PX - GLYPH_PX) / 2}px;top:${(HIT_PX - GLYPH_PX) / 2}px;width:${GLYPH_PX}px;height:${GLYPH_PX}px;`;
-      glyph.innerHTML = isSelected
-        ? haloSvg({ kind: 'dest', tone: TONE }, GLYPH_PX) + haloPulseMarkup(GLYPH_PX)
-        : haloSvg({ kind: lit ? 'sun' : 'shade', tone: TONE, alt }, lit ? GLYPH_PX : 20);
-      if (!isSelected && !lit) {
+      glyph.innerHTML = CLAIR
+        ? `<span style="position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:${DAYMAP.ink};border:2px solid #FFF1D6;box-sizing:border-box"></span>` +
+          (isSelected ? haloPulseMarkup(GLYPH_PX) : '')
+        : isSelected
+          ? haloSvg({ kind: 'dest', tone: TONE }, GLYPH_PX) + haloPulseMarkup(GLYPH_PX)
+          : haloSvg({ kind: lit ? 'sun' : 'shade', tone: TONE, alt }, lit ? GLYPH_PX : 20);
+      if (!isSelected && !lit && !CLAIR) {
         glyph.style.left = `${(HIT_PX - 20) / 2}px`;
         glyph.style.top = `${(HIT_PX - 20) / 2}px`;
       }
@@ -833,16 +836,14 @@ export function MapView({
         const dy = spot.y0 - (p.y - HIT_PX / 2);
         tag.style.cssText = `position:absolute;left:${dx}px;top:${dy}px;height:${h}px;display:flex;align-items:center;gap:5px;padding:0 9px;${CLAIR ? `border-radius:10px;background:#FFF1D6;color:${DAYMAP.ink};border:1.5px solid ${DAYMAP.ink};box-shadow:2px 2px 0 ${DAYMAP.ink};font:700 13px 'Funnel Display',sans-serif;` : `border-radius:8px;background:rgba(8,20,58,0.88);color:${C.shell};font:600 12.5px Geist,sans-serif;`}white-space:nowrap;pointer-events:none;`;
         if (CLAIR) {
-          // La queue : un carré crème tourné, cerné d'encre sur ses deux côtés visibles.
+          // La pointe : un carré crème tourné, cerné d'encre sur ses deux côtés visibles.
           const q = document.createElement('span');
-          const at =
-            spot.side === 'top'
-              ? `left:50%;bottom:-5.5px;margin-left:-5px;border-right:1.5px solid ${DAYMAP.ink};border-bottom:1.5px solid ${DAYMAP.ink};`
-              : spot.side === 'right'
-                ? `left:-5.5px;top:50%;margin-top:-5px;border-left:1.5px solid ${DAYMAP.ink};border-bottom:1.5px solid ${DAYMAP.ink};`
-                : `right:-5.5px;top:50%;margin-top:-5px;border-right:1.5px solid ${DAYMAP.ink};border-top:1.5px solid ${DAYMAP.ink};`;
-          q.style.cssText = `position:absolute;${at}width:9px;height:9px;background:#FFF1D6;transform:rotate(45deg);`;
+          q.style.cssText = `position:absolute;left:50%;bottom:-5.5px;margin-left:-5px;width:9px;height:9px;background:#FFF1D6;border-right:1.5px solid ${DAYMAP.ink};border-bottom:1.5px solid ${DAYMAP.ink};transform:rotate(45deg);`;
           tag.append(q);
+          // Le soleil dans la bulle : disque braise, ou rond vide à l'ombre.
+          const s = document.createElement('span');
+          s.style.cssText = `flex:none;width:9px;height:9px;border-radius:50%;${lit ? `background:${LIGHT.fire}` : `border:1.8px solid ${DAYMAP.sub}`};box-sizing:border-box;`;
+          tag.append(s);
         }
         if (isSelected && CLAIR) tag.style.transform = 'scale(1.12)';
         tag.append(document.createTextNode(name));
