@@ -433,11 +433,6 @@ function AnswerCard({
         className={`relative rounded-[20px] border-[1.5px] p-4 ${tone.answer}`}
         style={{ boxShadow: `${cut.dx}px ${cut.dy}px 0 ${tone.shadowColor}` }}
       >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 rounded-[inherit]"
-          style={{ background: `linear-gradient(${cut.angle}deg, transparent ${cut.cut}%, ${tone.cutColor} ${cut.cut}%)` }}
-        />
         <div className="relative">
           <div className="-mr-2 -mt-1 flex items-start justify-between gap-2">
             <p className={`pt-1 text-[10.5px] font-bold uppercase tracking-[0.1em] [text-wrap:balance] ${isSun ? 'text-day-ember' : 'text-dusk-ember'}`}>
@@ -461,8 +456,13 @@ function AnswerCard({
             {categoryLabel(rec.venue.category)} · {VenueService.getNeighborhood(rec.venue)} · {travelLabel(rec)}
           </p>
 
+          {/* La coupe ne traverse que le bas de la carte : le nom du lieu reste sur un fond uni. */}
+          <div
+            className="-mx-4 -mb-4 mt-1 rounded-b-[18.5px] px-4 pb-4"
+            style={{ background: `linear-gradient(${cut.angle}deg, transparent ${cut.cut}%, ${tone.cutColor} ${cut.cut}%)` }}
+          >
           {bigTime && (
-            <p className="mt-3 flex items-baseline gap-2">
+            <p className="flex items-baseline gap-2 pt-2">
               <span className="font-display text-[22px] font-extrabold leading-none tracking-[-0.01em] tabular-nums">{bigTime}</span>
               <span className={`text-[12.5px] font-semibold leading-tight ${captionColor}`}>
                 {cap1} {cap2}
@@ -505,6 +505,7 @@ function AnswerCard({
                 Autre chose
               </button>
             )}
+          </div>
           </div>
         </div>
       </div>
