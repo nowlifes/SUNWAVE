@@ -144,6 +144,13 @@ body {
   border: 1.5px solid #0B1A45;
   box-shadow: 3px 3px 0 #0B1A45;
 }
+/* Y aller en Ombre sur la fiche d'un lieu : là, pas de bain (data-bain n'est
+   posé que sur la liste), il faut le jaune sticker quand même. */
+.clair-sheet .bg-dusk-sub {
+  background-color: #FFE14D !important;
+  color: #0B1A45 !important;
+  box-shadow: 0 3px 0 rgba(11, 26, 69, 0.35);
+}
 
 /* Mode Ombre de la carte claire : « le grand bain ». Deux couleurs et pas
    une de plus : l'eau bleu piscine, le jaune soleil ; le crème pour lire.
