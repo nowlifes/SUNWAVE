@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-30T00:00:00.000Z",
+  "title": "Design System: SUNWAVE",
+  "extensions": {
+    "colorMeta": {
+      "orange": { "role": "primary", "displayName": "Contre-jour Orange", "canonical": "#FF6A2B", "tonalRamp": ["#3A1400", "#5C1F00", "#8A2E00", "#C24000", "#FF6A2B", "#FF9C66", "#FFC9A6", "#FFE4D3"] },
+      "gold": { "role": "primary", "displayName": "Menu Gold", "canonical": "#FFD28A", "tonalRamp": ["#4A3512", "#6E4F1B", "#987028", "#C79A4C", "#FFD28A", "#FFE0AC", "#FFEBCC", "#FFF6E8"] },
+      "ember": { "role": "secondary", "displayName": "Ember", "canonical": "#A83400", "tonalRamp": ["#200A00", "#3D1300", "#651F00", "#8A2A00", "#A83400", "#C85A2A", "#E28E63", "#F5C6AC"] },
+      "cool": { "role": "secondary", "displayName": "Cool Blue", "canonical": "#D8E0F5", "tonalRamp": ["#101A33", "#1C2A50", "#2C3E70", "#8A9BC9", "#B0BFE0", "#D8E0F5", "#EAEFFA", "#F7F9FD"] },
+      "ink": { "role": "neutral", "displayName": "Deep Ink", "canonical": "#0B1A45", "tonalRamp": ["#050A20", "#0B1A45", "#16224F", "#2C3E70", "#5A6D9E", "#8A9BC9", "#C5D1EC", "#F3F6FC"] },
+      "night-deep": { "role": "neutral", "displayName": "Night Deep", "canonical": "#16224F", "tonalRamp": ["#050A20", "#0B1A45", "#16224F", "#2C3E70", "#5A6D9E", "#8A9BC9", "#C5D1EC", "#F3F6FC"] },
+      "cream": { "role": "neutral", "displayName": "Menu Cream", "canonical": "#FFF1D6", "tonalRamp": ["#4A3512", "#6E4F1B", "#987028", "#C79A4C", "#FFD28A", "#FFE0AC", "#FFF1D6", "#FFF9EC"] },
+      "day": { "role": "neutral", "displayName": "Sky Day", "canonical": "#F3F6FC", "tonalRamp": ["#0B1A45", "#16224F", "#2C3E70", "#5A6D9E", "#8A9BC9", "#C5D1EC", "#E6ECF8", "#F3F6FC"] },
+      "day-dim": { "role": "neutral", "displayName": "Day Dim", "canonical": "#E6ECF8", "tonalRamp": ["#0B1A45", "#16224F", "#2C3E70", "#5A6D9E", "#8A9BC9", "#C5D1EC", "#E6ECF8", "#F3F6FC"] },
+      "line": { "role": "neutral", "displayName": "Line", "canonical": "#C5D1EC", "tonalRamp": ["#0B1A45", "#16224F", "#2C3E70", "#5A6D9E", "#8A9BC9", "#C5D1EC", "#E6ECF8", "#F3F6FC"] },
+      "ink-soft": { "role": "neutral", "displayName": "Ink Soft", "canonical": "#34487A", "tonalRamp": ["#0B1A45", "#16224F", "#22336A", "#34487A", "#5A6D9E", "#8A9BC9", "#C5D1EC", "#E6ECF8"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Titres d'écran uniquement (Aujourd'hui dehors, La carte du jour, Mes lieux)." },
+      "title": { "displayName": "Title", "purpose": "Nom de lieu, ligne du plat du jour, titre de ticket." },
+      "body": { "displayName": "Body", "purpose": "Sous-titres, quartier, description courte." },
+      "label": { "displayName": "Label", "purpose": "Badges de statut, graduations de règle, petites capitales." }
+    },
+    "shadows": [
+      { "name": "card-full", "value": "var(--sx) var(--sy) 0 var(--ink)", "purpose": "Ombre dure pleine, pilotée par la position du soleil : carte principale, tickets, badges, lieux bons maintenant." },
+      { "name": "card-later", "value": "calc(var(--sx) * .6) calc(var(--sy) * .6) 0 var(--ink)", "purpose": "Ombre atténuée à 60% pour les lieux plus tard dans Favoris." },
+      { "name": "card-off", "value": "none", "purpose": "Aucune ombre pour les lieux hors-jeu : la platitude marque l'état inactif." },
+      { "name": "pressed", "value": "none", "purpose": "État actif d'un bouton : l'ombre disparaît quand le bouton se translate jusqu'au trait d'encre." }
+    ],
+    "motion": [
+      { "name": "press-translate", "value": "transform: translate(3px, 3px); transition: transform 120ms, box-shadow 120ms;", "purpose": "Le bouton s'enfonce jusqu'à son propre décalage d'ombre au clic." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Action principale d'un ticket de résultat (M'y emmener).",
+      "html": "<button class=\"ds-btn-primary\">M'y emmener</button>",
+      "css": ".ds-btn-primary { background: #FF6A2B; color: #0B1A45; font: 800 16px 'Funnel Display', system-ui, sans-serif; min-height: 46px; padding: 0 16px; border: 1.5px solid #0B1A45; border-radius: 14px; box-shadow: 3px 3px 0 #0B1A45; cursor: pointer; transition: transform 120ms, box-shadow 120ms; } .ds-btn-primary:hover { filter: brightness(1.03); } .ds-btn-primary:focus-visible { outline: 2px solid #FF6A2B; outline-offset: 2px; } .ds-btn-primary:active { transform: translate(3px, 3px); box-shadow: none; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Action secondaire à côté d'un bouton primaire (Garder / Gardé).",
+      "html": "<button class=\"ds-btn-ghost\">Garder</button>",
+      "css": ".ds-btn-ghost { background: transparent; color: #0B1A45; font: 800 16px 'Funnel Display', system-ui, sans-serif; min-height: 46px; padding: 0 16px; border: 0; box-shadow: none; cursor: pointer; } .ds-btn-ghost[aria-pressed='true'] { color: #A83400; } .ds-btn-ghost:focus-visible { outline: 2px solid #FF6A2B; outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Chip",
+      "kind": "chip",
+      "refersTo": "chip-status",
+      "description": "Badge pilule crème avec bordure encre et ombre dure : statut, retour, compte.",
+      "html": "<span class=\"ds-chip\">Lisboa · 14:32</span>",
+      "css": ".ds-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 999px; background: #FFF1D6; color: #0B1A45; border: 1.5px solid #0B1A45; font: 700 12.5px 'Schibsted Grotesk', system-ui, sans-serif; box-shadow: -4px 5px 0 #0B1A45; transform: rotate(-2deg); font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Gold Chip",
+      "kind": "chip",
+      "refersTo": "chip-status-gold",
+      "description": "Variante dorée du badge de statut, réservée à l'élément mis en avant.",
+      "html": "<span class=\"ds-chip-gold\">4 au soleil</span>",
+      "css": ".ds-chip-gold { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 999px; background: #FFD28A; color: #0B1A45; border: 1.5px solid #0B1A45; font: 700 12.5px 'Schibsted Grotesk', system-ui, sans-serif; box-shadow: -4px 5px 0 #0B1A45; transform: rotate(2deg); font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Venue Card (Favoris)",
+      "kind": "card",
+      "refersTo": null,
+      "description": "Carte de lieu gardé, état now/later/off avec ombre dégressive.",
+      "html": "<button class=\"ds-fav\"><div class=\"h\"><h3>Lux Rooftop</h3><span class=\"t\">jusqu'à 17:40</span></div><p>Cais do Sodré · rooftop · 8 min</p></button>",
+      "css": ".ds-fav { display: block; width: 100%; margin-bottom: 10px; padding: 12px 14px 10px; border-radius: 18px; background: #FFF1D6; border: 1.5px solid #0B1A45; box-shadow: -4px 5px 0 #0B1A45; color: #0B1A45; text-align: left; cursor: pointer; } .ds-fav .h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; } .ds-fav h3 { margin: 0; font: 800 17px 'Funnel Display', system-ui, sans-serif; letter-spacing: -0.01em; } .ds-fav .t { font: 800 15px 'Funnel Display', system-ui, sans-serif; color: #A83400; font-variant-numeric: tabular-nums; } .ds-fav p { margin: 2px 0 7px; font-size: 12px; color: #34487A; }"
+    },
+    {
+      "name": "Hour Band",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Composant signature : une case par heure (8h-21h), orange à mesure que le soleil devient franc, encre après le coucher, trait vertical pour maintenant.",
+      "html": "<div class=\"ds-band\"><div class=\"cells\"><span class=\"s1\"></span><span class=\"s2\"></span><span class=\"s3\"></span><span class=\"s3\"></span><span class=\"cool\"></span><span class=\"night\"></span></div><i class=\"now\" style=\"left:40%\"></i></div>",
+      "css": ".ds-band { position: relative; } .ds-band .cells { display: flex; gap: 2px; height: 14px; margin: 4px 0 2px; } .ds-band .cells span { flex: 1; border-radius: 2px; background: #D8E0F5; } .ds-band .s1 { background: #FFC9A6; } .ds-band .s2 { background: #FF9C66; } .ds-band .s3 { background: #FF6A2B; } .ds-band .night { background: #0B1A45; } .ds-band .now { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 2px; background: #0B1A45; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "La carte du jour d'une esplanada.",
+    "overview": "SUNWAVE dit, dehors et sur mobile, où est la lumière maintenant. La preuve la plus complète de ce système à ce jour est l'écran Explorer (« la carte du jour ») et l'écran Favoris (« les horaires du jour ») : chaque envie ou chaque lieu gardé se lit comme une ligne de menu — un nom, une note de contexte, et à la place du prix, jusqu'à quand il y a de la lumière. C'est une carte crème cernée d'encre, en contre-jour : un trait d'ombre dur, jamais flou, dont l'angle et le décalage suivent la position réelle du soleil au moment où l'écran s'affiche. Rien n'y est plat par défaut — refusé explicitement par l'utilisateur — et rien n'y est réduit à une grille de boutons égaux : chaque ligne porte sa propre photo, son propre décompte, sa propre heure.\n\nL'orange et le doré sont réservés à ce qui est au soleil maintenant ; le bleu froid et l'encre à ce qui est à l'ombre ou plus tard. Aucune information d'état ne passe jamais par le vert ou le rouge — un engagement de PRODUCT.md tenu dans les deux écrans construits. Les icônes de catégorie sont des photos rondes en contre-jour, jamais des pictogrammes ; les seuls glyphes dessinés à la main sont la flèche de retour et le système « halo » (soleil/ombre/toi), toujours en SVG tracé, jamais en emoji ou police d'icônes.",
+    "keyCharacteristics": [
+      "Carte crème (#FFF1D6) cernée d'un trait d'encre (#0B1A45), jamais de fond blanc nu.",
+      "Ombre dure, zéro flou, pilotée par l'azimut et l'élévation réelle du soleil, pas une constante de design.",
+      "Funnel Display (800) pour tout ce qui affirme ; Schibsted Grotesk (600-700) pour tout ce qui informe.",
+      "Aucune tuile-bouton : tout est ligne de menu, ticket, ou carte de lieu.",
+      "Orange/doré = lumière maintenant ; bleu froid/encre = ombre ou plus tard ; jamais vert, jamais rouge."
+    ],
+    "rules": [
+      { "name": "The Sundial Rule", "body": "Chaque ombre dure du système tient son décalage de l'azimut et de l'élévation réelles du soleil au moment du rendu, pas d'une constante de style. Une ombre statique dans ce monde est un bug, pas un choix esthétique.", "section": "colors" },
+      { "name": "The One Warm Voice Rule", "body": "Orange et doré ne disent qu'une chose : il y a de la lumière recherchée, maintenant. Le bleu froid et l'encre couvrent tout le reste, y compris plus tard et hors-jeu — jamais de vert, jamais de rouge pour dire un état.", "section": "colors" },
+      { "name": "The Menu Rule", "body": "La position où un menu de restaurant mettrait un prix affiche toujours l'heure jusqu'à laquelle il y a de la lumière. Aucune ligne ne se termine par un chevron ou une icône neutre.", "section": "typography" },
+      { "name": "The Weight-of-Light Rule", "body": "L'intensité de l'ombre dure code l'urgence de la lumière : pleine pour bon maintenant, 60% pour plus tard, nulle pour hors-jeu.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do piloter le décalage et l'angle de toute ombre dure depuis la position réelle du soleil, jamais une valeur fixe.",
+      "Do réserver l'orange et le doré à la lumière recherchée maintenant.",
+      "Do terminer chaque ligne de liste par une heure, jamais par une icône neutre ou un chevron.",
+      "Do représenter chaque catégorie par une photo ronde en contre-jour, jamais par un pictogramme.",
+      "Do dessiner les icônes fonctionnelles en SVG tracé à trait constant, jamais en emoji ni glyphe unicode."
+    ],
+    "donts": [
+      "Don't utiliser le vert ou le rouge pour dire un état.",
+      "Don't aligner les envies ou les lieux en grille de tuiles-boutons égales.",
+      "Don't ajouter un flou à l'ombre dure du système.",
+      "Don't poser un bandeau/kicker au-dessus d'un titre pour l'annoncer."
+    ]
+  }
+}
