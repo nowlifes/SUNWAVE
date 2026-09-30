@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
+import type { ReactNode } from 'react';
 import type { Venue, SunMode, VenueCategory, GeoPoint, WeatherData, Recommendation } from '@/types';
 import { MapView, type ProbeView } from './MapView';
 import { TimeSlider } from './TimeSlider';
@@ -337,6 +338,9 @@ export function MapScreen({
 
   const layer = selectedRec ? 'place' : probePoint ? 'probe' : 'list';
   const quietPanel = scrubbing || layer === 'probe';
+  // Mode Ombre de la carte claire : la feuille plonge dans l'eau (la fiche
+  // d'un lieu garde sa feuille crème).
+  const bain = CLAIR && mode === 'SHADE' && layer !== 'place';
 
   return (
     <div className="relative h-full w-full bg-dusk-night">
@@ -391,10 +395,8 @@ export function MapScreen({
         <div
           ref={panelRef}
           className={`relative rounded-t-[28px] border-t border-dusk-line bg-dusk-night pb-2 text-dusk-shell shadow-[0_-8px_24px_rgba(8,20,58,0.45)]${CLAIR ? ' clair-sheet' : ''}`}
+          data-bain={bain ? '' : undefined}
         >
-          {CLAIR && mode === 'SHADE' && (
-            <span className="au-frais" aria-hidden="true">au frais</span>
-          )}
           {layer === 'place' && selectedRec ? (
             <PlaceCard
               rec={selectedRec}
@@ -419,7 +421,11 @@ export function MapScreen({
                     aria-expanded={sheetOpen}
                     onClick={() => { gesture(); setSheetOpen((o) => !o); }}
                   >
-                    <h2 className="truncate font-display text-[19px] font-bold leading-tight [font-stretch:90%]">{headline}</h2>
+                    {bain ? (
+                      <h2 className="py-1 font-display text-[19px] font-bold leading-[1.5] [font-stretch:90%]">{auFrais(headline)}</h2>
+                    ) : (
+                      <h2 className="truncate font-display text-[19px] font-bold leading-tight [font-stretch:90%]">{headline}</h2>
+                    )}
                   </button>
                   {sheetOpen && (
                   <button
@@ -460,6 +466,9 @@ export function MapScreen({
                                 </span>
                               </span>
                               <span className="flex shrink-0 flex-col items-end gap-1.5">
+                                {bain && (
+                                  <span className="-mb-1 text-[11px] text-dusk-sub">{inIt(r) ? "à l'ombre jusqu'à" : "à l'ombre"}</span>
+                                )}
                                 <span className={`font-mono text-[13px] font-semibold ${mode === 'SUN' ? 'text-dusk-glow' : 'text-dusk-sub'}`}>
                                   {inIt(r) ? r.sunWindowEnd : r.sunWindowStart ? `dès ${r.sunWindowStart}` : ''}
                                 </span>
@@ -556,6 +565,21 @@ function StatusLine({ rec, mode, isNow, lead = false }: { rec: Recommendation; m
     );
   }
   return <>{cap(statusCopy(rec, mode).title)}</>;
+}
+
+/** « 13 lieux à l'ombre à pied » → « 13 lieux [au frais] à pied » : l'ombre
+ *  devient le sticker. Une accroche sans ce mot reste telle quelle. */
+function auFrais(headline: string): ReactNode {
+  const m = headline.match(/^(.*?)(à l'ombre|(?<=coins? )d'ombre)(.*)$/);
+  if (!m) return headline;
+  return (
+    <>
+      {m[1]}
+      <span className="au-frais">au frais</span>
+      {/* La fin (« à pied ») ne se coupe pas : elle passe à la ligne d'un bloc. */}
+      <span className="whitespace-nowrap">{m[3]}</span>
+    </>
+  );
 }
 
 function BestRow({ rec, mode, onOpen, onGo }: { rec: Recommendation; mode: SunMode; onOpen: () => void; onGo: () => void }) {

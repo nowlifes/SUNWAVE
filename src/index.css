@@ -145,33 +145,67 @@ body {
   box-shadow: 3px 3px 0 #0B1A45;
 }
 
-/* Mode Ombre de la carte claire : la feuille garde ses couleurs, seul un
-   sticker « au frais » s'y colle, avec des éclats de bande dessinée. */
+/* Mode Ombre de la carte claire : « le grand bain ». La feuille plonge dans
+   une eau bleu piscine aux reflets clairs, les lieux flottent dessus en
+   cartes crème, et l'ombre du titre devient le sticker « au frais ». */
+.clair-sheet[data-bain] {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='110' viewBox='0 0 140 110'%3E%3Cg fill='none' stroke='%23BFE0FF' stroke-width='2.6' stroke-linecap='round' opacity='.5'%3E%3Cpath d='M-5 22 C18 6 34 38 58 20 S96 4 118 24 S140 30 150 18'/%3E%3Cpath d='M-5 62 C20 48 30 78 56 60 S92 44 112 66 S138 70 150 56'/%3E%3Cpath d='M-5 98 C16 86 36 112 60 96 S98 82 120 102'/%3E%3Cpath d='M30 -5 C18 18 44 30 32 50 S20 76 36 96'/%3E%3Cpath d='M92 -5 C80 16 104 34 90 56 S80 80 98 112'/%3E%3C/g%3E%3C/svg%3E"),
+    #2E6FF2 !important;
+  color: #FFF1D6 !important;
+}
+[data-bain] .text-dusk-shell { color: #FFF1D6 !important; }
+[data-bain] .text-dusk-sub,
+[data-bain] .text-dusk-dim { color: #DCEBFF !important; }
+[data-bain] .bg-dusk-edge { background-color: #FFF1D6 !important; }
+[data-bain] .border-dusk-edge,
+[data-bain] .border-dusk-line { border-color: #FFF1D6 !important; }
+/* Le bouton Soleil/Ombre garde son fond sable : texte en encre. */
+[data-bain] [role='group'] .text-dusk-sub { color: #34487A !important; }
+/* Les lieux : des cartes crème posées sur l'eau. */
+[data-bain] ul { border: 0; }
+[data-bain] ul > li { border: 0 !important; margin-top: 8px; }
+[data-bain] ul > li > button {
+  padding: 8px 12px;
+  border: 1.5px solid #0B1A45;
+  border-radius: 14px;
+  background: #FFF1D6;
+  box-shadow: 3px 3px 0 #0B1A45;
+  color: #0B1A45;
+}
+[data-bain] ul > li .text-dusk-sub { color: #34487A !important; }
+[data-bain] ul > li .font-mono { color: #2E6FF2 !important; font-weight: 700; }
+/* Y aller : jaune soleil, comme le sticker. */
+[data-bain] .bg-dusk-sub {
+  background-color: #FFE14D !important;
+  color: #0B1A45 !important;
+  border: 1.5px solid #0B1A45;
+  box-shadow: 3px 3px 0 #0B1A45;
+}
 .au-frais {
-  position: absolute;
-  top: -15px;
-  right: 22px;
-  z-index: 1;
-  transform: rotate(-7deg);
-  padding: 3px 11px 4px;
+  display: inline-block;
+  position: relative;
+  margin: 0 20px 0 22px;
+  padding: 0 9px 3px;
   border: 1.5px solid #0B1A45;
   border-radius: 8px;
   background: #FFE14D;
-  box-shadow: 2px 2px 0 #0B1A45;
-  color: #C8374F;
-  font: italic 800 15px 'Funnel Display', sans-serif;
-  pointer-events: none;
+  box-shadow: 2.5px 2.5px 0 #0B1A45;
+  color: #0B1A45;
+  font-style: italic;
+  font-weight: 800;
+  transform: rotate(-5deg);
 }
-/* Les éclats : trois traits de part et d'autre, comme un sticker qui claque. */
+/* Les éclats, en crème sur l'eau : trois traits de part et d'autre. */
 .au-frais::before,
 .au-frais::after {
   content: '';
   position: absolute;
   top: 50%;
-  width: 16px;
-  height: 22px;
-  margin-top: -11px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 22'%3E%3Cg stroke='%230B1A45' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M3 3 L9 7'/%3E%3Cpath d='M2 11 L10 11'/%3E%3Cpath d='M3 19 L9 15'/%3E%3C/g%3E%3C/svg%3E") no-repeat center / contain;
+  width: 14px;
+  height: 20px;
+  margin-top: -10px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 22'%3E%3Cg stroke='%23FFF1D6' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M3 3 L9 7'/%3E%3Cpath d='M2 11 L10 11'/%3E%3Cpath d='M3 19 L9 15'/%3E%3C/g%3E%3C/svg%3E") no-repeat center / contain;
 }
-.au-frais::before { left: -17px; }
-.au-frais::after { right: -17px; transform: scaleX(-1); }
+.au-frais::before { left: -18px; }
+.au-frais::after { right: -18px; transform: scaleX(-1); }
