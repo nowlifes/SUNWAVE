@@ -340,9 +340,9 @@ export function MapScreen({
 
   const layer = selectedRec ? 'place' : probePoint ? 'probe' : 'list';
   const quietPanel = scrubbing || layer === 'probe';
-  // Mode Ombre de la carte claire : la feuille plonge dans l'eau (la fiche
-  // d'un lieu garde sa feuille crème).
-  const bain = CLAIR && mode === 'SHADE' && layer !== 'place';
+  // Carte claire : la feuille prend la couleur du mode — l'eau en Ombre,
+  // l'orange du transat en Soleil (la fiche d'un lieu garde sa feuille crème).
+  const bain = CLAIR && layer !== 'place';
 
   return (
     <div className="relative h-full w-full bg-dusk-night">
@@ -393,7 +393,7 @@ export function MapScreen({
         <button
           onClick={() => setSearchOpen(true)}
           aria-label="Chercher un lieu"
-          data-shade={CLAIR && mode === 'SHADE' ? '' : undefined}
+          data-mode={CLAIR ? (mode === 'SUN' ? 'soleil' : 'ombre') : undefined}
           className="map-search-btn absolute left-4 top-[calc(env(safe-area-inset-top)+12px)] z-20 flex h-11 w-11 items-center justify-center rounded-full active:scale-95 transition-transform motion-reduce:transition-none"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -432,7 +432,7 @@ export function MapScreen({
         <div
           ref={panelRef}
           className={`relative rounded-t-[28px] border-t border-dusk-line bg-dusk-night pb-2 text-dusk-shell shadow-[0_-8px_24px_rgba(8,20,58,0.45)]${CLAIR ? ' clair-sheet' : ''}`}
-          data-bain={bain ? '' : undefined}
+          data-bain={bain ? (mode === 'SUN' ? 'soleil' : 'ombre') : undefined}
         >
           {layer === 'place' && selectedRec ? (
             <PlaceCard
@@ -459,7 +459,7 @@ export function MapScreen({
                     onClick={() => { gesture(); setSheetOpen((o) => !o); }}
                   >
                     {bain ? (
-                      <h2 className="py-1 font-display text-[19px] font-bold leading-[1.5] [font-stretch:90%]">{auFrais(headline)}</h2>
+                      <h2 className="py-1 font-display text-[19px] font-bold leading-[1.5] [font-stretch:90%]">{stickerHeadline(headline)}</h2>
                     ) : (
                       <h2 className="truncate font-display text-[19px] font-bold leading-tight [font-stretch:90%]">{headline}</h2>
                     )}
@@ -503,7 +503,7 @@ export function MapScreen({
                                 </span>
                               </span>
                               {bain ? (
-                                // Le titre dit déjà « au frais » : ici, seulement jusqu'à quand.
+                                // Le titre dit déjà « au frais » / « au soleil » : ici, seulement jusqu'à quand.
                                 <span className="flex shrink-0 flex-col items-end">
                                   <span className="text-[11px] text-dusk-sub">{inIt(r) ? "jusqu'à" : 'dès'}</span>
                                   <span className="bain-time font-display text-[22px] font-extrabold leading-none">
@@ -608,15 +608,17 @@ function StatusLine({ rec, mode, isNow, lead = false }: { rec: Recommendation; m
   return <>{cap(statusCopy(rec, mode).title)}</>;
 }
 
-/** « 13 lieux à l'ombre à pied » → « 13 lieux [au frais] à pied » : l'ombre
- *  devient le sticker. Une accroche sans ce mot reste telle quelle. */
-function auFrais(headline: string): ReactNode {
-  const m = headline.match(/^(.*?)(à l'ombre|(?<=coins? )d'ombre)(.*)$/);
+/** « 13 lieux à l'ombre à pied » → « 13 lieux [au frais] à pied », et
+ *  « 7 lieux au soleil à pied » → « 7 lieux [au soleil] à pied » : ce qu'on
+ *  cherche devient le sticker. Une accroche sans ce mot reste telle quelle. */
+function stickerHeadline(headline: string): ReactNode {
+  const m = headline.match(/^(.*?)(à l'ombre|au soleil|(?<=coins? )d'ombre|(?<=coins? )de soleil)(.*)$/);
   if (!m) return headline;
+  const shade = m[2].includes('ombre');
   return (
     <>
       {m[1]}
-      <span className="au-frais">au frais</span>
+      <span className="titre-sticker">{shade ? 'au frais' : 'au soleil'}</span>
       {/* La fin (« à pied ») ne se coupe pas : elle passe à la ligne d'un bloc. */}
       <span className="whitespace-nowrap">{m[3]}</span>
     </>
