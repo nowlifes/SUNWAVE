@@ -166,8 +166,6 @@ body {
 [data-bain] .bain-time { color: #FFE14D; }
 /* Recherche, filtres, bascule : du verre d'eau, pas des blocs. */
 [data-bain] .bg-dusk-panel { background-color: rgba(255, 241, 214, 0.14) !important; }
-/* Les résultats de recherche passent par-dessus la liste : eau opaque, plus profonde. */
-[data-bain] .absolute.bg-dusk-panel { background-color: #1F55D6 !important; }
 [data-bain] [aria-pressed='false'] { border-color: transparent !important; background: rgba(255, 241, 214, 0.1); }
 [data-bain] [aria-pressed='true'] { background-color: #FFE14D !important; color: #0B1A45 !important; }
 [data-bain] [aria-pressed='false'].text-dusk-sub { color: #FFF1D6 !important; }
@@ -211,3 +209,24 @@ body {
 }
 .au-frais::before { left: -18px; }
 .au-frais::after { right: -18px; transform: scaleX(-1); }
+
+/* Chercher un lieu, ancré en haut de la carte : même matière que les bulles
+   des lieux (crème, trait d'encre) ; en mode Ombre, la loupe prend l'eau. */
+.map-search-btn {
+  background: #FFF1D6;
+  color: #0B1A45;
+  border: 1.5px solid #0B1A45;
+  box-shadow: 2px 2px 0 #0B1A45;
+}
+.map-search-btn[data-shade] { background: #2E6FF2; color: #FFF1D6; }
+.map-search .bg-day-2 {
+  background: #FFF1D6;
+  border: 1.5px solid #0B1A45;
+  border-radius: 999px;
+  box-shadow: 2px 2px 0 #0B1A45;
+}
+.map-search .bg-day {
+  background: #FFF1D6;
+  border: 1.5px solid #0B1A45;
+  border-radius: 18px;
+}

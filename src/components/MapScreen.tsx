@@ -367,6 +367,41 @@ export function MapScreen({
         onRecenter={onRecenter}
       />
 
+      {/* Chercher un lieu : ancré en haut à gauche de la carte, face à
+          « Revenir sur moi ». Ouvert, le champ prend la largeur et ses
+          résultats descendent sur la carte, jamais sur la liste. */}
+      {!detailOpen && !scrubbing && (searchOpen ? (
+        <div className="map-search absolute inset-x-4 top-[calc(env(safe-area-inset-top)+12px)] z-30 flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <SearchBar
+              placeholder="Un café, un parc, une rue…"
+              autoFocus
+              onSelectVenue={(v) => { handleSearchSelect(v); setSearchOpen(false); }}
+            />
+          </div>
+          <button
+            onClick={() => setSearchOpen(false)}
+            aria-label="Fermer la recherche"
+            className="map-search-btn flex h-11 w-11 shrink-0 items-center justify-center rounded-full active:scale-95 transition-transform motion-reduce:transition-none"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setSearchOpen(true)}
+          aria-label="Chercher un lieu"
+          data-shade={CLAIR && mode === 'SHADE' ? '' : undefined}
+          className="map-search-btn absolute left-4 top-[calc(env(safe-area-inset-top)+12px)] z-20 flex h-11 w-11 items-center justify-center rounded-full active:scale-95 transition-transform motion-reduce:transition-none"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+            <circle cx="11" cy="11" r="7" /><line x1="16.5" y1="16.5" x2="21" y2="21" />
+          </svg>
+        </button>
+      ))}
+
       {/* « Il reste des places ? » : une couche flottante, jamais par-dessus une
           autre (lieu choisi, bulle « ici », feuille tirée, glissement d'heure). */}
       {askLive && !detailOpen && layer === 'list' && !sheetOpen && !scrubbing && (
@@ -487,49 +522,20 @@ export function MapScreen({
                           </li>
                         ))}
                       </ul>
-                      {/* Recherche et filtres sur une seule ligne : la loupe ouvre le champ. */}
-                      {searchOpen ? (
-                        <div className="mt-2 flex items-center gap-2">
-                          <div className="min-w-0 flex-1">
-                            <SearchBar tone="night" placeholder="Chercher un lieu" onSelectVenue={handleSearchSelect} autoFocus />
-                          </div>
+                      <div className="no-scrollbar -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4">
+                        {FILTER_CATEGORIES.map((cat) => (
                           <button
-                            onClick={() => setSearchOpen(false)}
-                            aria-label="Fermer la recherche"
-                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dusk-line text-dusk-sub active:scale-95"
+                            key={cat.value}
+                            onClick={() => { setActiveFilter(cat.value); setSearchVenue(null); }}
+                            aria-pressed={activeFilter === cat.value}
+                            className={`min-h-11 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold ${
+                              activeFilter === cat.value ? 'bg-dusk-shell text-dusk-night' : 'border border-dusk-line text-dusk-sub'
+                            }`}
                           >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
+                            {cat.label}
                           </button>
-                        </div>
-                      ) : (
-                        <div className="-mr-4 mt-2 flex items-center gap-1.5">
-                          <button
-                            onClick={() => setSearchOpen(true)}
-                            aria-label="Chercher un lieu"
-                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dusk-line text-dusk-sub active:scale-95"
-                          >
-                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-                              <circle cx="11" cy="11" r="7" /><line x1="16.5" y1="16.5" x2="21" y2="21" />
-                            </svg>
-                          </button>
-                          <div className="no-scrollbar flex min-w-0 flex-1 gap-1.5 overflow-x-auto pr-4">
-                            {FILTER_CATEGORIES.map((cat) => (
-                              <button
-                                key={cat.value}
-                                onClick={() => { setActiveFilter(cat.value); setSearchVenue(null); }}
-                                aria-pressed={activeFilter === cat.value}
-                                className={`min-h-11 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold ${
-                                  activeFilter === cat.value ? 'bg-dusk-shell text-dusk-night' : 'border border-dusk-line text-dusk-sub'
-                                }`}
-                              >
-                                {cat.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                        ))}
+                      </div>
                     </>
                   )}
                 </div>
