@@ -1,0 +1,323 @@
+/* ---------------------------------------------------------------------------
+   Explorer « la carte du jour » et Favoris « les horaires du jour ».
+   DA Contre-jour : carte crème cernée d'encre, coupée à l'angle du soleil, et
+   ombre dure qui tombe à l'opposé. --ang/--cut/--sx/--sy sont posés par le
+   composant depuis utils/lightCut : l'interface dit l'heure sans un mot.
+   Fichier à part d'index.css : ces écrans ne partagent rien avec la carte.
+   --------------------------------------------------------------------------- */
+
+.cdj {
+  --ink: #0B1A45;
+  --night2: #16224F;
+  --cream: #FFF1D6;
+  --gold: #FFD28A;
+  --orange: #FF6A2B;
+  --ember: #A83400;
+  --day: #F3F6FC;
+  --day2: #E6ECF8;
+  --line: #C5D1EC;
+  --sub: #34487A;
+  --cool: #D8E0F5;
+  --ang: -38deg;
+  --cut: 60%;
+  --sx: -4px;
+  --sy: 5px;
+  background: var(--day);
+  color: var(--ink);
+}
+
+/* Photo d'en-tête, comme Maintenant */
+.cdj-hero {
+  position: relative;
+  height: 250px;
+  background: var(--night2) center/cover no-repeat;
+  color: #fff;
+}
+.cdj-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(11, 20, 51, .35), transparent 38%, transparent 55%, rgba(11, 20, 51, .5));
+}
+.cdj-hero > * { position: relative; z-index: 1; }
+.cdj-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 16px 16px 0; }
+.cdj-st {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--cream);
+  color: var(--ink);
+  border: 1.5px solid var(--ink);
+  font: 700 12.5px/1 'Schibsted Grotesk', system-ui, sans-serif;
+  box-shadow: var(--sx) var(--sy) 0 var(--ink);
+  transform: rotate(-2deg);
+  font-variant-numeric: tabular-nums;
+}
+.cdj-st--gold { background: var(--gold); transform: rotate(2deg); }
+button.cdj-st { cursor: pointer; }
+button.cdj-st::before { content: ""; position: absolute; inset: -8px 0; }
+.cdj-st .orb { width: 15px; height: 15px; background: url(/da/orb.png) center/contain no-repeat; }
+.cdj-seg { display: flex; padding: 3px; border-radius: 999px; background: var(--ink); }
+.cdj-seg button {
+  min-height: 32px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--cream);
+  font: 800 13px 'Funnel Display', system-ui, sans-serif;
+  cursor: pointer;
+}
+.cdj-seg button[aria-pressed='true'] { background: var(--orange); color: var(--ink); }
+.cdj-seg button[aria-pressed='true'].shade { background: var(--cool); }
+.cdj-hero h1 {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 52px;
+  margin: 0;
+  font: 800 30px/1 'Funnel Display', system-ui, sans-serif;
+  letter-spacing: -.02em;
+  text-shadow: 0 2px 12px rgba(11, 20, 51, .45);
+}
+.cdj-hero .sub {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 30px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  text-shadow: 0 1px 8px rgba(11, 20, 51, .5);
+}
+
+/* Carte crème, coupée à l'angle du soleil */
+.cdj-card,
+.cdj-ticket,
+.cdj-fav {
+  position: relative;
+  background: var(--cream);
+  border: 1.5px solid var(--ink);
+  box-shadow: var(--sx) var(--sy) 0 var(--ink);
+}
+.cdj-card::before,
+.cdj-ticket::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(var(--ang), transparent var(--cut), rgba(11, 20, 51, .1) var(--cut));
+}
+.cdj-card > *,
+.cdj-ticket > * { position: relative; }
+.cdj-card { margin: -22px 12px 0; padding: 18px 16px 8px; border-radius: 22px; z-index: 2; }
+.cdj-menuhead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.cdj-menuhead h2 { margin: 0; font: 800 25px/1 'Funnel Display', system-ui, sans-serif; letter-spacing: -.02em; }
+.cdj-menuhead span { font-size: 12.5px; font-weight: 600; color: var(--sub); }
+.cdj-rule { height: 0; border-top: 1.5px solid var(--ink); margin: 12px 0 0; }
+
+.cdj-special {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  width: 100%;
+  padding: 26px 0 12px;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cdj-tag {
+  position: absolute;
+  left: -8px;
+  top: -4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--gold);
+  border: 1.5px solid var(--ink);
+  font: 800 11.5px 'Funnel Display', system-ui, sans-serif;
+  transform: rotate(-3deg);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.cdj-special b { font: 800 21px/1.05 'Funnel Display', system-ui, sans-serif; letter-spacing: -.01em; }
+.cdj-special .where { grid-column: 1; font-size: 13px; color: var(--sub); }
+.cdj-special .cdj-until { grid-row: 1 / 3; grid-column: 2; align-self: center; font-size: 22px; }
+
+/* L'heure là où un menu met le prix */
+.cdj-until {
+  text-align: right;
+  font: 800 16px/1.05 'Funnel Display', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cdj-until small { display: block; margin-bottom: 2px; font: 700 11px 'Schibsted Grotesk', system-ui, sans-serif; color: var(--ember); }
+.cdj-until.cool { color: var(--night2); }
+.cdj-until.cool small { color: var(--sub); }
+.cdj-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--orange);
+  box-shadow: 0 0 0 3px rgba(255, 106, 43, .22);
+  vertical-align: 1px;
+}
+.cdj-dot.o { background: transparent; border: 1.5px solid var(--night2); box-shadow: none; }
+
+/* La bande de la journée */
+.cdj-bandw { position: relative; }
+.cdj-band { display: flex; gap: 2px; height: 14px; margin: 4px 0 2px; }
+.cdj-band span { flex: 1; border-radius: 2px; background: var(--cool); }
+.cdj-band .night { background: var(--ink); }
+.cdj-band .s1 { background: #FFC9A6; }
+.cdj-band .s2 { background: #FF9C66; }
+.cdj-band .s3 { background: var(--orange); }
+.cdj-now { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 2px; background: var(--ink); }
+.cdj-ticks { display: flex; justify-content: space-between; margin-bottom: 6px; font: 600 10.5px 'Schibsted Grotesk', system-ui, sans-serif; color: var(--sub); }
+
+/* Lignes du menu */
+.cdj-line {
+  display: grid;
+  grid-template-columns: 46px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 0;
+  border: 0;
+  border-top: 1.5px dashed rgba(11, 20, 51, .28);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cdj-th { width: 46px; height: 46px; border-radius: 50%; background: var(--night2) center/cover; border: 1.5px solid var(--ink); }
+.cdj-nm { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.cdj-nm b { font: 800 18px 'Funnel Display', system-ui, sans-serif; letter-spacing: -.01em; white-space: nowrap; }
+.cdj-nm i { flex: 1; min-width: 10px; border-bottom: 2px dotted rgba(11, 20, 51, .45); transform: translateY(-4px); }
+.cdj-nm em { font-style: normal; font-size: 12.5px; font-weight: 600; color: var(--sub); white-space: nowrap; }
+
+.cdj-dessert {
+  display: grid;
+  grid-template-columns: 46px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  width: calc(100% + 32px);
+  margin: 4px -16px -8px;
+  padding: 12px 16px 14px;
+  border: 0;
+  border-radius: 0 0 20px 20px;
+  background: var(--ink);
+  color: var(--cream);
+  text-align: left;
+  cursor: pointer;
+}
+.cdj-dessert .cdj-th { border-color: var(--gold); }
+.cdj-dessert b { display: block; font: 800 17px 'Funnel Display', system-ui, sans-serif; }
+.cdj-dessert span span { font-size: 12.5px; color: #cdbf9f; }
+.cdj-dessert strong { font: 800 20px 'Funnel Display', system-ui, sans-serif; color: var(--gold); font-variant-numeric: tabular-nums; }
+.cdj-more { margin: 22px 16px 26px; font-size: 12.5px; color: var(--sub); text-align: center; }
+
+/* Une envie ouverte */
+.cdj-tickets { position: relative; z-index: 2; display: grid; gap: 12px; margin-top: -22px; padding: 0 12px 22px; }
+.cdj-ticket { padding: 14px 14px 10px; border-radius: 18px; }
+.cdj-ticket > button { display: block; width: 100%; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.cdj-ticket .h { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; }
+.cdj-ticket .rk { min-width: 18px; font: 800 22px/1 'Funnel Display', system-ui, sans-serif; color: var(--orange); -webkit-text-stroke: 1px var(--ink); }
+.cdj-ticket.shade .rk { color: var(--cool); }
+.cdj-ticket h3 { margin: 0; font: 800 18px/1.1 'Funnel Display', system-ui, sans-serif; letter-spacing: -.01em; }
+.cdj-ticket p { margin: 3px 0 0; font-size: 12.5px; color: var(--sub); }
+.cdj-ticket .cdj-until { font-size: 18px; }
+.cdj-ticket .cdj-bandw { margin-top: 10px; }
+.cdj-cta { display: flex; gap: 8px; margin-top: 12px; }
+.cdj-cta button {
+  flex: 1;
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1.5px solid var(--ink);
+  background: var(--orange);
+  color: var(--ink);
+  font: 800 16px 'Funnel Display', system-ui, sans-serif;
+  box-shadow: 3px 3px 0 var(--ink);
+  cursor: pointer;
+  transition: transform 120ms, box-shadow 120ms;
+}
+.cdj-ticket.shade .cdj-cta button { background: var(--cool); }
+.cdj-cta button:active { transform: translate(3px, 3px); box-shadow: none; }
+.cdj-cta button.g { flex: 0 0 auto; padding: 0 16px; background: transparent !important; box-shadow: none; }
+
+/* Favoris : les horaires du jour */
+.cdj-fhead { padding: 40px 18px 6px; background: linear-gradient(180deg, #FFE3B8, var(--day)); }
+.cdj-fhead h1 { margin: 0; font: 800 30px/1 'Funnel Display', system-ui, sans-serif; letter-spacing: -.02em; }
+.cdj-fhead p { margin: 6px 0 0; font-size: 13.5px; color: var(--sub); }
+.cdj-ruler {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 10px 12px 0;
+  padding: 8px 14px 6px;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--cream);
+  font: 700 11px 'Schibsted Grotesk', system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.cdj-ruler > div { position: relative; height: 14px; }
+.cdj-ruler span { position: absolute; top: 0; transform: translateX(-50%); }
+.cdj-ruler span:first-child { transform: none; }
+.cdj-ruler span:last-child { transform: translateX(-100%); }
+.cdj-flist { position: relative; padding: 4px 12px 20px; }
+.cdj-nowline {
+  position: absolute;
+  top: 0;
+  bottom: 8px;
+  left: calc(26px + (100% - 52px) * var(--f, .5));
+  width: 0;
+  border-left: 2px dashed var(--orange);
+  z-index: 3;
+  pointer-events: none;
+}
+.cdj-nowline span {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--orange);
+  border: 1.5px solid var(--ink);
+  font: 800 10.5px 'Funnel Display', system-ui, sans-serif;
+  color: var(--ink);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.cdj-grp { display: flex; align-items: center; gap: 8px; margin: 18px 4px 8px; font: 800 15px 'Funnel Display', system-ui, sans-serif; }
+.cdj-grp:first-of-type { margin-top: 26px; }
+.cdj-grp small { font: 600 12px 'Schibsted Grotesk', system-ui, sans-serif; color: var(--sub); }
+.cdj-fav {
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 12px 14px 10px;
+  border-radius: 18px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cdj-fav.later { background: #FBF4E6; box-shadow: calc(var(--sx) * .6) calc(var(--sy) * .6) 0 var(--ink); }
+.cdj-fav.off { background: var(--day2); border-color: var(--line); box-shadow: none; }
+.cdj-fav .h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.cdj-fav h3 { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 800 17px/1.1 'Funnel Display', system-ui, sans-serif; letter-spacing: -.01em; }
+.cdj-fav .t { font: 800 15px 'Funnel Display', system-ui, sans-serif; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cdj-fav .t.sun { color: var(--ember); }
+.cdj-fav p { margin: 2px 0 7px; font-size: 12px; color: var(--sub); }
+
+.cdj button:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .cdj * { transition: none !important; }
+}
