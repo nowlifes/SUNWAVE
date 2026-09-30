@@ -182,7 +182,7 @@ export function TimeSlider({ mode, currentDate, onTimeChange, cells, onScrubStar
           }`}
         >
           {cells.map((c, i) => (
-            <div key={c.startMin} className="h-full flex-1" style={cellStyles[i]} />
+            <div key={c.startMin} className={`h-full flex-1${c.value !== null && c.value >= 50 ? ' ribbon-good' : ''}`} style={cellStyles[i]} />
           ))}
         </div>
         <div
