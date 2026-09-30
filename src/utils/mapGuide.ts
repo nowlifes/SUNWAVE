@@ -45,7 +45,7 @@ export interface HeadlineContext {
 /** Les accroches possibles, la plus juste d'abord. Toujours deux au moins :
  *  `pickHeadline` doit pouvoir éviter de redire la même. */
 export function sheetHeadlines(ctx: HeadlineContext): string[] {
-  const { mode, count, nowMin, sunriseMin, sunsetMin, isNow } = ctx;
+  const { mode, count, nowMin, sunriseMin, sunsetMin } = ctx;
   const sun = mode === 'SUN';
   if (nowMin < sunriseMin || nowMin >= sunsetMin) {
     return [`Nuit · le soleil revient à ${hhmm(sunriseMin)}`, `Le soleil est couché, retour à ${hhmm(sunriseMin)}`];
