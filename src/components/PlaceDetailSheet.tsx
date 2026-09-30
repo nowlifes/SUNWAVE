@@ -12,6 +12,7 @@ import { LIGHT } from '@/utils/palette';
 import type { HaloKind } from '@/utils/haloMarkup';
 import { Squiggle } from './Squiggle';
 import { HaloIcon, LiveGlyph } from './Halo';
+import { VoicePile } from './Avatar';
 import { FicheSky } from './FicheSky';
 
 interface PlaceDetailSheetProps {
@@ -276,11 +277,11 @@ export function PlaceDetailSheet({
                     </p>
                     {live && (
                       <p className="mt-2 flex items-center gap-2 text-base leading-snug">
-                        <LiveGlyph level={live.level} tone="day" size={20} />
+                        <VoicePile voices={live.voices} sunByHour={venue.sunExposureByHour} category={venue.category} size={34} />
                         <span>
                           <span className="font-semibold">{LIVE_SHORT[live.level]}</span>
                           {' · '}
-                          {liveWho(live.count)}, {liveAge(live.ageMin)}
+                          {liveWho(live.count, live.by)}, {liveAge(live.ageMin)}
                         </span>
                       </p>
                     )}

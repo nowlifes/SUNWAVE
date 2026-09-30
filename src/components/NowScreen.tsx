@@ -14,6 +14,7 @@ import { categoryLabel, formatGap, placeName, statusCopy, statusShort, travelLab
 import { inviteText, inviteUrl, shareInvite } from '@/utils/share';
 import { LIGHT, NIGHT } from '@/utils/palette';
 import { HaloIcon, LiveGlyph } from './Halo';
+import { VoicePile } from './Avatar';
 import { liveReports } from '@/services/LiveReportService';
 import { LIVE_SHORT, liveAge, liveHello, liveWho } from '@/utils/live';
 import { getPseudo, subscribePseudo } from '@/utils/pseudo';
@@ -486,7 +487,11 @@ function AnswerCard({
 
           {/* Le signal de la communauté : éclat = frais, éteint = personne n'a encore confirmé. */}
           <p className="mt-2.5 flex items-center gap-2 text-[13px] leading-snug">
-            <LiveGlyph level={live?.level ?? 'none'} size={20} tone={tone.night ? 'night' : 'day'} className={live ? '' : 'opacity-40'} />
+            {live ? (
+              <VoicePile voices={live.voices} sunByHour={rec.venue.sunExposureByHour} category={rec.venue.category} />
+            ) : (
+              <LiveGlyph level="none" size={20} tone={tone.night ? 'night' : 'day'} className="opacity-40" />
+            )}
             {live ? (
               <span>
                 <span className="font-bold">{LIVE_SHORT[live.level]}</span>

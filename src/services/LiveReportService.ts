@@ -1,6 +1,7 @@
 import { MapService } from './MapService';
 import type { GeoPoint } from '@/types';
 import { getPseudo } from '@/utils/pseudo';
+import { getAvatar } from '@/utils/avatar';
 
 // ---------------------------------------------------------------------------
 // « Il reste des places au soleil ? » — la réponse de ceux qui sont là.
@@ -25,6 +26,15 @@ export interface LiveRecord {
   deviceId: string;
   /** Le pseudo de l'auteur au moment de la réponse, s'il en avait un. */
   pseudo?: string | null;
+  /** Le code avatar de l'auteur (« b62 »), voir utils/avatar. */
+  avatar?: string | null;
+}
+
+/** Une voix de l'avis retenu, pour la pile « confirmé par ». */
+export interface LiveVoice {
+  pseudo: string | null;
+  avatar: string | null;
+  at: number;
 }
 
 export interface LiveState {
@@ -35,6 +45,8 @@ export interface LiveState {
   ageMin: number;
   /** Pseudo de la voix la plus récente parmi celles de l'avis retenu. */
   by: string | null;
+  /** Les 3 voix les plus récentes de l'avis retenu, la plus récente d'abord. */
+  voices: LiveVoice[];
 }
 
 /** Où sont rangées les réponses. Aujourd'hui l'appareil ; demain un serveur. */
@@ -86,13 +98,14 @@ export class HttpLiveRemote implements LiveRemote {
   async fetchAll(deviceId: string): Promise<LiveRecord[]> {
     const res = await fetch(`${this.base}?deviceId=${encodeURIComponent(deviceId)}`);
     if (!res.ok) throw new Error(`live ${res.status}`);
-    const body = (await res.json()) as { records?: { venueId: string; answer: LiveAnswer; at: number; mine: boolean; pseudo?: string | null }[] };
+    const body = (await res.json()) as { records?: { venueId: string; answer: LiveAnswer; at: number; mine: boolean; pseudo?: string | null; avatar?: string | null }[] };
     return (body.records ?? []).map((r, i) => ({
       venueId: r.venueId,
       answer: r.answer,
       at: r.at,
       deviceId: r.mine ? deviceId : `other:${i}`,
       pseudo: r.pseudo ?? null,
+      avatar: r.avatar ?? null,
     }));
   }
 
@@ -107,6 +120,7 @@ export class HttpLiveRemote implements LiveRemote {
         lat: user.lat,
         lng: user.lng,
         pseudo: record.pseudo ?? null,
+        avatar: record.avatar ?? null,
       }),
     });
     if (!res.ok) throw new Error(`live ${res.status}`);
@@ -136,7 +150,8 @@ export class LiveReportService {
     private readonly store: LiveStore = new LocalLiveStore(),
     private readonly deviceId: string = localDeviceId(),
     private readonly remote?: LiveRemote,
-    private readonly pseudoOf: () => string | null = () => null
+    private readonly pseudoOf: () => string | null = () => null,
+    private readonly avatarOf: () => string | null = () => null
   ) {
     this.records = store.load();
   }
@@ -157,7 +172,7 @@ export class LiveReportService {
     this.records = this.records
       .filter((r) => !(r.venueId === venue.id && r.deviceId === this.deviceId))
       .filter((r) => now - r.at <= LIVE_TTL_MS);
-    this.records.push({ venueId: venue.id, answer, at: now, deviceId: this.deviceId, pseudo: this.pseudoOf() });
+    this.records.push({ venueId: venue.id, answer, at: now, deviceId: this.deviceId, pseudo: this.pseudoOf(), avatar: this.avatarOf() });
     this.commit();
     // La réponse s'affiche tout de suite ; le serveur la valide de son côté
     // (zone refaite là-bas) et `refresh` remet chacun d'accord.
@@ -229,8 +244,14 @@ export class LiveReportService {
     }
     const [level] = [...tally.entries()].sort((a, b) => b[1].n - a[1].n || b[1].last - a[1].last)[0];
     const latest = Math.max(...rows.map((r) => r.at));
-    const voice = rows.filter((r) => r.answer === level).sort((a, b) => b.at - a.at)[0];
-    return { level, count: rows.length, ageMin: Math.floor((now - latest) / 60_000), by: voice.pseudo ?? null };
+    const same = rows.filter((r) => r.answer === level).sort((a, b) => b.at - a.at);
+    return {
+      level,
+      count: rows.length,
+      ageMin: Math.floor((now - latest) / 60_000),
+      by: same[0].pseudo ?? null,
+      voices: same.slice(0, 3).map((r) => ({ pseudo: r.pseudo ?? null, avatar: r.avatar ?? null, at: r.at })),
+    };
   }
 
   /** Combien de voix valides disent comme nous sur ce lieu (la nôtre comprise),
@@ -254,6 +275,6 @@ export class LiveReportService {
   }
 }
 
-export const liveReports = new LiveReportService(undefined, undefined, new HttpLiveRemote(), getPseudo);
+export const liveReports = new LiveReportService(undefined, undefined, new HttpLiveRemote(), getPseudo, getAvatar);
 // Démarre à l'import, dans le navigateur seulement (ni tests ni scripts Node).
 if (typeof window !== 'undefined') liveReports.startPolling();

@@ -1,6 +1,32 @@
 import { useState, useSyncExternalStore } from 'react';
 import type { SunMode } from '@/types';
 import { PSEUDO_MAX, getPseudo, normalizePseudo, setPseudo, subscribePseudo } from '@/utils/pseudo';
+import { GLASSES, HAIRS, HATS, getAvatar, parseAvatar, randomAvatar, setAvatar, subscribeAvatar, type AvatarSpec } from '@/utils/avatar';
+import { Avatar } from './Avatar';
+
+/** Une rangée de pièces : on fait défiler, on touche, l'avatar change aussitôt. */
+function PieceRow({ label, items, value, onPick }: { label: string; items: readonly string[]; value: number; onPick: (i: number) => void }) {
+  return (
+    <div className="mt-3">
+      <p className="mb-1.5 text-[13px] font-semibold text-day-sub">{label}</p>
+      <div className="-mx-6 flex gap-2 overflow-x-auto no-scrollbar px-6" role="radiogroup" aria-label={label}>
+        {items.map((name, i) => (
+          <button
+            key={name}
+            role="radio"
+            aria-checked={value === i}
+            onClick={() => onPick(i)}
+            className={`min-h-11 shrink-0 rounded-full px-4 text-[14px] font-bold transition-colors active:scale-[0.97] motion-reduce:transition-none ${
+              value === i ? 'bg-ink text-white' : 'border-[1.5px] border-day-line text-day-sub'
+            }`}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface ProfileScreenProps {
   mode: SunMode;
@@ -14,6 +40,9 @@ interface ProfileScreenProps {
 // l'accueil restait au soleil.
 export function ProfileScreen({ mode, onModeChange, locationLabel, locationGranted }: ProfileScreenProps) {
   const pseudo = useSyncExternalStore(subscribePseudo, getPseudo);
+  const avatar = useSyncExternalStore(subscribeAvatar, getAvatar);
+  const spec = parseAvatar(avatar) ?? randomAvatar();
+  const pick = (patch: Partial<AvatarSpec>) => setAvatar({ ...spec, ...patch });
   const [draft, setDraft] = useState(pseudo ?? '');
   const [status, setStatus] = useState<'idle' | 'saved' | 'invalid'>('idle');
   const save = () => {
@@ -33,6 +62,27 @@ export function ProfileScreen({ mode, onModeChange, locationLabel, locationGrant
     <div className="h-full overflow-y-auto no-scrollbar bg-day pb-24 text-ink">
       <div className="px-6 pt-10 pb-4">
         <h1 className="font-display text-[2.6rem] font-extrabold leading-none tracking-[-0.025em] [font-stretch:90%]">Profil</h1>
+      </div>
+
+      {/* Avatar : la silhouette à contre-jour qui s'affiche dans « confirmé par » */}
+      <div className="px-6 mb-7">
+        <h2 className="mb-3 text-[13px] font-semibold text-day-sub">Ton avatar</h2>
+        <div className="flex items-end gap-3">
+          <Avatar code={avatar} light="sun" scene="view" size={120} label="Ton avatar, au soleil" className="-rotate-3" />
+          <Avatar code={avatar} light="shade" scene="view" size={80} label="Ton avatar, au frais" className="rotate-2" />
+          <button
+            onClick={() => setAvatar(randomAvatar())}
+            className="mb-1 ml-auto min-h-11 rounded-full border-[1.5px] border-ink px-4 text-[14px] font-bold active:scale-[0.97]"
+          >
+            Au hasard
+          </button>
+        </div>
+        <p className="mt-3 text-xs leading-snug text-day-sub">
+          Dans tes lunettes, les autres voient le lieu que tu as confirmé, au soleil ou au frais.
+        </p>
+        <PieceRow label="Coiffure" items={HAIRS} value={spec.hair} onPick={(hair) => pick({ hair })} />
+        <PieceRow label="Sur la tête" items={HATS} value={spec.hat} onPick={(hat) => pick({ hat })} />
+        <PieceRow label="Lunettes" items={GLASSES} value={spec.glasses} onPick={(glasses) => pick({ glasses })} />
       </div>
 
       {/* Pseudo : affiché chez les autres quand on confirme un lieu */}

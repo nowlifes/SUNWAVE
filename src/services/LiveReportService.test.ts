@@ -184,3 +184,24 @@ describe('LiveReportService — pseudo', () => {
   });
 });
 
+
+describe('LiveReportService — avatars', () => {
+  it("joint l'avatar du moment à la réponse", () => {
+    const svc = new LiveReportService(memoryStore(), 'me', undefined, () => 'Léa', () => 'b62');
+    svc.submit(venue, 'few', north(20), NOW);
+    expect(svc.getState('v1', NOW)?.voices[0]).toMatchObject({ pseudo: 'Léa', avatar: 'b62', at: NOW });
+  });
+  it("la pile montre les 3 voix les plus récentes de l'avis retenu", () => {
+    const svc = new LiveReportService(
+      memoryStore([
+        { venueId: 'v1', answer: 'plenty', at: NOW - 1000, deviceId: 'a', avatar: '000' },
+        { venueId: 'v1', answer: 'plenty', at: NOW - 2000, deviceId: 'b', avatar: '111' },
+        { venueId: 'v1', answer: 'plenty', at: NOW - 3000, deviceId: 'c', avatar: '222' },
+        { venueId: 'v1', answer: 'plenty', at: NOW - 4000, deviceId: 'd', avatar: '333' },
+        { venueId: 'v1', answer: 'none', at: NOW, deviceId: 'e', avatar: '444' },
+      ]),
+      'me'
+    );
+    expect(svc.getState('v1', NOW)?.voices.map((v) => v.avatar)).toEqual(['000', '111', '222']);
+  });
+});

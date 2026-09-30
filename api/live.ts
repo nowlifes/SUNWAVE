@@ -6,7 +6,7 @@ import { neon } from '@neondatabase/serverless';
 // runtime Node ESM de Vercel n'ait ni extension ni alias à résoudre.
 //
 //   GET  /api/live  → les réponses des 45 dernières minutes (sans identifiant d'appareil)
-//   POST /api/live  → { venueId, answer, deviceId, lat, lng, pseudo? } ; refusé si l'auteur
+//   POST /api/live  → { venueId, answer, deviceId, lat, lng, pseudo?, avatar? } ; refusé si l'auteur
 //                     est à plus de ZONE_M du lieu (contrôle refait ici, pas cru du client)
 
 export const ANSWERS = ['plenty', 'few', 'none'] as const;
@@ -29,6 +29,14 @@ export function parsePseudo(v: unknown): string | null {
   return s.length > 0 && s.length <= PSEUDO_MAX && PSEUDO_RE.test(s) ? s : null;
 }
 
+/** Même règle que src/utils/avatar.ts : coiffure, couvre-chef, lunettes. */
+const AVATAR_RE = /^[0-9ab][0-6][0-5]$/;
+
+/** Un avatar refusé ne fait pas perdre la réponse non plus. */
+export function parseAvatar(v: unknown): string | null {
+  return typeof v === 'string' && AVATAR_RE.test(v) ? v : null;
+}
+
 export interface AnswerBody {
   venueId: string;
   answer: Answer;
@@ -36,6 +44,7 @@ export interface AnswerBody {
   lat: number;
   lng: number;
   pseudo: string | null;
+  avatar: string | null;
 }
 
 export function parseBody(body: unknown): AnswerBody | null {
@@ -47,7 +56,7 @@ export function parseBody(body: unknown): AnswerBody | null {
   if (typeof deviceId !== 'string' || !DEVICE_RE.test(deviceId)) return null;
   if (typeof lat !== 'number' || typeof lng !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
-  return { venueId, answer: answer as Answer, deviceId, lat, lng, pseudo: parsePseudo(b.pseudo) };
+  return { venueId, answer: answer as Answer, deviceId, lat, lng, pseudo: parsePseudo(b.pseudo), avatar: parseAvatar(b.avatar) };
 }
 
 export function distanceM(aLat: number, aLng: number, bLat: number, bLng: number): number {
@@ -81,7 +90,7 @@ export function createHandler(getSql: () => Sql) {
       if (req.method === 'GET') {
         const device = typeof req.query?.deviceId === 'string' ? req.query.deviceId : '';
         const rows = await sql(
-          `select venue_id, answer, pseudo, device_id = $2 as mine,
+          `select venue_id, answer, pseudo, avatar, device_id = $2 as mine,
                   (extract(epoch from reported_at) * 1000)::bigint as at
              from live_reports
             where reported_at > now() - ($1 || ' minutes')::interval`,
@@ -94,6 +103,7 @@ export function createHandler(getSql: () => Sql) {
             mine: r.mine === true,
             at: Number(r.at),
             pseudo: typeof r.pseudo === 'string' ? r.pseudo : null,
+            avatar: typeof r.avatar === 'string' ? r.avatar : null,
           })),
         });
       }
@@ -109,11 +119,12 @@ export function createHandler(getSql: () => Sql) {
         if (d > ZONE_M) return res.status(403).json({ error: 'too_far' });
 
         await sql(
-          `insert into live_reports (venue_id, device_id, answer, pseudo)
-           values ($1, $2, $3, $4)
+          `insert into live_reports (venue_id, device_id, answer, pseudo, avatar)
+           values ($1, $2, $3, $4, $5)
            on conflict (venue_id, device_id)
-           do update set answer = excluded.answer, pseudo = excluded.pseudo, reported_at = now()`,
-          [body.venueId, body.deviceId, body.answer, body.pseudo]
+           do update set answer = excluded.answer, pseudo = excluded.pseudo,
+                         avatar = excluded.avatar, reported_at = now()`,
+          [body.venueId, body.deviceId, body.answer, body.pseudo, body.avatar]
         );
         await sql(`delete from live_reports where reported_at < now() - interval '3 hours'`);
         return res.status(200).json({ ok: true });

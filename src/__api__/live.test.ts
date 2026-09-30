@@ -23,7 +23,7 @@ function fakeDb(venues: Record<string, { lat: number; lng: number }>) {
       return v ? [v] : [];
     }
     if (q.includes('from live_reports')) {
-      return [{ venue_id: 'v1', answer: 'few', mine: true, at: 1700000000000, pseudo: 'Léa' }];
+      return [{ venue_id: 'v1', answer: 'few', mine: true, at: 1700000000000, pseudo: 'Léa', avatar: 'b62' }];
     }
     writes.push(q.trim().split(/\s+/).slice(0, 2).join(' '));
     params.push(p);
@@ -34,7 +34,7 @@ function fakeDb(venues: Record<string, { lat: number; lng: number }>) {
 
 describe('api/live — validation', () => {
   it('accepte une réponse bien formée', () => {
-    expect(parseBody(good)).toEqual({ ...good, pseudo: null });
+    expect(parseBody(good)).toEqual({ ...good, pseudo: null, avatar: null });
   });
   it.each([
     ['réponse inconnue', { ...good, answer: 'maybe' }],
@@ -122,6 +122,31 @@ describe('api/live — pseudo', () => {
     const { res, out } = fakeRes();
     await createHandler(() => sql)({ method: 'GET', query: { deviceId: 'd_abc123xyz' } }, res);
     expect((out.body as { records: { pseudo: string | null }[] }).records[0].pseudo).toBe('Léa');
+  });
+});
+
+describe('api/live — avatar', () => {
+  const venues = { v1: { lat: 38.7139, lng: -9.1394 } };
+
+  it('accepte un code avatar valide, ignore un code faux sans perdre la réponse', () => {
+    expect(parseBody({ ...good, avatar: 'b62' })?.avatar).toBe('b62');
+    expect(parseBody({ ...good, avatar: 'z99' })?.avatar).toBeNull();
+    expect(parseBody({ ...good, avatar: '<svg>' })?.avatar).toBeNull();
+    expect(parseBody({ ...good, avatar: 'z99' })?.answer).toBe('few');
+  });
+
+  it("écrit l'avatar avec la réponse", async () => {
+    const { sql, params } = fakeDb(venues);
+    const { res } = fakeRes();
+    await createHandler(() => sql)({ method: 'POST', body: { ...good, avatar: 'b62' } }, res);
+    expect(params[0]).toContain('b62');
+  });
+
+  it("renvoie l'avatar au GET", async () => {
+    const { sql } = fakeDb(venues);
+    const { res, out } = fakeRes();
+    await createHandler(() => sql)({ method: 'GET', query: { deviceId: 'd_abc123xyz' } }, res);
+    expect((out.body as { records: { avatar: string | null }[] }).records[0].avatar).toBe('b62');
   });
 });
 
