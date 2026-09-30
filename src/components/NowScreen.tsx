@@ -347,9 +347,11 @@ function AnswerCard({
   // L'heure est l'illustration : quand on y est, la fin de la fenêtre s'écrit
   // en géant ; sinon, la phrase de statut suffit.
   const bigTime = inItNow && rec.sunLeavesInMin !== null ? rec.sunWindowEnd : null;
-  // Le sticker de la carte entre dans la phrase : « tu es *au frais* jusqu'à ».
+  // Le sticker tient seul : « *Au frais* ». Pas de « tu es » — le lieu est à huit
+  // minutes à pied, on n'y est pas encore. Pas de « jusqu'à » non plus : son heure
+  // est quatre blocs plus bas, la préposition resterait en l'air. L'heure géante
+  // et sa légende (« dernier rayon », « coucher du soleil ») disent l'échéance.
   // Hors de l'état, il n'y a rien à coller — la phrase de statut suffit.
-  const untilSunset = isSun ? rec.endsAtSunset : rec.lastsUntilSunset;
   const [cap1, cap2] = bigTimeCaption(rec, mode);
 
   // Le relief — la seule chose qu'une app née en ville plate ne peut pas dire.
@@ -375,13 +377,10 @@ function AnswerCard({
 
   return (
     <section className="mt-7">
-      {/* La réponse, en une phrase : le sticker de la carte y est collé. */}
+      {/* La réponse : le sticker de la carte, seul. Le lieu et l'heure suivent. */}
       <h2 className="bain-headline">
         {bigTime ? (
-          <>
-            Tu es <span className="titre-sticker">{isSun ? 'au soleil' : 'au frais'}</span>{' '}
-            {untilSunset ? 'jusqu’au coucher' : 'jusqu’à'}
-          </>
+          <span className="titre-sticker">{isSun ? 'Au soleil' : 'Au frais'}</span>
         ) : (
           `${status.title}.`
         )}
