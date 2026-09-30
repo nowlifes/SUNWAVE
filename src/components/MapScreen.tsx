@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
+import type { ReactNode } from 'react';
 import type { Venue, SunMode, VenueCategory, GeoPoint, WeatherData, Recommendation } from '@/types';
 import { MapView, type ProbeView } from './MapView';
 import { TimeSlider } from './TimeSlider';
@@ -117,6 +118,8 @@ export function MapScreen({
   const [probePoint, setProbePoint] = useState<GeoPoint | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [searchVenue, setSearchVenue] = useState<Venue | null>(null);
+  // La recherche se replie derrière une loupe : la feuille laisse la carte.
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // « Il reste des places ? » : posée seulement à qui est vraiment sur place
   // (position réelle, à moins de 100 m), une fois par lieu tant qu'on n'a pas
@@ -338,6 +341,9 @@ export function MapScreen({
 
   const layer = selectedRec ? 'place' : probePoint ? 'probe' : 'list';
   const quietPanel = scrubbing || layer === 'probe';
+  // Mode Ombre de la carte claire : la feuille plonge dans l'eau (la fiche
+  // d'un lieu garde sa feuille crème).
+  const bain = CLAIR && mode === 'SHADE' && layer !== 'place';
 
   return (
     <div className="relative h-full w-full bg-dusk-night">
@@ -361,6 +367,41 @@ export function MapScreen({
         scrubbing={scrubbing}
         onRecenter={onRecenter}
       />
+
+      {/* Chercher un lieu : ancré en haut à gauche de la carte, face à
+          « Revenir sur moi ». Ouvert, le champ prend la largeur et ses
+          résultats descendent sur la carte, jamais sur la liste. */}
+      {!detailOpen && !scrubbing && (searchOpen ? (
+        <div className="map-search absolute inset-x-4 top-[calc(env(safe-area-inset-top)+12px)] z-30 flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <SearchBar
+              placeholder="Un café, un parc, une rue…"
+              autoFocus
+              onSelectVenue={(v) => { handleSearchSelect(v); setSearchOpen(false); }}
+            />
+          </div>
+          <button
+            onClick={() => setSearchOpen(false)}
+            aria-label="Fermer la recherche"
+            className="map-search-btn flex h-11 w-11 shrink-0 items-center justify-center rounded-full active:scale-95 transition-transform motion-reduce:transition-none"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setSearchOpen(true)}
+          aria-label="Chercher un lieu"
+          data-shade={CLAIR && mode === 'SHADE' ? '' : undefined}
+          className="map-search-btn absolute left-4 top-[calc(env(safe-area-inset-top)+12px)] z-20 flex h-11 w-11 items-center justify-center rounded-full active:scale-95 transition-transform motion-reduce:transition-none"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+            <circle cx="11" cy="11" r="7" /><line x1="16.5" y1="16.5" x2="21" y2="21" />
+          </svg>
+        </button>
+      ))}
 
       {/* « Il reste des places ? » : une couche flottante, jamais par-dessus une
           autre (lieu choisi, bulle « ici », feuille tirée, glissement d'heure). */}
@@ -402,7 +443,8 @@ export function MapScreen({
       <div className="absolute inset-x-0 bottom-0 z-20" style={{ paddingBottom: NAV_HEIGHT }}>
         <div
           ref={panelRef}
-          className={`rounded-t-[28px] border-t border-dusk-line bg-dusk-night pb-2 text-dusk-shell shadow-[0_-8px_24px_rgba(8,20,58,0.45)]${CLAIR ? ' clair-sheet' : ''}`}
+          className={`relative rounded-t-[28px] border-t border-dusk-line bg-dusk-night pb-2 text-dusk-shell shadow-[0_-8px_24px_rgba(8,20,58,0.45)]${CLAIR ? ' clair-sheet' : ''}`}
+          data-bain={bain ? '' : undefined}
         >
           {layer === 'place' && selectedRec ? (
             <PlaceCard
@@ -428,7 +470,11 @@ export function MapScreen({
                     aria-expanded={sheetOpen}
                     onClick={() => { gesture(); setSheetOpen((o) => !o); }}
                   >
-                    <h2 className="truncate font-display text-[19px] font-bold leading-tight [font-stretch:90%]">{headline}</h2>
+                    {bain ? (
+                      <h2 className="py-1 font-display text-[19px] font-bold leading-[1.5] [font-stretch:90%]">{auFrais(headline)}</h2>
+                    ) : (
+                      <h2 className="truncate font-display text-[19px] font-bold leading-tight [font-stretch:90%]">{headline}</h2>
+                    )}
                   </button>
                   {sheetOpen && (
                   <button
@@ -460,27 +506,34 @@ export function MapScreen({
                           <li key={r.venue.id}>
                             <button
                               onClick={() => handleVenueSelect(r.venue.id)}
-                              className="flex min-h-14 w-full items-center gap-3 py-2 text-left active:opacity-70"
+                              className={`flex w-full items-center gap-3 text-left active:opacity-70 ${bain ? 'min-h-12 py-1.5' : 'min-h-14 py-2'}`}
                             >
                               <span className="min-w-0 flex-1">
-                                <span className="block truncate text-[15px] font-semibold">{r.venue.name}</span>
+                                <span className={bain ? 'block truncate font-display text-[19px] font-bold leading-tight' : 'block truncate text-[15px] font-semibold'}>{r.venue.name}</span>
                                 <span className="block truncate text-[12.5px] text-dusk-sub">
                                   {categoryLabel(r.venue.category)} · {travelLabel(r)}
                                 </span>
                               </span>
-                              <span className="flex shrink-0 flex-col items-end gap-1.5">
-                                <span className={`font-mono text-[13px] font-semibold ${mode === 'SUN' ? 'text-dusk-glow' : 'text-dusk-sub'}`}>
-                                  {inIt(r) ? r.sunWindowEnd : r.sunWindowStart ? `dès ${r.sunWindowStart}` : ''}
+                              {bain ? (
+                                // Le titre dit déjà « au frais » : ici, seulement jusqu'à quand.
+                                <span className="flex shrink-0 flex-col items-end">
+                                  <span className="text-[11px] text-dusk-sub">{inIt(r) ? "jusqu'à" : 'dès'}</span>
+                                  <span className="bain-time font-display text-[22px] font-extrabold leading-none">
+                                    {inIt(r) ? r.sunWindowEnd : r.sunWindowStart}
+                                  </span>
                                 </span>
-                                <DayRibbon venue={r.venue} mode={mode} date={currentDate} sunrise={sunrise} sunset={sunset} size="mini" tone="night" />
-                              </span>
+                              ) : (
+                                <span className="flex shrink-0 flex-col items-end gap-1.5">
+                                  <span className={`font-mono text-[13px] font-semibold ${mode === 'SUN' ? 'text-dusk-glow' : 'text-dusk-sub'}`}>
+                                    {inIt(r) ? r.sunWindowEnd : r.sunWindowStart ? `dès ${r.sunWindowStart}` : ''}
+                                  </span>
+                                  <DayRibbon venue={r.venue} mode={mode} date={currentDate} sunrise={sunrise} sunset={sunset} size="mini" tone="night" />
+                                </span>
+                              )}
                             </button>
                           </li>
                         ))}
                       </ul>
-                      <div className="mt-2">
-                        <SearchBar tone="night" placeholder="Chercher un lieu" onSelectVenue={handleSearchSelect} />
-                      </div>
                       <div className="no-scrollbar -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4">
                         {FILTER_CATEGORIES.map((cat) => (
                           <button
@@ -565,6 +618,21 @@ function StatusLine({ rec, mode, isNow, lead = false }: { rec: Recommendation; m
     );
   }
   return <>{cap(statusCopy(rec, mode).title)}</>;
+}
+
+/** « 13 lieux à l'ombre à pied » → « 13 lieux [au frais] à pied » : l'ombre
+ *  devient le sticker. Une accroche sans ce mot reste telle quelle. */
+function auFrais(headline: string): ReactNode {
+  const m = headline.match(/^(.*?)(à l'ombre|(?<=coins? )d'ombre)(.*)$/);
+  if (!m) return headline;
+  return (
+    <>
+      {m[1]}
+      <span className="au-frais">au frais</span>
+      {/* La fin (« à pied ») ne se coupe pas : elle passe à la ligne d'un bloc. */}
+      <span className="whitespace-nowrap">{m[3]}</span>
+    </>
+  );
 }
 
 function BestRow({ rec, mode, onOpen, onGo }: { rec: Recommendation; mode: SunMode; onOpen: () => void; onGo: () => void }) {

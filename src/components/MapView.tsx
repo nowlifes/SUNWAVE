@@ -651,6 +651,12 @@ export function MapView({
     const p = lightPaint(sunPos.elevation, lisbonMinutesOfDay(currentDate));
     map.setPaintProperty('light', 'fill-color', CLAIR ? DAYMAP.sun : p.color);
     map.setPaintProperty('light', 'fill-opacity', CLAIR ? Math.min(p.opacity, 0.3) : p.opacity);
+    if (CLAIR) {
+      // Sans soleil, plus de rue éclairée : elles s'éteignent.
+      const on = Math.min(1, p.opacity / 0.4);
+      for (const id of ['streets-main', 'streets-small']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', on);
+      if (map.getLayer('plazas')) map.setPaintProperty('plazas', 'fill-opacity', on);
+    }
   }, [mapReady, currentDate, sunPos.elevation]);
 
   // Le jour, les ombres des bâtiments, un cran plus sombres que le sol.

@@ -78,8 +78,8 @@ describe('sheetHeadlines — le titre suit le contexte réel', () => {
   it('parle du coucher quand il approche, en mode Soleil', () => {
     expect(sheetHeadlines({ ...base, nowMin: 18 * 60 + 30 })[0]).toBe('Coucher à 19:27 · 7 lieux au soleil');
   });
-  it("nomme l'heure choisie quand ce n'est pas maintenant", () => {
-    expect(sheetHeadlines({ ...base, isNow: false, nowMin: 11 * 60 })[0]).toBe('À 11:00, 7 lieux au soleil');
+  it("ne redit pas l'heure choisie : la ligne du curseur l'affiche déjà", () => {
+    expect(sheetHeadlines({ ...base, isNow: false, nowMin: 11 * 60 })[0]).toBe('7 lieux au soleil à pied');
   });
   it('la nuit, dit quand le soleil revient', () => {
     expect(sheetHeadlines({ ...base, nowMin: 22 * 60 })[0]).toBe('Nuit · le soleil revient à 07:20');

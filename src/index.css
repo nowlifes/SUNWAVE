@@ -144,3 +144,89 @@ body {
   border: 1.5px solid #0B1A45;
   box-shadow: 3px 3px 0 #0B1A45;
 }
+
+/* Mode Ombre de la carte claire : « le grand bain ». Deux couleurs et pas
+   une de plus : l'eau bleu piscine, le jaune soleil ; le crème pour lire.
+   Pas de cadres : les lieux flottent sur l'eau, les reflets dérivent. */
+.clair-sheet[data-bain] {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='110' viewBox='0 0 140 110'%3E%3Cg fill='none' stroke='%23BFE0FF' stroke-width='2.2' stroke-linecap='round' opacity='.2'%3E%3Cpath d='M-5 22 C18 6 34 38 58 20 S96 4 118 24 S140 30 150 18'/%3E%3Cpath d='M-5 62 C20 48 30 78 56 60 S92 44 112 66 S138 70 150 56'/%3E%3Cpath d='M-5 98 C16 86 36 112 60 96 S98 82 120 102'/%3E%3Cpath d='M30 -5 C18 18 44 30 32 50 S20 76 36 96'/%3E%3Cpath d='M92 -5 C80 16 104 34 90 56 S80 80 98 112'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 140px 110px, #2E6FF2 !important;
+  color: #FFF1D6 !important;
+  animation: bain-reflets 18s linear infinite;
+}
+@keyframes bain-reflets {
+  to { background-position: 140px 110px, 0 0; }
+}
+[data-bain] .text-dusk-shell { color: #FFF1D6 !important; }
+[data-bain] .text-dusk-sub,
+[data-bain] .text-dusk-dim { color: rgba(255, 241, 214, 0.72) !important; }
+[data-bain] .bg-dusk-edge { background-color: #FFF1D6 !important; }
+[data-bain] .border-dusk-edge,
+[data-bain] .border-dusk-line { border-color: rgba(255, 241, 214, 0.35) !important; }
+[data-bain] ul > li { border-color: rgba(255, 241, 214, 0.22) !important; }
+[data-bain] .bain-time { color: #FFE14D; }
+/* Recherche, filtres, bascule : du verre d'eau, pas des blocs. */
+[data-bain] .bg-dusk-panel { background-color: rgba(255, 241, 214, 0.14) !important; }
+[data-bain] [aria-pressed='false'] { border-color: transparent !important; background: rgba(255, 241, 214, 0.1); }
+[data-bain] [aria-pressed='true'] { background-color: #FFE14D !important; color: #0B1A45 !important; }
+[data-bain] [aria-pressed='false'].text-dusk-sub { color: #FFF1D6 !important; }
+/* Y aller : jaune soleil, comme le sticker. */
+[data-bain] .bg-dusk-sub {
+  background-color: #FFE14D !important;
+  color: #0B1A45 !important;
+  box-shadow: 0 3px 0 rgba(11, 26, 69, 0.35);
+}
+@media (prefers-reduced-motion: reduce) {
+  .clair-sheet[data-bain], .au-frais { animation: none; }
+}
+.au-frais {
+  display: inline-block;
+  position: relative;
+  margin: 0 20px 0 22px;
+  padding: 0 9px 3px;
+  border: 1.5px solid #0B1A45;
+  border-radius: 8px;
+  background: #FFE14D;
+  box-shadow: 2.5px 2.5px 0 #0B1A45;
+  color: #0B1A45;
+  font-style: italic;
+  font-weight: 800;
+  transform: rotate(-5deg);
+  animation: au-frais-flotte 3.2s ease-in-out infinite alternate;
+}
+@keyframes au-frais-flotte {
+  to { transform: rotate(-2deg) translateY(-2px); }
+}
+/* Les éclats, en crème sur l'eau : trois traits de part et d'autre. */
+.au-frais::before,
+.au-frais::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 20px;
+  margin-top: -10px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 22'%3E%3Cg stroke='%23FFF1D6' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M3 3 L9 7'/%3E%3Cpath d='M2 11 L10 11'/%3E%3Cpath d='M3 19 L9 15'/%3E%3C/g%3E%3C/svg%3E") no-repeat center / contain;
+}
+.au-frais::before { left: -18px; }
+.au-frais::after { right: -18px; transform: scaleX(-1); }
+
+/* Chercher un lieu, ancré en haut de la carte : même matière que les bulles
+   des lieux (crème, trait d'encre) ; en mode Ombre, la loupe prend l'eau. */
+.map-search-btn {
+  background: #FFF1D6;
+  color: #0B1A45;
+  border: 1.5px solid #0B1A45;
+  box-shadow: 2px 2px 0 #0B1A45;
+}
+.map-search-btn[data-shade] { background: #2E6FF2; color: #FFF1D6; }
+.map-search .bg-day-2 {
+  background: #FFF1D6;
+  border: 1.5px solid #0B1A45;
+  border-radius: 999px;
+  box-shadow: 2px 2px 0 #0B1A45;
+}
+.map-search .bg-day {
+  background: #FFF1D6;
+  border: 1.5px solid #0B1A45;
+  border-radius: 18px;
+}
