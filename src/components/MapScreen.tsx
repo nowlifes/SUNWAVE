@@ -391,7 +391,6 @@ export function MapScreen({
         <div
           ref={panelRef}
           className={`relative rounded-t-[28px] border-t border-dusk-line bg-dusk-night pb-2 text-dusk-shell shadow-[0_-8px_24px_rgba(8,20,58,0.45)]${CLAIR ? ' clair-sheet' : ''}`}
-          data-shade={CLAIR && mode === 'SHADE' ? '' : undefined}
         >
           {CLAIR && mode === 'SHADE' && (
             <span className="au-frais" aria-hidden="true">au frais</span>

@@ -67,9 +67,9 @@ export function LiveQuestion({ venue, mode, onAnswer, onDismiss, answered, onDon
                 className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-[14px] border-[1.5px] border-ink px-1 py-2 font-display text-[13px] font-extrabold leading-[1.1] transition-[transform,box-shadow] motion-reduce:transition-none ${
                   answered
                     ? lit
-                      ? `${mode === 'SHADE' ? 'bg-[#FF6F7D]' : 'bg-dusk-fire'} shadow-[3px_3px_0_#0B1A45]`
+                      ? 'bg-dusk-fire shadow-[3px_3px_0_#0B1A45]'
                       : 'bg-white opacity-50'
-                    : `shadow-[3px_3px_0_#0B1A45] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none ${lit ? (mode === 'SHADE' ? 'bg-[#FF6F7D]' : 'bg-dusk-fire') : 'bg-white'}`
+                    : `shadow-[3px_3px_0_#0B1A45] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none ${lit ? 'bg-dusk-fire' : 'bg-white'}`
                 }`}
               >
                 <LiveGlyph level={a.answer} size={22} tone="day" />

@@ -116,34 +116,6 @@ const DAYMAP = {
   ember: '#A83400',
   sub: '#34487A',
 };
-/** Le mode Ombre de la carte claire : le pendant du Soleil, en affiche
- *  d'été imprimée — ombre pervenche en trame, corail pour agir. */
-const SHADE_UI = {
-  peri: '#7C80E6',
-  /** La trame des ombres : fond pervenche clair, points pervenche. */
-  trame: ['#A3A6F0', '#6E72DE'] as const,
-  coral: '#FF6F7D',
-  /** Corail foncé pour le texte : lisible sur crème. */
-  coralInk: '#C8374F',
-  /** Le sol au soleil, légèrement rosi : le chaud autour du frais. */
-  warm: '#FFB3A8',
-};
-
-/** Un carreau de trame : un point centré, répété en motif sur les ombres. */
-function trameImage(): { width: number; height: number; data: Uint8Array } {
-  const n = 8;
-  const hex = (h: string) => [1, 3, 5].map((k) => parseInt(h.slice(k, k + 2), 16));
-  const [bg, dot] = SHADE_UI.trame.map(hex);
-  const data = new Uint8Array(n * n * 4);
-  for (let y = 0; y < n; y++)
-    for (let x = 0; x < n; x++) {
-      const d = Math.hypot(x + 0.5 - n / 2, y + 0.5 - n / 2);
-      const c = d < 2.2 ? dot : bg;
-      data.set([...c, 255], (y * n + x) * 4);
-    }
-  return { width: n, height: n, data };
-}
-
 const TONE = CLAIR ? ('day' as const) : ('night' as const);
 
 /** Le repère « toi » de la carte claire. Point encre cerclé de crème à
@@ -160,11 +132,9 @@ function toiMarkup(): string {
   }).join('');
   const glow = `<span class="toi-glow" style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,#FFF1D6 0 30%,rgba(255,241,214,.75) 40%,rgba(255,241,214,0) 62%)"></span>`;
   const cone = `<svg class="toi-cone" width="96" height="96" viewBox="-48 -48 96 96" aria-hidden="true" style="position:absolute;inset:0;overflow:visible;opacity:0;transition:transform .25s ease-out,opacity .3s"><defs><radialGradient id="toi-cone-g" cx="0" cy="0" r="46" gradientUnits="userSpaceOnUse"><stop offset="0.2" stop-color="${ink}" stop-opacity="0.6"/><stop offset="1" stop-color="${ink}" stop-opacity="0"/></radialGradient></defs><path d="M0 0 L-27 -38 A46 46 0 0 1 27 -38 Z" fill="url(#toi-cone-g)"/></svg>`;
-  const rayRing = `<svg class="toi-rays" width="96" height="96" viewBox="-48 -48 96 96" aria-hidden="true" style="position:absolute;inset:0;overflow:visible"><g stroke="var(--toi-ray,#F07A2B)" stroke-width="3" stroke-linecap="round">${rays}</g></svg>`;
-  const dot = `<span class="toi-dot" style="position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:${ink};border:3.5px solid #FFF1D6;box-shadow:0 0 0 1.5px ${ink},2.5px 2.5px 0 1.5px ${ink};box-sizing:border-box"></span>`;
-  // Mode Ombre : un parasol en sticker penché prend la place du point.
-  const parasol = `<svg class="toi-parasol" width="38" height="38" viewBox="-19 -19 38 38" aria-hidden="true" style="position:absolute;left:50%;top:50%;margin:-19px 0 0 -19px;overflow:visible;transform:rotate(-10deg)"><circle cx="2" cy="2" r="15" fill="${ink}"/><circle r="15" fill="#FFF1D6" stroke="${ink}" stroke-width="1.5"/><line x1="0" y1="-1" x2="0" y2="10" stroke="${ink}" stroke-width="2" stroke-linecap="round"/><path d="M-10.5 0 A10.5 9 0 0 1 10.5 0 Z" fill="${SHADE_UI.coral}" stroke="${ink}" stroke-width="1.5" stroke-linejoin="round"/><path d="M-3.5 0 Q0 -12 3.5 0 Z" fill="#FFF1D6" stroke="${ink}" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
-  return glow + cone + rayRing + dot + parasol;
+  const rayRing = `<svg class="toi-rays" width="96" height="96" viewBox="-48 -48 96 96" aria-hidden="true" style="position:absolute;inset:0;overflow:visible"><g stroke="#F07A2B" stroke-width="3" stroke-linecap="round">${rays}</g></svg>`;
+  const dot = `<span style="position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:${ink};border:3.5px solid #FFF1D6;box-shadow:0 0 0 1.5px ${ink},2.5px 2.5px 0 1.5px ${ink};box-sizing:border-box"></span>`;
+  return glow + cone + rayRing + dot;
 }
 
 const MAP_STYLE: import('maplibre-gl').StyleSpecification = {
@@ -348,9 +318,6 @@ export function MapView({
   );
   const markersRef = useRef<Marker[]>([]);
   const userMarkerRef = useRef<Marker | null>(null);
-  // Lu à la création du repère, qui ne se refait pas quand le mode change.
-  const modeRef = useRef(mode);
-  modeRef.current = mode;
   const ringLabelRef = useRef<Marker | null>(null);
   const probeMarkerRef = useRef<Marker | null>(null);
   const [probeEl] = useState(() => document.createElement('div'));
@@ -574,7 +541,6 @@ export function MapView({
         'labels'
       );
       if (CLAIR) {
-        map.addImage('ombre-trame', trameImage());
         map.setPaintProperty('base', 'raster-contrast', 0);
         map.setPaintProperty('water', 'fill-color', DAYMAP.water);
         map.setPaintProperty('building-shadows', 'fill-color', DAYMAP.shadow);
@@ -683,20 +649,15 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !mapReady) return;
     const p = lightPaint(sunPos.elevation, lisbonMinutesOfDay(currentDate));
-    const shade = CLAIR && mode === 'SHADE';
-    map.setPaintProperty('light', 'fill-color', CLAIR ? (shade ? SHADE_UI.warm : DAYMAP.sun) : p.color);
-    map.setPaintProperty('light', 'fill-opacity', CLAIR ? Math.min(p.opacity, shade ? 0.22 : 0.3) : p.opacity);
+    map.setPaintProperty('light', 'fill-color', CLAIR ? DAYMAP.sun : p.color);
+    map.setPaintProperty('light', 'fill-opacity', CLAIR ? Math.min(p.opacity, 0.3) : p.opacity);
     if (CLAIR) {
-      // Sans soleil, ou en mode Ombre, plus de rue éclairée : elles s'éteignent.
-      const on = shade ? 0 : Math.min(1, p.opacity / 0.4);
+      // Sans soleil, plus de rue éclairée : elles s'éteignent.
+      const on = Math.min(1, p.opacity / 0.4);
       for (const id of ['streets-main', 'streets-small']) if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', on);
       if (map.getLayer('plazas')) map.setPaintProperty('plazas', 'fill-opacity', on);
-      map.setPaintProperty('building-shadows', 'fill-color', DAYMAP.shadow);
-      // La trame pervenche en mode Ombre ; sans motif (undefined), la couleur unie revient.
-      map.setPaintProperty('building-shadows', 'fill-pattern', (shade ? 'ombre-trame' : undefined) as never);
-      userMarkerRef.current?.getElement().setAttribute('data-mode', mode);
     }
-  }, [mapReady, currentDate, sunPos.elevation, mode]);
+  }, [mapReady, currentDate, sunPos.elevation]);
 
   // Le jour, les ombres des bâtiments, un cran plus sombres que le sol.
   // 13 800 projections puis un envoi au worker : découpé en morceaux, mis en
@@ -786,7 +747,6 @@ export function MapView({
       if (CLAIR) {
         el.style.cssText += ';position:relative;width:96px;height:96px';
         el.innerHTML = toiMarkup();
-        el.setAttribute('data-mode', modeRef.current);
       } else {
         el.innerHTML = haloSvg({ kind: 'you', tone: TONE }, 34);
       }
@@ -927,7 +887,7 @@ export function MapView({
           tag.append(q);
           // Le soleil dans la bulle : disque braise, ou rond vide à l'ombre.
           const s = document.createElement('span');
-          s.style.cssText = `flex:none;width:9px;height:9px;border-radius:50%;${mode === 'SHADE' ? (lit ? `border:1.8px solid ${DAYMAP.sub}` : `background:linear-gradient(90deg,${SHADE_UI.peri} 50%,${SHADE_UI.coral} 50%);border:1.2px solid ${DAYMAP.ink}`) : lit ? `background:${LIGHT.fire}` : `border:1.8px solid ${DAYMAP.sub}`};box-sizing:border-box;`;
+          s.style.cssText = `flex:none;width:9px;height:9px;border-radius:50%;${lit ? `background:${LIGHT.fire}` : `border:1.8px solid ${DAYMAP.sub}`};box-sizing:border-box;`;
           tag.append(s);
         }
         if (isSelected && CLAIR) tag.style.transform = 'scale(1.12)';
@@ -943,7 +903,7 @@ export function MapView({
         if (time) {
           const t = document.createElement('span');
           t.textContent = time;
-          t.style.cssText = `font:700 12px 'Geist Mono',monospace;color:${CLAIR ? (sunHour ? DAYMAP.ember : mode === 'SHADE' && loud ? SHADE_UI.coralInk : DAYMAP.sub) : sunHour ? LIGHT.inkNight : C.sub};`;
+          t.style.cssText = `font:700 12px 'Geist Mono',monospace;color:${CLAIR ? (sunHour ? DAYMAP.ember : DAYMAP.sub) : sunHour ? LIGHT.inkNight : C.sub};`;
           tag.append(t);
         }
         el.append(tag);

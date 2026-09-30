@@ -145,21 +145,8 @@ body {
   box-shadow: 3px 3px 0 #0B1A45;
 }
 
-/* Mode Ombre de la carte claire : affiche d'été imprimée. La feuille est
-   coupée en diagonale — un coin de soleil orange, un pan d'ombre pervenche —
-   et ce qui fait agir passe au corail. */
-.clair-sheet[data-shade] {
-  background:
-    linear-gradient(to bottom right, #FF6A2B 0 26px, transparent 26px) top left / 60px 60px no-repeat,
-    linear-gradient(to top left, #B9BBF4 0 50%, transparent 50%) bottom right / 58% 100% no-repeat,
-    #FFF1D6 !important;
-}
-.clair-sheet[data-shade] .bg-dusk-sub {
-  background-color: #FF6F7D !important;
-  color: #0B1A45 !important;
-  border: 1.5px solid #0B1A45;
-  box-shadow: 3px 3px 0 #0B1A45;
-}
+/* Mode Ombre de la carte claire : la feuille garde ses couleurs, seul un
+   sticker « au frais » s'y colle, avec des éclats de bande dessinée. */
 .au-frais {
   position: absolute;
   top: -15px;
@@ -175,8 +162,16 @@ body {
   font: italic 800 15px 'Funnel Display', sans-serif;
   pointer-events: none;
 }
-/* Le repère « toi » : point encre au soleil, parasol à l'ombre, rayons corail. */
-.toi-parasol { display: none; }
-[data-mode='SHADE'] .toi-parasol { display: block; }
-[data-mode='SHADE'] .toi-dot { display: none; }
-[data-mode='SHADE'] { --toi-ray: #FF6F7D; }
+/* Les éclats : trois traits de part et d'autre, comme un sticker qui claque. */
+.au-frais::before,
+.au-frais::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 22px;
+  margin-top: -11px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 22'%3E%3Cg stroke='%230B1A45' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M3 3 L9 7'/%3E%3Cpath d='M2 11 L10 11'/%3E%3Cpath d='M3 19 L9 15'/%3E%3C/g%3E%3C/svg%3E") no-repeat center / contain;
+}
+.au-frais::before { left: -17px; }
+.au-frais::after { right: -17px; transform: scaleX(-1); }

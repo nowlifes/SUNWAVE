@@ -1,5 +1,4 @@
 import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
-import { CLAIR } from '@/utils/mapFlags';
 import type { ReactNode } from 'react';
 import type { SunMode } from '@/types';
 import { formatLisbonTime, lisbonMinutesOfDay, setLisbonTime, snapToQuarter } from '@/utils/lisbonTime';
@@ -29,8 +28,7 @@ interface TimeSliderProps {
 }
 
 const SPAN = RIBBON_END_MIN - RIBBON_START_MIN;
-// Carte claire : l'ombre est pervenche, comme sa trame sur la carte.
-const GOOD = { SUN: LIGHT.fire, SHADE: CLAIR ? '#7C80E6' : NIGHT.sub } as const;
+const GOOD = { SUN: LIGHT.fire, SHADE: NIGHT.sub } as const;
 const NOT = NIGHT.p3;
 const NIGHT_CELL = NIGHT.deep;
 /** Après le lâcher, la bande reste ouverte le temps de lire l'heure. */
