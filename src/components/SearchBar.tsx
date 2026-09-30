@@ -7,9 +7,11 @@ interface SearchBarProps {
   placeholder?: string;
   /** Sur la carte de nuit : champ et résultats opaques, encre claire. */
   tone?: 'day' | 'night';
+  /** Ouvert d'un geste (la loupe) : le champ prend le focus tout de suite. */
+  autoFocus?: boolean;
 }
 
-export function SearchBar({ onSelectVenue, placeholder = 'Chercher un lieu', tone = 'day' }: SearchBarProps) {
+export function SearchBar({ onSelectVenue, placeholder = 'Chercher un lieu', tone = 'day', autoFocus = false }: SearchBarProps) {
   const night = tone === 'night';
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Venue[]>([]);
@@ -42,6 +44,7 @@ export function SearchBar({ onSelectVenue, placeholder = 'Chercher un lieu', ton
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
         <input
+          autoFocus={autoFocus}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}

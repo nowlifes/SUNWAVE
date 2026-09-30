@@ -117,6 +117,8 @@ export function MapScreen({
   const [probePoint, setProbePoint] = useState<GeoPoint | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [searchVenue, setSearchVenue] = useState<Venue | null>(null);
+  // La recherche se replie derrière une loupe : la feuille laisse la carte.
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // « Il reste des places ? » : posée seulement à qui est vraiment sur place
   // (position réelle, à moins de 100 m), une fois par lieu tant qu'on n'a pas
@@ -457,44 +459,77 @@ export function MapScreen({
                           <li key={r.venue.id}>
                             <button
                               onClick={() => handleVenueSelect(r.venue.id)}
-                              className="flex min-h-14 w-full items-center gap-3 py-2 text-left active:opacity-70"
+                              className={`flex w-full items-center gap-3 text-left active:opacity-70 ${bain ? 'min-h-12 py-1.5' : 'min-h-14 py-2'}`}
                             >
                               <span className="min-w-0 flex-1">
-                                <span className="block truncate text-[15px] font-semibold">{r.venue.name}</span>
+                                <span className={bain ? 'block truncate font-display text-[19px] font-bold leading-tight' : 'block truncate text-[15px] font-semibold'}>{r.venue.name}</span>
                                 <span className="block truncate text-[12.5px] text-dusk-sub">
                                   {categoryLabel(r.venue.category)} · {travelLabel(r)}
                                 </span>
                               </span>
-                              <span className="flex shrink-0 flex-col items-end gap-1.5">
-                                {bain && (
-                                  <span className="-mb-1 text-[11px] text-dusk-sub">{inIt(r) ? "à l'ombre jusqu'à" : "à l'ombre"}</span>
-                                )}
-                                <span className={`font-mono text-[13px] font-semibold ${mode === 'SUN' ? 'text-dusk-glow' : 'text-dusk-sub'}`}>
-                                  {inIt(r) ? r.sunWindowEnd : r.sunWindowStart ? `dès ${r.sunWindowStart}` : ''}
+                              {bain ? (
+                                // Le titre dit déjà « au frais » : ici, seulement jusqu'à quand.
+                                <span className="flex shrink-0 flex-col items-end">
+                                  <span className="text-[11px] text-dusk-sub">{inIt(r) ? "jusqu'à" : 'dès'}</span>
+                                  <span className="bain-time font-display text-[22px] font-extrabold leading-none">
+                                    {inIt(r) ? r.sunWindowEnd : r.sunWindowStart}
+                                  </span>
                                 </span>
-                                <DayRibbon venue={r.venue} mode={mode} date={currentDate} sunrise={sunrise} sunset={sunset} size="mini" tone="night" />
-                              </span>
+                              ) : (
+                                <span className="flex shrink-0 flex-col items-end gap-1.5">
+                                  <span className={`font-mono text-[13px] font-semibold ${mode === 'SUN' ? 'text-dusk-glow' : 'text-dusk-sub'}`}>
+                                    {inIt(r) ? r.sunWindowEnd : r.sunWindowStart ? `dès ${r.sunWindowStart}` : ''}
+                                  </span>
+                                  <DayRibbon venue={r.venue} mode={mode} date={currentDate} sunrise={sunrise} sunset={sunset} size="mini" tone="night" />
+                                </span>
+                              )}
                             </button>
                           </li>
                         ))}
                       </ul>
-                      <div className="mt-2">
-                        <SearchBar tone="night" placeholder="Chercher un lieu" onSelectVenue={handleSearchSelect} />
-                      </div>
-                      <div className="no-scrollbar -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4">
-                        {FILTER_CATEGORIES.map((cat) => (
+                      {/* Recherche et filtres sur une seule ligne : la loupe ouvre le champ. */}
+                      {searchOpen ? (
+                        <div className="mt-2 flex items-center gap-2">
+                          <div className="min-w-0 flex-1">
+                            <SearchBar tone="night" placeholder="Chercher un lieu" onSelectVenue={handleSearchSelect} autoFocus />
+                          </div>
                           <button
-                            key={cat.value}
-                            onClick={() => { setActiveFilter(cat.value); setSearchVenue(null); }}
-                            aria-pressed={activeFilter === cat.value}
-                            className={`min-h-11 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold ${
-                              activeFilter === cat.value ? 'bg-dusk-shell text-dusk-night' : 'border border-dusk-line text-dusk-sub'
-                            }`}
+                            onClick={() => setSearchOpen(false)}
+                            aria-label="Fermer la recherche"
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dusk-line text-dusk-sub active:scale-95"
                           >
-                            {cat.label}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
                           </button>
-                        ))}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="-mr-4 mt-2 flex items-center gap-1.5">
+                          <button
+                            onClick={() => setSearchOpen(true)}
+                            aria-label="Chercher un lieu"
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dusk-line text-dusk-sub active:scale-95"
+                          >
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                              <circle cx="11" cy="11" r="7" /><line x1="16.5" y1="16.5" x2="21" y2="21" />
+                            </svg>
+                          </button>
+                          <div className="no-scrollbar flex min-w-0 flex-1 gap-1.5 overflow-x-auto pr-4">
+                            {FILTER_CATEGORIES.map((cat) => (
+                              <button
+                                key={cat.value}
+                                onClick={() => { setActiveFilter(cat.value); setSearchVenue(null); }}
+                                aria-pressed={activeFilter === cat.value}
+                                className={`min-h-11 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold ${
+                                  activeFilter === cat.value ? 'bg-dusk-shell text-dusk-night' : 'border border-dusk-line text-dusk-sub'
+                                }`}
+                              >
+                                {cat.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
