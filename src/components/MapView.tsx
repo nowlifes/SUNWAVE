@@ -897,7 +897,7 @@ export function MapView({
           // des places, à moitié = presque plein, vide = complet.
           const g = document.createElement('span');
           g.style.cssText = 'display:inline-flex;flex:none;';
-          g.innerHTML = liveGlyphSvg(live.level, 12);
+          g.innerHTML = liveGlyphSvg(live.level, 12, TONE);
           tag.append(g);
         }
         if (time) {
