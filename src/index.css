@@ -144,3 +144,39 @@ body {
   border: 1.5px solid #0B1A45;
   box-shadow: 3px 3px 0 #0B1A45;
 }
+
+/* Mode Ombre de la carte claire : affiche d'été imprimée. La feuille est
+   coupée en diagonale — un coin de soleil orange, un pan d'ombre pervenche —
+   et ce qui fait agir passe au corail. */
+.clair-sheet[data-shade] {
+  background:
+    linear-gradient(to bottom right, #FF6A2B 0 26px, transparent 26px) top left / 60px 60px no-repeat,
+    linear-gradient(to top left, #B9BBF4 0 50%, transparent 50%) bottom right / 58% 100% no-repeat,
+    #FFF1D6 !important;
+}
+.clair-sheet[data-shade] .bg-dusk-sub {
+  background-color: #FF6F7D !important;
+  color: #0B1A45 !important;
+  border: 1.5px solid #0B1A45;
+  box-shadow: 3px 3px 0 #0B1A45;
+}
+.au-frais {
+  position: absolute;
+  top: -15px;
+  right: 22px;
+  z-index: 1;
+  transform: rotate(-7deg);
+  padding: 3px 11px 4px;
+  border: 1.5px solid #0B1A45;
+  border-radius: 8px;
+  background: #FFE14D;
+  box-shadow: 2px 2px 0 #0B1A45;
+  color: #C8374F;
+  font: italic 800 15px 'Funnel Display', sans-serif;
+  pointer-events: none;
+}
+/* Le repère « toi » : point encre au soleil, parasol à l'ombre, rayons corail. */
+.toi-parasol { display: none; }
+[data-mode='SHADE'] .toi-parasol { display: block; }
+[data-mode='SHADE'] .toi-dot { display: none; }
+[data-mode='SHADE'] { --toi-ray: #FF6F7D; }

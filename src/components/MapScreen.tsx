@@ -390,8 +390,12 @@ export function MapScreen({
       <div className="absolute inset-x-0 bottom-0 z-20" style={{ paddingBottom: NAV_HEIGHT }}>
         <div
           ref={panelRef}
-          className={`rounded-t-[28px] border-t border-dusk-line bg-dusk-night pb-2 text-dusk-shell shadow-[0_-8px_24px_rgba(8,20,58,0.45)]${CLAIR ? ' clair-sheet' : ''}`}
+          className={`relative rounded-t-[28px] border-t border-dusk-line bg-dusk-night pb-2 text-dusk-shell shadow-[0_-8px_24px_rgba(8,20,58,0.45)]${CLAIR ? ' clair-sheet' : ''}`}
+          data-shade={CLAIR && mode === 'SHADE' ? '' : undefined}
         >
+          {CLAIR && mode === 'SHADE' && (
+            <span className="au-frais" aria-hidden="true">au frais</span>
+          )}
           {layer === 'place' && selectedRec ? (
             <PlaceCard
               rec={selectedRec}
