@@ -148,7 +148,8 @@ body {
 /* Mode Ombre de la carte claire : « le grand bain ». Deux couleurs et pas
    une de plus : l'eau bleu piscine, le jaune soleil ; le crème pour lire.
    Pas de cadres : les lieux flottent sur l'eau, les reflets dérivent. */
-.clair-sheet[data-bain='ombre'] {
+.clair-sheet[data-bain='ombre'],
+.bain[data-bain='ombre'] {
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='110' viewBox='0 0 140 110'%3E%3Cg fill='none' stroke='%23BFE0FF' stroke-width='2.2' stroke-linecap='round' opacity='.2'%3E%3Cpath d='M-5 22 C18 6 34 38 58 20 S96 4 118 24 S140 30 150 18'/%3E%3Cpath d='M-5 62 C20 48 30 78 56 60 S92 44 112 66 S138 70 150 56'/%3E%3Cpath d='M-5 98 C16 86 36 112 60 96 S98 82 120 102'/%3E%3Cpath d='M30 -5 C18 18 44 30 32 50 S20 76 36 96'/%3E%3Cpath d='M92 -5 C80 16 104 34 90 56 S80 80 98 112'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 140px 110px, #2E6FF2 !important;
   color: #FFF1D6 !important;
   animation: bain-reflets 18s linear infinite;
@@ -180,7 +181,8 @@ body {
    crème ne se lit plus : tout le texte passe en encre. Des rayons tournent
    lentement depuis le coin du soleil, comme les reflets dérivent dans l'eau. */
 @property --rayons { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-.clair-sheet[data-bain='soleil'] {
+.clair-sheet[data-bain='soleil'],
+.bain[data-bain='soleil'] {
   background: repeating-conic-gradient(from var(--rayons) at 100% 0, rgba(255, 225, 77, 0.24) 0 5deg, transparent 5deg 15deg), #FF6A2B !important;
   color: #0B1A45 !important;
   animation: soleil-rayons 8s linear infinite;
@@ -247,6 +249,147 @@ body {
 }
 .titre-sticker::before { left: -18px; }
 .titre-sticker::after { right: -18px; transform: scaleX(-1); }
+
+/* ---------------------------------------------------------------------------
+   L'écran Maintenant, dans le bain.
+   Le bain donne le fond ; ces variables donnent la voix. Le jaune ne dit
+   qu'une chose : l'heure jusqu'à laquelle ça tient. Sur l'orange du transat
+   il ne se lit plus, l'encre le remplace — même arbitrage que `.bain-time`.
+   Aucun cadre ici : le lieu flotte, comme les bulles sur la carte.
+--------------------------------------------------------------------------- */
+.bain[data-bain='ombre'] {
+  --b-soft: rgba(255, 241, 214, 0.72);
+  --b-glass: rgba(255, 241, 214, 0.14);
+  --b-hair: rgba(255, 241, 214, 0.22);
+  --b-key: #FFE14D;
+  --b-tick: #FFF1D6;
+  --b-bar: rgba(255, 241, 214, 0.26);
+}
+.bain[data-bain='soleil'] {
+  --b-soft: rgba(11, 26, 69, 0.74);
+  --b-glass: rgba(255, 241, 214, 0.28);
+  --b-hair: rgba(11, 26, 69, 0.2);
+  --b-key: #0B1A45;
+  --b-tick: #0B1A45;
+  --b-bar: rgba(255, 241, 214, 0.34);
+}
+
+.bain-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.bain-city { font-size: 12px; font-weight: 700; opacity: 0.8; }
+.bain-clock {
+  margin-top: 1px;
+  font-family: 'Funnel Display', system-ui, sans-serif;
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.bain-said { margin-top: 9px; max-width: 27ch; font-size: 12.5px; line-height: 1.4; color: var(--b-soft); }
+
+.bain-headline {
+  font-family: 'Funnel Display', system-ui, sans-serif;
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.04;
+  text-wrap: balance;
+}
+.bain-venue {
+  margin-top: 16px;
+  font-family: 'Funnel Display', system-ui, sans-serif;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1;
+  text-wrap: pretty;
+}
+.bain-meta { margin-top: 8px; font-size: 13px; color: var(--b-soft); }
+
+.bain-until { display: flex; align-items: baseline; gap: 9px; margin-top: 18px; }
+.bain-until b {
+  font-family: 'Funnel Display', system-ui, sans-serif;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--b-key);
+}
+.bain-until span { font-size: 13px; font-weight: 700; color: var(--b-soft); }
+.bain-detail { margin-top: 7px; font-size: 13px; line-height: 1.35; color: var(--b-soft); }
+
+/* Du verre d'eau, pas un bloc. */
+.bain-live {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 16px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--b-glass);
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--b-soft);
+}
+
+.bain-actions { display: flex; gap: 10px; margin-top: 22px; }
+.bain-go {
+  flex: 1;
+  min-height: 48px;
+  border: none;
+  border-radius: 999px;
+  background: #FFE14D;
+  color: #0B1A45;
+  box-shadow: 0 3px 0 rgba(11, 26, 69, 0.35);
+  font-family: 'Funnel Display', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.bain-go:active { transform: translateY(3px); box-shadow: none; }
+.bain-alt {
+  min-height: 48px;
+  padding-inline: 17px;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+.bain-also {
+  margin-top: 26px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--b-soft);
+}
+.bain-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 0;
+  border-top: 1.5px solid var(--b-hair);
+  text-align: left;
+}
+.bain-row b { display: block; font-size: 15px; font-weight: 700; }
+.bain-row small { font-size: 11.5px; font-weight: 600; color: var(--b-soft); }
+.bain-row .h {
+  flex: none;
+  font-family: 'Funnel Display', system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--b-key);
+}
+
+.bain-foot { margin-top: 30px; font-size: 11.5px; line-height: 1.55; text-align: center; color: var(--b-soft); }
 
 /* Interrupteur Soleil/Ombre de la carte claire, en haut à droite : même
    matière que la loupe (trait d'encre, ombre dure) ; la piste prend la
