@@ -2,6 +2,7 @@ import { useId } from 'react';
 import type { VenueCategory } from '@/types';
 import type { LiveVoice } from '@/services/LiveReportService';
 import { IN_IT_THRESHOLD } from '@/services/RecommendationService';
+import { HAIR_PATHS, HAT_FIT, HAT_PATHS, SHAPE_T } from './avatarShapes';
 import { lensDetailed, lensScene, parseAvatar, voiceLight, type AvatarLight, type LensScene } from '@/utils/avatar';
 
 // ---------------------------------------------------------------------------
@@ -18,108 +19,24 @@ const INK = '#0B1433';
 const CREAM = '#FFF1D6';
 const GOLD = '#FFD28A';
 
-const BODY =
-  'M14 100 C16 80 30 72 42 70 L42 62 C36 58 33 50 33 42 C33 30 40 22 50 22 C60 22 67 30 67 42 C67 50 64 58 58 62 L58 70 C70 72 84 80 86 100 Z';
 /** Les verres sont la signature : on les grossit d'un quart autour des yeux. */
 const LENS_T = 'translate(50 43) scale(1.25) translate(-50 -43)';
-const CAP = 'M33 40 C32 26 41 20 50 20 C59 20 68 26 67 40 Z';
 
-/** Dans l'ordre de HAIRS (utils/avatar). */
+/** La silhouette de la planche (tête, épaules, coiffure), dans l'ordre de HAIRS. */
 function Hair({ i }: { i: number }) {
-  switch (i) {
-    case 0: // Boucles
-      return (
-        <>
-          {[[34, 34, 6], [38, 26, 6.5], [46, 21, 6.5], [55, 21, 6.5], [62, 26, 6.5], [66, 34, 6], [32, 42, 5], [68, 42, 5]].map(([cx, cy, r]) => (
-            <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={r} />
-          ))}
-        </>
-      );
-    case 1: // Long
-      return <path d="M31 44 C29 26 40 18 50 18 C60 18 71 26 69 44 L72 74 L60 72 L60 50 L40 50 L40 72 L28 74 Z" />;
-    case 2: // Chignon
-      return (
-        <>
-          <path d={CAP} />
-          <circle cx="50" cy="16" r="8" />
-        </>
-      );
-    case 3: // Ras
-      return null;
-    case 4: // Afro
-      return <circle cx="50" cy="36" r="25" />;
-    case 5: // Tresses
-      return (
-        <>
-          <path d={CAP} />
-          {[50, 56, 62, 68, 74].map((y) => (
-            <g key={y}>
-              <ellipse cx="33" cy={y} rx="4" ry="3.6" />
-              <ellipse cx="67" cy={y} rx="4" ry="3.6" />
-            </g>
-          ))}
-        </>
-      );
-    case 6: // Carré
-      return <path d="M30 50 C28 28 38 20 50 20 C62 20 72 28 70 50 L70 58 L30 58 Z" />;
-    case 7: // Queue
-      return (
-        <>
-          <path d={CAP} />
-          <path d="M60 24 C74 22 84 34 82 50 C81 58 76 62 74 60 C76 48 72 36 62 32 Z" />
-        </>
-      );
-    case 8: // Ondulé
-      return <path d="M31 46 C28 26 40 19 50 19 C60 19 72 26 69 46 C73 52 68 56 71 62 L62 64 L62 48 L38 48 L38 64 L29 62 C32 56 27 52 31 46 Z" />;
-    case 9: // Mèche
-      return (
-        <>
-          <path d="M33 38 C32 24 44 18 54 19 C64 20 70 28 68 36 C60 30 50 30 40 36 Z" />
-          <path d="M50 21 L72 14 L66 27 Z" />
-        </>
-      );
-    case 10: // Deux chignons
-      return (
-        <>
-          <path d={CAP} />
-          <circle cx="36" cy="22" r="7" />
-          <circle cx="64" cy="22" r="7" />
-        </>
-      );
-    default: // Mulet
-      return <path d="M33 40 C32 26 42 20 50 20 C58 20 68 26 67 40 L70 64 L60 66 L60 52 L40 52 L40 66 L30 64 Z" />;
-  }
+  return <path d={HAIR_PATHS[i] ?? HAIR_PATHS[3]} transform={SHAPE_T} />;
 }
 
-/** Dans l'ordre de HATS (utils/avatar). */
-function Hat({ i }: { i: number }) {
-  switch (i) {
-    case 1: // Bob
-      return <path d="M30 34 C31 22 40 17 50 17 C60 17 69 22 70 34 Z M22 36 C30 31 70 31 78 36 L74 40 C62 36 38 36 26 40 Z" />;
-    case 2: // Casquette à l'envers
-      return <path d="M32 34 C32 22 41 18 50 18 C59 18 68 22 68 34 Z M33 29 L15 33 L17 38 L34 35 Z" />;
-    case 3: // Capeline
-      return (
-        <>
-          <path d="M34 32 C35 20 43 16 50 16 C57 16 65 20 66 32 Z" />
-          <ellipse cx="50" cy="33" rx="31" ry="5" />
-        </>
-      );
-    case 4: // Bandana
-      return <path d="M32 32 C38 24 62 24 68 32 L68 37 C60 31 40 31 32 37 Z M67 33 L79 29 L77 38 Z M67 35 L78 42 L73 46 Z" />;
-    case 5: // Visière
-      return <path d="M33 29 L67 29 L67 34 L33 34 Z M29 34 C40 38 60 38 71 34 L73 37 C60 43 40 43 27 37 Z" />;
-    case 6: // Casque audio
-      return (
-        <>
-          <path d="M30 44 C29 16 71 16 70 44 L66 44 C66 22 34 22 34 44 Z" />
-          <rect x="25" y="37" width="10" height="15" rx="4" />
-          <rect x="65" y="37" width="10" height="15" rx="4" />
-        </>
-      );
-    default:
-      return null;
-  }
+/** Dans l'ordre de HATS ; posé sur le volume de la coiffure (HAT_FIT). */
+function Hat({ i, hair }: { i: number; hair: number }) {
+  const d = HAT_PATHS[i - 1];
+  if (!d) return null;
+  const [dy, f] = HAT_FIT[hair] ?? [0, 1];
+  return (
+    <g transform={`translate(0 ${dy}) translate(50 30) scale(${f}) translate(-50 -30)`}>
+      <path d={d} transform={SHAPE_T} />
+    </g>
+  );
 }
 
 /** Les verres, dans l'ordre de GLASSES : un seul chemin, qui sert de découpe. */
@@ -216,6 +133,11 @@ function Scene({ light, spec, scene, detailed, uid }: { light: 'sun' | 'shade'; 
         <use href={`#${uid}-sil`} />
       </g>
       <use href={`#${uid}-sil`} fill={INK} />
+      {/* Le couvre-chef par-dessus, avec son propre liseré : sinon il se fond dans les cheveux. */}
+      <g fill={rim} stroke={rim} strokeWidth="2.6" strokeLinejoin="round">
+        <use href={`#${uid}-hat`} />
+      </g>
+      <use href={`#${uid}-hat`} fill={INK} />
       <g clipPath={`url(#${uid}-lens)`}>
         <LensView light={light} scene={scene} detailed={detailed} uid={uid} />
       </g>
@@ -274,8 +196,9 @@ export function Avatar({ code, light, scene = 'view', size, label, className }: 
         </linearGradient>
         <g id={`${uid}-sil`}>
           <Hair i={spec.hair} />
-          <path d={BODY} />
-          <Hat i={spec.hat} />
+        </g>
+        <g id={`${uid}-hat`}>
+          <Hat i={spec.hat} hair={spec.hair} />
         </g>
         <clipPath id={`${uid}-lens`}>
           <path d={LENSES[spec.glasses] ?? LENSES[0]} transform={LENS_T} />
