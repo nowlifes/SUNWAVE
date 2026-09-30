@@ -59,7 +59,6 @@ export function sheetHeadlines(ctx: HeadlineContext): string[] {
   const coins = count === 1 ? '1 coin' : `${count} coins`;
   const dans = sun ? 'au soleil' : "à l'ombre";
   const base = [`${lieux} ${dans} à pied`, `${coins} ${sun ? 'de soleil' : "d'ombre"} autour de toi`];
-  if (!isNow) return [`À ${hhmm(nowMin)}, ${lieux} ${dans}`, ...base];
   if (sun && sunsetMin - nowMin <= 90) return [`Coucher à ${hhmm(sunsetMin)} · ${lieux} ${dans}`, ...base];
   return base;
 }

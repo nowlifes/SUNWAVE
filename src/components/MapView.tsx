@@ -107,6 +107,8 @@ const DAYMAP = {
   ground: '#FFF7E8',
   water: '#8EA6E0',
   sun: '#FFD28A',
+  /** Rue éclairée : jaune franc sur un sol crème à peine voilé. */
+  street: '#FFC93C',
   shadow: '#AEBDE3',
   building: '#FFFFFF',
   outline: '#C5D1EC',
@@ -463,6 +465,43 @@ export function MapView({
         { id: 'light', type: 'fill', source: 'land', paint: { 'fill-color': LIGHT.glow, 'fill-opacity': 0, 'fill-antialias': false } },
         'labels'
       );
+      // Carte claire : les rues éclairées, en tracé vectoriel (OpenFreeMap).
+      // Posées sur la lumière, sous l'eau et les ombres : une rue que l'ombre
+      // d'un bâtiment recouvre s'éteint, les autres restent allumées.
+      if (CLAIR) {
+        map.addSource('ofm', { type: 'vector', url: 'https://tiles.openfreemap.org/planet' });
+        const notTunnel = ['!=', ['get', 'brunnel'], 'tunnel'];
+        const width = (z12: number, z14: number, z16: number, z18: number) =>
+          ['interpolate', ['exponential', 1.6], ['zoom'], 12, z12, 14, z14, 16, z16, 18, z18] as never;
+        const line = (id: string, classes: string[], minzoom: number, w: never) =>
+          map.addLayer(
+            {
+              id,
+              type: 'line',
+              source: 'ofm',
+              'source-layer': 'transportation',
+              minzoom,
+              filter: ['all', ['==', ['geometry-type'], 'LineString'], ['in', ['get', 'class'], ['literal', classes]], notTunnel] as never,
+              layout: { 'line-cap': 'round', 'line-join': 'round' },
+              paint: { 'line-color': DAYMAP.street, 'line-width': w },
+            },
+            'labels'
+          );
+        map.addLayer(
+          {
+            id: 'plazas',
+            type: 'fill',
+            source: 'ofm',
+            'source-layer': 'transportation',
+            minzoom: 14,
+            filter: ['all', ['==', ['geometry-type'], 'Polygon'], ['in', ['get', 'class'], ['literal', ['path', 'pedestrian', 'minor', 'service']]], notTunnel] as never,
+            paint: { 'fill-color': DAYMAP.street },
+          },
+          'labels'
+        );
+        line('streets-small', ['minor', 'service', 'path', 'pedestrian', 'track'], 14.5, width(0.4, 1.2, 4.5, 14));
+        line('streets-main', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary'], 0, width(1.5, 4, 11, 28));
+      }
       map.addLayer(
         { id: 'water', type: 'fill', source: 'water', paint: { 'fill-color': C.water, 'fill-opacity': 1, 'fill-antialias': false } },
         'labels'
@@ -611,7 +650,7 @@ export function MapView({
     if (!map || !mapReady) return;
     const p = lightPaint(sunPos.elevation, lisbonMinutesOfDay(currentDate));
     map.setPaintProperty('light', 'fill-color', CLAIR ? DAYMAP.sun : p.color);
-    map.setPaintProperty('light', 'fill-opacity', CLAIR ? Math.min(p.opacity, 0.65) : p.opacity);
+    map.setPaintProperty('light', 'fill-opacity', CLAIR ? Math.min(p.opacity, 0.3) : p.opacity);
   }, [mapReady, currentDate, sunPos.elevation]);
 
   // Le jour, les ombres des bâtiments, un cran plus sombres que le sol.
