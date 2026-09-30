@@ -236,6 +236,10 @@ button.cdj-st::before { content: ""; position: absolute; inset: -8px 0; }
 .cdj-ticket .cdj-bandw { margin-top: 10px; }
 .cdj-cta { display: flex; gap: 8px; margin-top: 12px; }
 .cdj-cta button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   flex: 1;
   min-height: 46px;
   border-radius: 14px;
@@ -247,9 +251,116 @@ button.cdj-st::before { content: ""; position: absolute; inset: -8px 0; }
   cursor: pointer;
   transition: transform 120ms, box-shadow 120ms;
 }
-.cdj-ticket.shade .cdj-cta button { background: var(--cool); }
+.cdj-ticket.shade .cdj-cta button,
+.cdj-sheet-card.shade .cdj-cta button { background: var(--cool); }
 .cdj-cta button:active { transform: translate(3px, 3px); box-shadow: none; }
 .cdj-cta button.g { flex: 0 0 auto; padding: 0 16px; background: transparent !important; box-shadow: none; }
+
+/* Fiche lieu (PlaceDetailSheet) : même carte crème coupée, en feuille remontante */
+.cdj-sheet { border-radius: 22px 22px 0 0; overflow: hidden; }
+.cdj-sheet-hero { position: relative; }
+.cdj-sheet-hero .cdj-st {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  padding: 0;
+  width: 34px;
+  justify-content: center;
+  transform: none;
+}
+.cdj-sheet-card { padding-bottom: 20px; }
+.cdj-sheet-title { margin: 0; font: 800 30px/1 'Funnel Display', system-ui, sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+.cdj-sheet-sub { margin: 6px 0 0; font-size: 13.5px; font-weight: 600; color: var(--sub); }
+.cdj-sheet-status { margin: 14px 0 0; font: 800 26px/1.1 'Funnel Display', system-ui, sans-serif; letter-spacing: -.01em; }
+.cdj-sheet-status.cool { color: var(--night2); }
+.cdj-sheet-status.warm { color: var(--ember); }
+.cdj-sheet-open { margin: 5px 0 0; font-size: 12.5px; font-weight: 600; color: var(--sub); }
+
+.cdj-rows {
+  margin-top: 16px;
+  border: 1.5px solid var(--ink);
+  border-radius: 18px;
+  padding: 0 12px;
+  background: var(--cream);
+  box-shadow: var(--sx) var(--sy) 0 var(--ink);
+}
+.cdj-drow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 2px;
+  border-top: 1.5px dashed rgba(11, 20, 51, .28);
+}
+.cdj-drow:first-child { border-top: 0; }
+.cdj-drow.hi { background: var(--day2); margin: 0 -12px; padding: 11px 12px; border-top-color: transparent; }
+.cdj-drow .lbl b { display: block; font: 700 14px 'Schibsted Grotesk', system-ui, sans-serif; }
+.cdj-drow .lbl span { display: block; margin-top: 1px; font: 600 11.5px 'Schibsted Grotesk', system-ui, sans-serif; color: var(--sub); font-variant-numeric: tabular-nums; }
+.cdj-drow .val { display: flex; align-items: center; gap: 6px; font: 800 15px 'Funnel Display', system-ui, sans-serif; white-space: nowrap; }
+
+.cdj-rail-label { margin: 18px 0 6px; font: 700 12.5px 'Schibsted Grotesk', system-ui, sans-serif; color: var(--sub); }
+
+.cdj-live {
+  margin-top: 16px;
+  border: 1.5px solid var(--ink);
+  border-radius: 18px;
+  padding: 14px;
+  background: var(--cream);
+}
+.cdj-live-head { display: flex; align-items: center; gap: 6px; margin: 0; font: 700 12.5px 'Schibsted Grotesk', system-ui, sans-serif; color: var(--sub); }
+.cdj-live-now { margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 15px; line-height: 1.3; }
+.cdj-live-now b { font-weight: 800; }
+.cdj-live-q { margin-top: 12px; font-size: 13px; color: var(--sub); }
+.cdj-live-ask { display: flex; gap: 8px; margin-top: 8px; }
+.cdj-live-ask button {
+  flex: 1;
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1.5px solid var(--ink);
+  background: var(--day2);
+  font: 700 13px 'Schibsted Grotesk', system-ui, sans-serif;
+  cursor: pointer;
+  transition: transform 120ms;
+}
+.cdj-live-ask button:active { transform: scale(.96); }
+.cdj-live-thanks { margin-top: 12px; padding: 8px 12px; border-radius: 12px; background: var(--day2); font: 700 13px 'Schibsted Grotesk', system-ui, sans-serif; }
+
+.cdj-more-links { margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; color: var(--sub); }
+.cdj-more-links button { min-height: 44px; padding: 0 6px; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; }
+.cdj-more-box {
+  margin-top: 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: 18px;
+  background: #FBF4E6;
+  padding: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--sub);
+}
+.cdj-more-box p { margin: 0 0 8px; }
+.cdj-more-box p:last-child { margin-bottom: 0; }
+.cdj-more-box p:first-child { color: var(--ink); }
+
+.cdj-report-opt {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 13px 14px;
+  margin-bottom: 8px;
+  border: 1.5px solid var(--ink);
+  border-radius: 14px;
+  background: var(--day2);
+  color: var(--ink);
+  font: 600 14px 'Schibsted Grotesk', system-ui, sans-serif;
+  cursor: pointer;
+  transition: transform 120ms;
+}
+.cdj-report-opt:active { transform: scale(.98); }
+.cdj-report-cancel { margin-top: 4px; width: 100%; min-height: 44px; background: none; border: 0; font: 700 13px 'Schibsted Grotesk', system-ui, sans-serif; color: var(--sub); cursor: pointer; }
+.cdj-report-done { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 0; }
+.cdj-report-done .ok { margin-bottom: 14px; display: flex; height: 60px; width: 60px; align-items: center; justify-content: center; border-radius: 50%; background: var(--ink); }
+.cdj-report-done b { font: 800 22px 'Funnel Display', system-ui, sans-serif; }
+.cdj-report-done p { margin: 5px 0 0; font-size: 13px; color: var(--sub); text-align: center; }
 
 /* Favoris : les horaires du jour */
 .cdj-fhead { padding: 40px 18px 6px; background: linear-gradient(180deg, #FFE3B8, var(--day)); }
