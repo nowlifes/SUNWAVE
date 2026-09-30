@@ -318,7 +318,9 @@ export default function App() {
         )}
 
         {/* Bottom navigation */}
-        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} dusk={(screen === 'now' && (dusk || mode === 'SHADE')) || (screen === 'map' && !CLAIR)} />
+        {/* Le mode Ombre n'assombrit plus la barre : l'écran Maintenant est un
+            bain clair dans les deux modes. Seul « Plein ouest » reste sombre. */}
+        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} dusk={(screen === 'now' && dusk) || (screen === 'map' && !CLAIR)} />
       </div>
     </div>
   );
