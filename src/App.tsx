@@ -192,10 +192,6 @@ export default function App() {
     });
   }, []);
 
-  const handleRemoveSaved = useCallback((venueId: string) => {
-    setSavedVenueIds((prev) => prev.filter((id) => id !== venueId));
-  }, []);
-
   const handleCategorySelect = useCallback((category: DiscoverCategory) => {
     setDiscoverCategory(category);
   }, []);
@@ -269,6 +265,8 @@ export default function App() {
           <DiscoverScreen
             currentDate={currentDate}
             userLocation={userLocation}
+            mode={mode}
+            onModeChange={handleModeChange}
             onCategorySelect={handleCategorySelect}
           />
         )}
@@ -278,8 +276,11 @@ export default function App() {
             category={discoverCategory}
             currentDate={currentDate}
             userLocation={userLocation}
+            savedVenueIds={savedVenueIds}
             onBack={() => setDiscoverCategory(null)}
             onVenueSelect={handleVenueSelect}
+            onDirections={handleGetDirections}
+            onSave={handleSave}
           />
         )}
 
@@ -287,8 +288,8 @@ export default function App() {
           <SavedScreen
             savedVenues={savedVenues}
             currentDate={currentDate}
+            userLocation={userLocation}
             onVenueSelect={handleVenueSelect}
-            onRemove={handleRemoveSaved}
           />
         )}
 
