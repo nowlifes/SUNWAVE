@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { liveCount, liveThanks } from './live';
+import { liveCount, liveHello, liveThanks, liveWho } from './live';
 
 describe('liveThanks', () => {
   it('ne promet pas un nombre de personnes aidées', () => {
@@ -24,5 +24,23 @@ describe('liveCount', () => {
   it('sépare la seule confirmation de la nôtre du total', () => {
     expect(liveCount(1)).toBe('1 confirmation : la tienne');
     expect(liveCount(4)).toBe('Ce lieu compte maintenant 4 confirmations');
+  });
+});
+
+describe('pseudo dans les textes', () => {
+  it('le merci nomme la personne quand elle a un pseudo', () => {
+    expect(liveThanks({ same: 1, total: 1 }, 'Léa')).toMatch(/^Merci Léa — /);
+    expect(liveThanks({ same: 3, total: 4 }, 'Léa')).toMatch(/^Merci Léa — 2 autres/);
+    expect(liveThanks(null)).toMatch(/^Merci — /);
+  });
+  it('« confirmé par Léa » quand la dernière voix est signée', () => {
+    expect(liveWho(1, 'Léa')).toBe('confirmé par Léa');
+    expect(liveWho(2, 'Léa')).toBe('confirmé par Léa et 1 autre');
+    expect(liveWho(4, 'Léa')).toBe('confirmé par Léa et 3 autres');
+    expect(liveWho(2, null)).toBe('confirmé par 2 personnes');
+  });
+  it('salue par le pseudo, rien sans', () => {
+    expect(liveHello('Léa')).toBe('Salut Léa.');
+    expect(liveHello(null)).toBe('');
   });
 });

@@ -1,4 +1,6 @@
+import { useState, useSyncExternalStore } from 'react';
 import type { SunMode } from '@/types';
+import { PSEUDO_MAX, getPseudo, normalizePseudo, setPseudo, subscribePseudo } from '@/utils/pseudo';
 
 interface ProfileScreenProps {
   mode: SunMode;
@@ -11,10 +13,63 @@ interface ProfileScreenProps {
 // écrivait `preferences.mode`, que rien ne lisait — on touchait « Ombre » et
 // l'accueil restait au soleil.
 export function ProfileScreen({ mode, onModeChange, locationLabel, locationGranted }: ProfileScreenProps) {
+  const pseudo = useSyncExternalStore(subscribePseudo, getPseudo);
+  const [draft, setDraft] = useState(pseudo ?? '');
+  const [status, setStatus] = useState<'idle' | 'saved' | 'invalid'>('idle');
+  const save = () => {
+    if (draft.trim() === '') {
+      setPseudo(null);
+      setStatus(pseudo ? 'saved' : 'idle');
+      return;
+    }
+    const p = normalizePseudo(draft);
+    if (!p) return setStatus('invalid');
+    setPseudo(p);
+    setDraft(p);
+    setStatus('saved');
+  };
+
   return (
     <div className="h-full overflow-y-auto no-scrollbar bg-day pb-24 text-ink">
       <div className="px-6 pt-10 pb-4">
         <h1 className="font-display text-[2.6rem] font-extrabold leading-none tracking-[-0.025em] [font-stretch:90%]">Profil</h1>
+      </div>
+
+      {/* Pseudo : affiché chez les autres quand on confirme un lieu */}
+      <div className="px-6 mb-6">
+        <label htmlFor="profile-pseudo" className="mb-2 block text-[13px] font-semibold text-day-sub">
+          Ton pseudo
+        </label>
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            save();
+          }}
+        >
+          <input
+            id="profile-pseudo"
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              setStatus('idle');
+            }}
+            onBlur={save}
+            maxLength={PSEUDO_MAX}
+            autoComplete="nickname"
+            placeholder="Ex. Léa, sunchaser…"
+            aria-invalid={status === 'invalid'}
+            aria-describedby="profile-pseudo-hint"
+            className="min-h-[52px] min-w-0 flex-1 rounded-[16px] border-[1.5px] border-day-line bg-day-2 px-4 text-[15px] font-semibold outline-none focus:border-ink"
+          />
+        </form>
+        <p id="profile-pseudo-hint" role={status === 'invalid' ? 'alert' : undefined} className={`mt-1.5 text-xs ${status === 'invalid' ? 'font-semibold text-day-ember' : 'text-day-sub'}`}>
+          {status === 'invalid'
+            ? "Lettres, chiffres, espaces et . _ ' - seulement."
+            : status === 'saved'
+              ? pseudo ? `Enregistré. Les autres verront « confirmé par ${pseudo} ».` : 'Pseudo retiré : tes réponses ne sont plus signées.'
+              : 'Signe tes réponses « il reste des places ? ». Un pseudo, pas ton vrai nom.'}
+        </p>
       </div>
 
       {/* Position */}

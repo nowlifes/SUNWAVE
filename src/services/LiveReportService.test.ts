@@ -160,3 +160,27 @@ describe('LiveReportService — serveur partagé', () => {
     expect(svc.getState('v1', NOW + 1000)).toMatchObject({ level: 'few' });
   });
 });
+
+describe('LiveReportService — pseudo', () => {
+  it('signe la réponse avec le pseudo du moment', () => {
+    let pseudo: string | null = 'Léa';
+    const svc = new LiveReportService(memoryStore(), 'me', undefined, () => pseudo);
+    svc.submit(venue, 'few', north(20), NOW);
+    expect(svc.getState('v1', NOW)?.by).toBe('Léa');
+    pseudo = null;
+    svc.submit(venue, 'few', north(20), NOW + 1000);
+    expect(svc.getState('v1', NOW + 1000)?.by).toBeNull();
+  });
+  it("« par » nomme la voix la plus récente de l'avis retenu, pas un avis minoritaire", () => {
+    const svc = new LiveReportService(
+      memoryStore([
+        { venueId: 'v1', answer: 'plenty', at: NOW - 5000, deviceId: 'a', pseudo: 'Ana' },
+        { venueId: 'v1', answer: 'plenty', at: NOW - 9000, deviceId: 'b', pseudo: 'Bo' },
+        { venueId: 'v1', answer: 'none', at: NOW, deviceId: 'c', pseudo: 'Cy' },
+      ]),
+      'me'
+    );
+    expect(svc.getState('v1', NOW)).toMatchObject({ level: 'plenty', by: 'Ana' });
+  });
+});
+

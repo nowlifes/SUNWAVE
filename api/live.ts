@@ -6,7 +6,7 @@ import { neon } from '@neondatabase/serverless';
 // runtime Node ESM de Vercel n'ait ni extension ni alias à résoudre.
 //
 //   GET  /api/live  → les réponses des 45 dernières minutes (sans identifiant d'appareil)
-//   POST /api/live  → { venueId, answer, deviceId, lat, lng } ; refusé si l'auteur
+//   POST /api/live  → { venueId, answer, deviceId, lat, lng, pseudo? } ; refusé si l'auteur
 //                     est à plus de ZONE_M du lieu (contrôle refait ici, pas cru du client)
 
 export const ANSWERS = ['plenty', 'few', 'none'] as const;
@@ -18,6 +18,16 @@ export const TTL_MIN = 45;
 
 const DEVICE_RE = /^d_[a-z0-9]{6,40}$/;
 const VENUE_RE = /^[A-Za-z0-9_-]{1,80}$/;
+/** Même règle que src/utils/pseudo.ts (copiée : ce fichier n'importe rien). */
+const PSEUDO_MAX = 20;
+const PSEUDO_RE = /^[\p{L}\p{N}][\p{L}\p{N} ._'-]*$/u;
+
+/** Un pseudo refusé ne fait pas perdre la réponse : elle part sans signature. */
+export function parsePseudo(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const s = v.normalize('NFC').replace(/\s+/g, ' ').trim();
+  return s.length > 0 && s.length <= PSEUDO_MAX && PSEUDO_RE.test(s) ? s : null;
+}
 
 export interface AnswerBody {
   venueId: string;
@@ -25,6 +35,7 @@ export interface AnswerBody {
   deviceId: string;
   lat: number;
   lng: number;
+  pseudo: string | null;
 }
 
 export function parseBody(body: unknown): AnswerBody | null {
@@ -36,7 +47,7 @@ export function parseBody(body: unknown): AnswerBody | null {
   if (typeof deviceId !== 'string' || !DEVICE_RE.test(deviceId)) return null;
   if (typeof lat !== 'number' || typeof lng !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
-  return { venueId, answer: answer as Answer, deviceId, lat, lng };
+  return { venueId, answer: answer as Answer, deviceId, lat, lng, pseudo: parsePseudo(b.pseudo) };
 }
 
 export function distanceM(aLat: number, aLng: number, bLat: number, bLng: number): number {
@@ -70,7 +81,7 @@ export function createHandler(getSql: () => Sql) {
       if (req.method === 'GET') {
         const device = typeof req.query?.deviceId === 'string' ? req.query.deviceId : '';
         const rows = await sql(
-          `select venue_id, answer, device_id = $2 as mine,
+          `select venue_id, answer, pseudo, device_id = $2 as mine,
                   (extract(epoch from reported_at) * 1000)::bigint as at
              from live_reports
             where reported_at > now() - ($1 || ' minutes')::interval`,
@@ -82,6 +93,7 @@ export function createHandler(getSql: () => Sql) {
             answer: String(r.answer),
             mine: r.mine === true,
             at: Number(r.at),
+            pseudo: typeof r.pseudo === 'string' ? r.pseudo : null,
           })),
         });
       }
@@ -97,11 +109,11 @@ export function createHandler(getSql: () => Sql) {
         if (d > ZONE_M) return res.status(403).json({ error: 'too_far' });
 
         await sql(
-          `insert into live_reports (venue_id, device_id, answer)
-           values ($1, $2, $3)
+          `insert into live_reports (venue_id, device_id, answer, pseudo)
+           values ($1, $2, $3, $4)
            on conflict (venue_id, device_id)
-           do update set answer = excluded.answer, reported_at = now()`,
-          [body.venueId, body.deviceId, body.answer]
+           do update set answer = excluded.answer, pseudo = excluded.pseudo, reported_at = now()`,
+          [body.venueId, body.deviceId, body.answer, body.pseudo]
         );
         await sql(`delete from live_reports where reported_at < now() - interval '3 hours'`);
         return res.status(200).json({ ok: true });

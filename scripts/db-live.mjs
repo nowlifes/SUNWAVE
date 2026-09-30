@@ -4,7 +4,7 @@
 // Usage : node scripts/db-live.mjs [NOM_DE_LA_VARIABLE]   (défaut : DATABASE_URL)
 // La variable est lue dans l'environnement puis dans .env.local. Rejouable :
 // tout est « if not exists » / « on conflict do update ».
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { neon } from '@neondatabase/serverless';
 import { createServer } from 'vite';
 
@@ -27,7 +27,12 @@ if (!url) {
 const sql = neon(url);
 console.log(`Base visée : ${name} (hôte ${new URL(url.replace(/^postgres(ql)?:/, 'http:')).hostname})`);
 
-const statements = readFileSync('db/001_live_reports.sql', 'utf8')
+// Tous les fichiers de db/, dans l'ordre de leur numéro.
+const statements = readdirSync('db')
+  .filter((f) => f.endsWith('.sql'))
+  .sort()
+  .map((f) => readFileSync(`db/${f}`, 'utf8'))
+  .join(';\n')
   .replace(/--.*$/gm, '')
   .split(';')
   .map((s) => s.trim())

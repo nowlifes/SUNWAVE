@@ -7,6 +7,7 @@ import { SearchBar } from './SearchBar';
 import { PlaceDetailSheet } from './PlaceDetailSheet';
 import { LiveQuestion } from './LiveQuestion';
 import { liveThanks } from '@/utils/live';
+import { getPseudo, markPseudoAsked, pseudoAsked, setPseudo } from '@/utils/pseudo';
 import type { LiveAnswer } from '@/services/LiveReportService';
 import { liveReports } from '@/services/LiveReportService';
 import { isDaylight } from '@/utils/live';
@@ -126,7 +127,7 @@ export function MapScreen({
   );
   const [dismissedLiveId, setDismissedLiveId] = useState<string | null>(null);
   // Après le tap : la carte reste 3 s avec ce que la réponse a produit.
-  const [justAnswered, setJustAnswered] = useState<{ venue: Venue; answer: LiveAnswer; thanks: string; total: number } | null>(null);
+  const [justAnswered, setJustAnswered] = useState<{ venue: Venue; answer: LiveAnswer; thanks: string; total: number; askPseudo: boolean } | null>(null);
   const closeThanks = useCallback(() => setJustAnswered(null), []);
   const hereVenue = useMemo(
     () =>
@@ -370,7 +371,10 @@ export function MapScreen({
           onAnswer={(answer) => {
             if (!liveReports.submit(askLive, answer, userLocation)) return;
             const agreement = liveReports.getAgreement(askLive.id);
-            setJustAnswered({ venue: askLive, answer, thanks: liveThanks(agreement), total: agreement?.total ?? 1 });
+            // Le pseudo n'est demandé qu'une fois, juste après la toute première réponse.
+            const askPseudo = !getPseudo() && !pseudoAsked();
+            if (askPseudo) markPseudoAsked();
+            setJustAnswered({ venue: askLive, answer, thanks: liveThanks(agreement, getPseudo()), total: agreement?.total ?? 1, askPseudo });
           }}
           onDismiss={() => setDismissedLiveId(askLive.id)}
         />
@@ -383,6 +387,14 @@ export function MapScreen({
           onDismiss={closeThanks}
           answered={justAnswered}
           onDone={closeThanks}
+          onPseudo={(pseudo) => {
+            if (pseudo) {
+              setPseudo(pseudo);
+              // Renvoie la même réponse, signée cette fois (le serveur remplace).
+              liveReports.submit(justAnswered.venue, justAnswered.answer, userLocation);
+            }
+            closeThanks();
+          }}
         />
       )}
 

@@ -29,13 +29,14 @@ export function liveLabel(answer: LiveAnswer): string {
 export const LIVE_WHY = 'Ta réponse aide ceux qui hésitent à venir.';
 
 /** Le retour après le tap : ce que la réponse a produit, sans chiffre inventé. */
-export function liveThanks(agreement: { same: number; total: number } | null): string {
+export function liveThanks(agreement: { same: number; total: number } | null, pseudo: string | null = null): string {
+  const merci = pseudo ? `Merci ${pseudo}` : 'Merci';
   if (!agreement || agreement.total <= 1) {
-    return 'Merci — tu es le premier ici. Ton avis sera vu pendant 45 min par ceux qui cherchent autour de toi.';
+    return `${merci} — tu es le premier ici. Ton avis sera vu pendant 45 min par ceux qui cherchent autour de toi.`;
   }
   const others = agreement.same - 1;
-  if (others === 0) return 'Merci — ton avis compte : les autres réponses ici sont différentes. Il reste affiché 45 min.';
-  return `Merci — ${others === 1 ? '1 autre personne a confirmé' : `${others} autres personnes ont confirmé`} la même chose. Ton avis reste affiché 45 min.`;
+  if (others === 0) return `${merci} — ton avis compte : les autres réponses ici sont différentes. Il reste affiché 45 min.`;
+  return `${merci} — ${others === 1 ? '1 autre personne a confirmé' : `${others} autres personnes ont confirmé`} la même chose. Ton avis reste affiché 45 min.`;
 }
 
 export function liveCount(total: number): string {
@@ -53,8 +54,15 @@ export function liveAge(ageMin: number): string {
   return ageMin < 1 ? "à l'instant" : `il y a ${ageMin} min`;
 }
 
-export function liveWho(count: number): string {
+/** `by` : le pseudo de la voix la plus récente, s'il y en a un. */
+export function liveWho(count: number, by: string | null = null): string {
+  if (by) return count <= 1 ? `confirmé par ${by}` : `confirmé par ${by} et ${count - 1} autre${count > 2 ? 's' : ''}`;
   return count === 1 ? 'confirmé par 1 personne' : `confirmé par ${count} personnes`;
+}
+
+/** L'accueil de Maintenant, quand on a choisi un pseudo. */
+export function liveHello(pseudo: string | null): string {
+  return pseudo ? `Salut ${pseudo}.` : '';
 }
 
 /** « Il reste des places au soleil ? » n'a de sens que de jour : la nuit, on ne demande pas. */

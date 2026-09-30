@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { PSEUDO_MAX, normalizePseudo } from '@/utils/pseudo';
 import type { Venue, SunMode } from '@/types';
 import type { LiveAnswer } from '@/services/LiveReportService';
 import { LIVE_ANSWERS, LIVE_WHY, liveCount, liveLabel, liveQuestion } from '@/utils/live';
@@ -11,20 +12,35 @@ interface LiveQuestionProps {
   onAnswer: (answer: LiveAnswer) => void;
   onDismiss: () => void;
   /** Après le tap : la réponse donnée, le retour à afficher et le nombre de voix. */
-  answered?: { answer: LiveAnswer; thanks: string; total: number };
+  answered?: { answer: LiveAnswer; thanks: string; total: number; askPseudo?: boolean };
   onDone?: () => void;
+  /** Après la toute première réponse : le pseudo choisi, ou null pour « plus tard ». */
+  onPseudo?: (pseudo: string | null) => void;
 }
 
 /** « Il reste des tables au soleil ? » — posée à celui qui est sur place, un tap
  *  pour répondre, un tap pour passer. Elle ne revient pas tant qu'on a répondu.
  *  Même carte que l'écran Maintenant : crème, bordure encre, ombre dure.
  *  Après le tap, la carte reste 3 s avec un sticker qui dit ce que la réponse a produit. */
-export function LiveQuestion({ venue, mode, onAnswer, onDismiss, answered, onDone }: LiveQuestionProps) {
+export function LiveQuestion({ venue, mode, onAnswer, onDismiss, answered, onDone, onPseudo }: LiveQuestionProps) {
+  const askPseudo = !!answered?.askPseudo && !!onPseudo;
+  const [draft, setDraft] = useState('');
+  const [invalid, setInvalid] = useState(false);
+  // Pendant qu'on tape son pseudo, la carte ne se ferme pas toute seule.
   useEffect(() => {
-    if (!answered || !onDone) return;
+    if (!answered || !onDone || askPseudo) return;
     const t = setTimeout(onDone, 3200);
     return () => clearTimeout(t);
-  }, [answered, onDone]);
+  }, [answered, onDone, askPseudo]);
+
+  const savePseudo = () => {
+    const p = normalizePseudo(draft);
+    if (!p) {
+      setInvalid(true);
+      return;
+    }
+    onPseudo?.(p);
+  };
 
   return (
     <div className="pointer-events-none absolute inset-x-4 top-[calc(env(safe-area-inset-top)+58px)] z-20 flex flex-col gap-3">
@@ -81,6 +97,49 @@ export function LiveQuestion({ venue, mode, onAnswer, onDismiss, answered, onDon
         <p className="mt-3 text-[13px] font-medium leading-snug text-day-sub">
           {answered ? liveCount(answered.total) : LIVE_WHY}
         </p>
+        {askPseudo && (
+          <form
+            className="mt-3 border-t-[1.5px] border-dashed border-ink/30 pt-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              savePseudo();
+            }}
+          >
+            <label htmlFor="live-pseudo" className="block font-display text-[15px] font-extrabold leading-snug">
+              Tu signes tes réponses ?
+            </label>
+            <p className="mt-0.5 text-[12.5px] leading-snug text-day-sub">Les autres verront « confirmé par … ». Un pseudo, pas ton vrai nom.</p>
+            <div className="mt-2 flex gap-2">
+              <input
+                id="live-pseudo"
+                value={draft}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  setInvalid(false);
+                }}
+                maxLength={PSEUDO_MAX}
+                autoComplete="nickname"
+                placeholder="Ton pseudo"
+                aria-invalid={invalid}
+                className="min-h-11 min-w-0 flex-1 rounded-[12px] border-[1.5px] border-ink bg-white px-3 text-[15px] font-semibold outline-none focus:shadow-[2px_2px_0_#0B1A45]"
+              />
+              <button
+                type="submit"
+                className="min-h-11 rounded-[12px] border-[1.5px] border-ink bg-dusk-fire px-4 font-display text-[14px] font-extrabold shadow-[3px_3px_0_#0B1A45] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none transition-[transform,box-shadow] motion-reduce:transition-none"
+              >
+                OK
+              </button>
+            </div>
+            {invalid && (
+              <p role="alert" className="mt-1.5 text-[12.5px] font-semibold text-day-ember">
+                Lettres, chiffres, espaces et . _ ' - seulement.
+              </p>
+            )}
+            <button type="button" onClick={() => onPseudo?.(null)} className="mt-1 min-h-11 text-[13px] font-semibold text-day-sub underline underline-offset-2">
+              Plus tard
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { MapService } from './MapService';
 import type { GeoPoint } from '@/types';
+import { getPseudo } from '@/utils/pseudo';
 
 // ---------------------------------------------------------------------------
 // « Il reste des places au soleil ? » — la réponse de ceux qui sont là.
@@ -22,6 +23,8 @@ export interface LiveRecord {
   answer: LiveAnswer;
   at: number;
   deviceId: string;
+  /** Le pseudo de l'auteur au moment de la réponse, s'il en avait un. */
+  pseudo?: string | null;
 }
 
 export interface LiveState {
@@ -30,6 +33,8 @@ export interface LiveState {
   count: number;
   /** Minutes depuis la réponse la plus récente. */
   ageMin: number;
+  /** Pseudo de la voix la plus récente parmi celles de l'avis retenu. */
+  by: string | null;
 }
 
 /** Où sont rangées les réponses. Aujourd'hui l'appareil ; demain un serveur. */
@@ -81,12 +86,13 @@ export class HttpLiveRemote implements LiveRemote {
   async fetchAll(deviceId: string): Promise<LiveRecord[]> {
     const res = await fetch(`${this.base}?deviceId=${encodeURIComponent(deviceId)}`);
     if (!res.ok) throw new Error(`live ${res.status}`);
-    const body = (await res.json()) as { records?: { venueId: string; answer: LiveAnswer; at: number; mine: boolean }[] };
+    const body = (await res.json()) as { records?: { venueId: string; answer: LiveAnswer; at: number; mine: boolean; pseudo?: string | null }[] };
     return (body.records ?? []).map((r, i) => ({
       venueId: r.venueId,
       answer: r.answer,
       at: r.at,
       deviceId: r.mine ? deviceId : `other:${i}`,
+      pseudo: r.pseudo ?? null,
     }));
   }
 
@@ -100,6 +106,7 @@ export class HttpLiveRemote implements LiveRemote {
         deviceId: record.deviceId,
         lat: user.lat,
         lng: user.lng,
+        pseudo: record.pseudo ?? null,
       }),
     });
     if (!res.ok) throw new Error(`live ${res.status}`);
@@ -128,7 +135,8 @@ export class LiveReportService {
   constructor(
     private readonly store: LiveStore = new LocalLiveStore(),
     private readonly deviceId: string = localDeviceId(),
-    private readonly remote?: LiveRemote
+    private readonly remote?: LiveRemote,
+    private readonly pseudoOf: () => string | null = () => null
   ) {
     this.records = store.load();
   }
@@ -149,7 +157,7 @@ export class LiveReportService {
     this.records = this.records
       .filter((r) => !(r.venueId === venue.id && r.deviceId === this.deviceId))
       .filter((r) => now - r.at <= LIVE_TTL_MS);
-    this.records.push({ venueId: venue.id, answer, at: now, deviceId: this.deviceId });
+    this.records.push({ venueId: venue.id, answer, at: now, deviceId: this.deviceId, pseudo: this.pseudoOf() });
     this.commit();
     // La réponse s'affiche tout de suite ; le serveur la valide de son côté
     // (zone refaite là-bas) et `refresh` remet chacun d'accord.
@@ -221,7 +229,8 @@ export class LiveReportService {
     }
     const [level] = [...tally.entries()].sort((a, b) => b[1].n - a[1].n || b[1].last - a[1].last)[0];
     const latest = Math.max(...rows.map((r) => r.at));
-    return { level, count: rows.length, ageMin: Math.floor((now - latest) / 60_000) };
+    const voice = rows.filter((r) => r.answer === level).sort((a, b) => b.at - a.at)[0];
+    return { level, count: rows.length, ageMin: Math.floor((now - latest) / 60_000), by: voice.pseudo ?? null };
   }
 
   /** Combien de voix valides disent comme nous sur ce lieu (la nôtre comprise),
@@ -245,6 +254,6 @@ export class LiveReportService {
   }
 }
 
-export const liveReports = new LiveReportService(undefined, undefined, new HttpLiveRemote());
+export const liveReports = new LiveReportService(undefined, undefined, new HttpLiveRemote(), getPseudo);
 // Démarre à l'import, dans le navigateur seulement (ni tests ni scripts Node).
 if (typeof window !== 'undefined') liveReports.startPolling();

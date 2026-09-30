@@ -15,7 +15,8 @@ import { inviteText, inviteUrl, shareInvite } from '@/utils/share';
 import { LIGHT, NIGHT } from '@/utils/palette';
 import { HaloIcon, LiveGlyph } from './Halo';
 import { liveReports } from '@/services/LiveReportService';
-import { LIVE_SHORT, liveAge, liveWho } from '@/utils/live';
+import { LIVE_SHORT, liveAge, liveHello, liveWho } from '@/utils/live';
+import { getPseudo, subscribePseudo } from '@/utils/pseudo';
 import { lightCut } from '@/utils/lightCut';
 
 // ---------------------------------------------------------------------------
@@ -78,6 +79,8 @@ export function NowScreen({
   // premier choix qui ne plaît pas ne doit jamais être une impasse. C'est ce
   // qui rend une réponse unique sans risque.
   const [pickIndex, setPickIndex] = useState(0);
+  // « Salut Léa. » en tête du ciel, dès qu'un pseudo est choisi.
+  const hello = liveHello(useSyncExternalStore(subscribePseudo, getPseudo));
 
   const answers = useMemo(
     () => RecommendationService.getAnswerList(mode, userLocation, currentDate, [], undefined, 6),
@@ -190,6 +193,7 @@ export function NowScreen({
     <div className={`absolute inset-0 overflow-y-auto pb-24 ${tone.screen}`}>
       {/* --- le ciel de cette minute, et ce qu'il reste de jour ---------------- */}
       <SkyHeader date={currentDate} sunrise={sunrise} sunset={sunset} mode={mode} onModeChange={onModeChange} place={place}>
+        {hello && <span className="font-semibold">{hello} </span>}
         {phase === 'day' ? (
           <>
             Le soleil quitte {placeInSentence} dans <span className="font-semibold">{formatGap(minutesToSunset)}</span>.
@@ -486,7 +490,7 @@ function AnswerCard({
             {live ? (
               <span>
                 <span className="font-bold">{LIVE_SHORT[live.level]}</span>
-                <span className={tone.sub}> · {liveWho(live.count)}, {liveAge(live.ageMin)}</span>
+                <span className={tone.sub}> · {liveWho(live.count, live.by)}, {liveAge(live.ageMin)}</span>
               </span>
             ) : (
               <span className={tone.sub}>Pas encore confirmé sur place. Sois le premier.</span>

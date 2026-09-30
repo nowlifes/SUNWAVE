@@ -16,23 +16,25 @@ function fakeRes() {
 /** Une base minimale : coordonnées des lieux + le journal des écritures. */
 function fakeDb(venues: Record<string, { lat: number; lng: number }>) {
   const writes: string[] = [];
+  const params: unknown[][] = [];
   const sql: Sql = async (q, p = []) => {
     if (q.includes('from live_venues')) {
       const v = venues[String(p[0])];
       return v ? [v] : [];
     }
     if (q.includes('from live_reports')) {
-      return [{ venue_id: 'v1', answer: 'few', mine: true, at: 1700000000000 }];
+      return [{ venue_id: 'v1', answer: 'few', mine: true, at: 1700000000000, pseudo: 'Léa' }];
     }
     writes.push(q.trim().split(/\s+/).slice(0, 2).join(' '));
+    params.push(p);
     return [];
   };
-  return { sql, writes };
+  return { sql, writes, params };
 }
 
 describe('api/live — validation', () => {
   it('accepte une réponse bien formée', () => {
-    expect(parseBody(good)).toEqual(good);
+    expect(parseBody(good)).toEqual({ ...good, pseudo: null });
   });
   it.each([
     ['réponse inconnue', { ...good, answer: 'maybe' }],
@@ -95,6 +97,31 @@ describe('api/live — handler', () => {
     const { res, out } = fakeRes();
     await createHandler(() => sql)({ method: 'DELETE' }, res);
     expect(out.code).toBe(405);
+  });
+});
+
+describe('api/live — pseudo', () => {
+  const venues = { v1: { lat: 38.7139, lng: -9.1394 } };
+
+  it('accepte un pseudo propre, ignore un pseudo sale sans perdre la réponse', () => {
+    expect(parseBody({ ...good, pseudo: 'Léa' })?.pseudo).toBe('Léa');
+    expect(parseBody({ ...good, pseudo: '<script>' })?.pseudo).toBeNull();
+    expect(parseBody({ ...good, pseudo: 'a'.repeat(21) })?.pseudo).toBeNull();
+    expect(parseBody(good)?.pseudo).toBeNull();
+  });
+
+  it('écrit le pseudo avec la réponse', async () => {
+    const { sql, params } = fakeDb(venues);
+    const { res } = fakeRes();
+    await createHandler(() => sql)({ method: 'POST', body: { ...good, pseudo: 'Léa' } }, res);
+    expect(params[0]).toContain('Léa');
+  });
+
+  it('renvoie le pseudo au GET', async () => {
+    const { sql } = fakeDb(venues);
+    const { res, out } = fakeRes();
+    await createHandler(() => sql)({ method: 'GET', query: { deviceId: 'd_abc123xyz' } }, res);
+    expect((out.body as { records: { pseudo: string | null }[] }).records[0].pseudo).toBe('Léa');
   });
 });
 
