@@ -1005,12 +1005,13 @@ export function MapView({
         {!edgeIsSun && edgeLabel}
       </button>
 
-      {/* Toi hors de l'écran : pas de halo, un bouton. */}
+      {/* Toi hors de l'écran : pas de halo, un bouton — sous l'interrupteur
+          Soleil/Ombre de la carte claire, qui tient le coin haut droit. */}
       {youOff && onRecenter && (
         <button
           type="button"
           onClick={onRecenter}
-          className="absolute right-4 top-[calc(env(safe-area-inset-top)+12px)] z-20 flex min-h-11 items-center gap-2 rounded-full border border-dusk-line bg-dusk-deep pl-2.5 pr-4 text-[13px] font-bold text-dusk-shell active:scale-95 transition-transform motion-reduce:transition-none"
+          className={`absolute right-4 ${CLAIR ? 'top-[calc(env(safe-area-inset-top)+68px)]' : 'top-[calc(env(safe-area-inset-top)+12px)]'} z-20 flex min-h-11 items-center gap-2 rounded-full border border-dusk-line bg-dusk-deep pl-2.5 pr-4 text-[13px] font-bold text-dusk-shell active:scale-95 transition-transform motion-reduce:transition-none`}
         >
           <HaloIcon kind="you" tone="night" size={22} />
           Revenir sur moi

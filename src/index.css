@@ -248,6 +248,53 @@ body {
 .titre-sticker::before { left: -18px; }
 .titre-sticker::after { right: -18px; transform: scaleX(-1); }
 
+/* Interrupteur Soleil/Ombre de la carte claire, en haut à droite : même
+   matière que la loupe (trait d'encre, ombre dure) ; la piste prend la
+   couleur du mode, le pouce jaune glisse. */
+.mode-switch {
+  display: flex;
+  align-items: center;
+  width: 124px;
+  height: 44px;
+  padding: 0 4px;
+  border: 1.5px solid #0B1A45;
+  border-radius: 999px;
+  box-shadow: 2px 2px 0 #0B1A45;
+  color: #0B1A45;
+  transition: background-color 0.3s, transform 0.15s;
+}
+.mode-switch[data-mode='soleil'] { background: #FF6A2B; }
+.mode-switch[data-mode='ombre'] { background: #2E6FF2; color: #FFF1D6; }
+.mode-switch-label {
+  flex: 1;
+  font-family: 'Funnel Display', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+  transition: transform 0.3s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.mode-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  border: 1.5px solid #0B1A45;
+  border-radius: 999px;
+  background: #FFE14D;
+  color: #0B1A45;
+  transition: transform 0.3s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+/* Soleil : pouce à droite, libellé à gauche ; Ombre : l'inverse. */
+.mode-switch[data-mode='soleil'] .mode-switch-thumb { transform: translateX(83px); }
+.mode-switch[data-mode='soleil'] .mode-switch-label { transform: translateX(-18px); }
+.mode-switch[data-mode='ombre'] .mode-switch-label { transform: translateX(18px); }
+@media (prefers-reduced-motion: reduce) {
+  .mode-switch, .mode-switch-label, .mode-switch-thumb { transition: none; }
+}
+
 /* Chercher un lieu, ancré en haut de la carte : même matière que les bulles
    des lieux (crème, trait d'encre) ; en mode Ombre, la loupe prend l'eau. */
 .map-search-btn {
