@@ -166,6 +166,17 @@ export function skyBands(c: Circadian, n: number): string[] {
   return Array.from({ length: n }, (_, i) => mix(c.sky[0], c.sky[1], n === 1 ? 1 : i / (n - 1)));
 }
 
+export type VenueLight = 'sun' | 'shade' | 'night';
+
+/** Le liseré d'une carte de lieu (Explorer, Favoris) : la lumière propre au
+ *  lieu. `c` est le cycle du mode Soleil — c'est la lumière du lieu, pas le
+ *  mode de l'écran. */
+export function cardLight(c: Circadian, light: VenueLight): string {
+  if (light === 'sun') return c.deep;
+  if (light === 'shade') return '#2E6FF2';
+  return '#1E2A66';
+}
+
 /** La barre du navigateur (`<meta theme-color>`) prolonge le haut de l'écran :
  *  la feuille en Soleil, le haut du ciel en Ombre. */
 export function themeColor(c: Circadian, mode: SunMode): string {

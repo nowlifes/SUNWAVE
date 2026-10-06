@@ -301,6 +301,7 @@ export default function App() {
         {screen === 'saved' && (
           <SavedScreen
             savedVenues={savedVenues}
+            mode={mode}
             currentDate={currentDate}
             userLocation={userLocation}
             onVenueSelect={handleVenueSelect}

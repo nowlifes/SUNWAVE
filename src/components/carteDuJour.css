@@ -440,3 +440,23 @@ button.cdj-st::before { content: ""; position: absolute; inset: -8px 0; }
 @media (prefers-reduced-motion: reduce) {
   .cdj * { transition: none !important; }
 }
+
+/* ---------------------------------------------------------------------------
+   Cycle circadien sur l'Explorer et les Favoris (useCycleScreen) : le fond
+   prend la teinte profonde de l'heure, chaque carte la lumière de son lieu.
+   --------------------------------------------------------------------------- */
+.cdj[data-cycle]:not(.cdj-sheet) { background: var(--cyc-ground); }
+.cdj[data-cycle][data-fg='cream'] { color: var(--cream); --sub: rgba(255, 241, 214, .78); }
+.cdj[data-cycle] :is(.cdj-card, .cdj-ticket, .cdj-fav) { color: var(--ink); --sub: #34487A; }
+.cdj[data-cycle] .cdj-fhead { background: transparent; }
+.cdj[data-cycle][data-fg='cream'] .cdj-dot.o { border-color: var(--cream); }
+/* Le point « Bons maintenant » ne se perd pas sur le fond orange. */
+.cdj[data-cycle] .cdj-dot:not(.o) { border: 1.5px solid var(--ink); }
+/* Un liseré de la lumière du lieu, côté gauche : couleur de l'heure au soleil,
+   bleu à l'ombre, encre la nuit. La carte reste crème, le contraste aussi. */
+.cdj[data-cycle] :is(.cdj-ticket, .cdj-fav)[data-light] {
+  padding-left: 22px;
+  box-shadow: inset 8px 0 0 var(--cyc-edge), var(--sx) var(--sy) 0 var(--ink);
+}
+.cdj[data-cycle] .cdj-fav.later[data-light] { box-shadow: inset 8px 0 0 var(--cyc-edge), calc(var(--sx) * .6) calc(var(--sy) * .6) 0 var(--ink); }
+.cdj[data-cycle] .cdj-fav.off[data-light] { box-shadow: inset 8px 0 0 var(--cyc-edge); }
