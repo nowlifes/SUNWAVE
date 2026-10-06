@@ -85,9 +85,9 @@ export function PlaceDetailSheet({
   const isSun = mode === 'SUN';
   const lightVars = useLightVars(currentDate);
   // Cycle circadien : le ciel du lieu suit l'heure ; la feuille prend la
-  // couleur de la feuille de Maintenant (Soleil) ou le bas du ciel (Ombre).
+  // teinte profonde de l'heure, pour que la carte crème se détache.
   const cyc = useMemo(() => (CYCLE ? circadian(currentDate, mode) : null), [currentDate, mode]);
-  const ground = cyc ? (isSun ? cyc.sheet : cyc.sky[1]) : undefined;
+  const ground = cyc?.deep;
   const sheetStyle = useMemo(
     () => (ground ? ({ ...lightVars, '--cyc-ground': ground } as CSSProperties) : lightVars),
     [lightVars, ground]

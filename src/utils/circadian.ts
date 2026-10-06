@@ -24,6 +24,9 @@ export const CYCLE = !(typeof window !== 'undefined' && new URLSearchParams(wind
 export interface Circadian {
   /** Fond de la feuille en mode Soleil. */
   sheet: string;
+  /** Fond sous une carte crème (fiche, Explorer, Favoris) : la teinte de
+   *  l'heure, assez profonde pour que la carte se détache. */
+  deep: string;
   /** Ciel du mode Ombre, haut puis bas. */
   sky: [string, string];
   /** Couleur du texte posé en haut du fond du mode courant. */
@@ -50,6 +53,21 @@ const SUN_KEYS = (sr: number, noon: number, ss: number): Key<string>[] => [
   [ss - 50, '#FF7A35'],
   [ss, '#F2645E'],
   [ss + 30, '#8E63C9'],
+  [ss + 75, '#1E2A66'],
+];
+
+// La même course que la feuille, en plus saturé : un pastel noie la carte
+// crème. L'orange plein reste réservé à l'heure dorée.
+const DEEP_KEYS = (sr: number, noon: number, ss: number): Key<string>[] => [
+  [sr - 60, '#1E2A66'],
+  [sr - 20, '#4A5BB8'],
+  [sr + 15, '#E8687A'],
+  [sr + 100, '#FF9440'],
+  [noon, '#FFB81F'],
+  [ss - 130, '#FF9A26'],
+  [ss - 50, '#FF6A2B'],
+  [ss, '#E84A4A'],
+  [ss + 30, '#7650BE'],
   [ss + 75, '#1E2A66'],
 ];
 
@@ -181,6 +199,8 @@ export function circadian(date: Date, mode: SunMode): Circadian {
   };
   return {
     sheet,
+    // En Ombre, le haut du ciel : le bleu franc derrière la carte crème.
+    deep: mode === 'SUN' ? along(DEEP_KEYS(sr, noon, ss), 0) : sky[0],
     sky,
     fg,
     fgLow: mode === 'SUN' ? fg : textOn(sky[1]),

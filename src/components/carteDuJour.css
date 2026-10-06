@@ -274,6 +274,9 @@ button.cdj-st::before { content: ""; position: absolute; inset: -8px 0; }
 .cdj-sheet[data-cycle] { background: var(--cyc-ground); }
 .cdj-sheet[data-cycle] .cdj-handle { background: var(--cyc-ground); }
 .cdj-sheet[data-cycle][data-fg='cream'] .cdj-handle > div { background: rgba(255, 241, 214, .4); }
+/* En Ombre, le bouton plein reprend le jaune du « Y aller » : le bleu pâle
+   s'effaçait sur la carte crème. */
+.cdj-sheet[data-cycle] .cdj-sheet-card.shade .cdj-cta button:not(.g) { background: #FFE14D; }
 .cdj-sheet-title { margin: 0; font: 800 30px/1 'Funnel Display', system-ui, sans-serif; letter-spacing: -.02em; text-wrap: balance; }
 .cdj-sheet-sub { margin: 6px 0 0; font-size: 13.5px; font-weight: 600; color: var(--sub); }
 .cdj-sheet-status { margin: 14px 0 0; font: 800 26px/1.1 'Funnel Display', system-ui, sans-serif; letter-spacing: -.01em; }

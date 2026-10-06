@@ -79,3 +79,26 @@ describe('circadian — le ciel de la fiche', () => {
     expect(skyBands(circadian(at('09:30'), 'SUN'), 4)).toEqual(skyBands(circadian(at('09:30'), 'SHADE'), 4));
   });
 });
+
+describe('circadian — le fond sous une carte crème', () => {
+  const CREAM = luminance('#FFF1D6');
+  const ratio = (h: string) => (CREAM + 0.05) / (luminance(h) + 0.05);
+
+  it('la carte crème se détache à toute heure, dans les deux modes', () => {
+    for (let m = 0; m < 24 * 60; m += 15) {
+      const hhmm = `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+      for (const mode of ['SUN', 'SHADE'] as const) {
+        expect(ratio(circadian(at(hhmm), mode).deep), `${mode} ${hhmm}`).toBeGreaterThanOrEqual(1.4);
+      }
+    }
+  });
+
+  it("l'orange plein reste un moment : heure dorée oui, midi non", () => {
+    const [r, g, b] = rgb(circadian(at('18:25'), 'SUN').deep);
+    expect(r).toBeGreaterThan(230);
+    expect(g).toBeLessThan(130);
+    expect(b).toBeLessThan(80);
+    const [, gNoon] = rgb(circadian(at('13:20'), 'SUN').deep);
+    expect(gNoon).toBeGreaterThan(150);
+  });
+});
