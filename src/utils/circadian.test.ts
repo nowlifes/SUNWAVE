@@ -41,6 +41,16 @@ describe('circadian — le texte reste lisible', () => {
   });
 });
 
+describe('circadian — la carte', () => {
+  it('pas de voile à midi, un voile chaud au soir, épais la nuit', () => {
+    expect(circadian(at('13:20'), 'SUN').map.tintOpacity).toBeLessThan(0.03);
+    const golden = circadian(at('18:25'), 'SUN').map;
+    expect(golden.tintOpacity).toBeGreaterThan(0.1);
+    expect(rgb(golden.tint)[0]).toBeGreaterThan(rgb(golden.tint)[2]);
+    expect(circadian(at('23:00'), 'SUN').map.tintOpacity).toBeGreaterThan(0.5);
+  });
+});
+
 describe("circadian — l'ombre portée", () => {
   it('part à droite le matin, à gauche le soir, disparaît la nuit', () => {
     expect(circadian(at('09:30'), 'SUN').shadow!.x).toBeGreaterThan(0);

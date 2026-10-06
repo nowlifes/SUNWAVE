@@ -231,7 +231,7 @@ export function NowScreen({
             <p className="bain-clock">{formatLisbonTime(currentDate)}</p>
           </div>
           {/* `relative` : le pouce est en absolu, il se cale sur la piste. */}
-          <ModeSwitch mode={mode} onModeChange={onModeChange} className="relative shrink-0" />
+          <ModeSwitch mode={mode} onModeChange={onModeChange} className="relative shrink-0" tint={cyc && { bg: cyc.sheet, fg: cyc.fg }} />
         </div>
         <p className="bain-said">
           {hello && <span className="font-bold">{hello} </span>}

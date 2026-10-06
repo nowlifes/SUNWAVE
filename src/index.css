@@ -543,3 +543,31 @@ body {
   --b-hair: rgba(255, 241, 214, 0.22);
   --b-key: #FFE14D;
 }
+
+/* Cycle circadien sur la feuille de la carte : même fond que Maintenant.
+   `data-bain` y choisit seulement l'encre ou le crème (voir MapScreen). */
+.clair-sheet[data-cycle][data-cyc-mode='soleil'] {
+  background: var(--cyc-sheet) !important;
+  animation: none;
+}
+.clair-sheet[data-cycle][data-sunup][data-cyc-mode='soleil'] {
+  background: repeating-conic-gradient(from var(--rayons) at 100% 0, rgba(255, 225, 77, 0.24) 0 5deg, transparent 5deg 15deg), var(--cyc-sheet) !important;
+  animation: soleil-rayons 8s linear infinite;
+}
+.clair-sheet[data-cycle][data-cyc-mode='ombre'] {
+  background: linear-gradient(180deg, var(--cyc-sky-top), var(--cyc-sky-bot)) !important;
+  animation: none;
+}
+/* La bascule posée sur un fond sombre : son trait passe au crème. */
+.bain[data-cycle][data-fg='cream'] .mode-switch {
+  border-color: #FFF1D6;
+  box-shadow: 2px 2px 0 rgba(255, 241, 214, 0.5);
+}
+/* La nuit, la feuille passe au crème (data-bain='ombre') même en Soleil :
+   l'invite et le bouton reprennent les tons du grand bain. */
+.clair-sheet[data-cycle][data-bain='ombre'] .text-dusk-glow { color: rgba(255, 241, 214, 0.72) !important; }
+.clair-sheet[data-cycle][data-bain='ombre'] .bg-dusk-fire {
+  background-color: #FFE14D !important;
+  color: #0B1A45 !important;
+  border-color: transparent !important;
+}

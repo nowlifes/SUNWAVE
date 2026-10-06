@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { Venue, SunMode, VenueCategory, GeoPoint, WeatherData, Recommendation } from '@/types';
 import { MapView, type ProbeView } from './MapView';
 import { TimeSlider } from './TimeSlider';
@@ -7,6 +7,7 @@ import { DayRibbon } from './DayRibbon';
 import { SearchBar } from './SearchBar';
 import { PlaceDetailSheet } from './PlaceDetailSheet';
 import { ModeSwitch } from './ModeSwitch';
+import { CYCLE, circadian, textOn as textTone } from '@/utils/circadian';
 import { LiveQuestion } from './LiveQuestion';
 import { liveThanks } from '@/utils/live';
 import { getPseudo, markPseudoAsked, pseudoAsked, setPseudo } from '@/utils/pseudo';
@@ -345,6 +346,11 @@ export function MapScreen({
   // Carte claire : la feuille prend la couleur du mode — l'eau en Ombre,
   // l'orange du transat en Soleil (la fiche d'un lieu garde sa feuille crème).
   const bain = CLAIR && layer !== 'place';
+  // Cycle circadien : la feuille et la bascule prennent la couleur de l'heure
+  // (voir utils/circadian). Le texte suit la clarté du milieu de la feuille :
+  // `data-bain` choisit les règles d'encre (soleil) ou de crème (ombre).
+  const cyc = useMemo(() => (CYCLE && CLAIR ? circadian(currentDate, mode) : null), [currentDate, mode]);
+  const cycTint = cyc && { bg: cyc.sheet, fg: textTone(cyc.sheet) };
 
   return (
     <div className="relative h-full w-full bg-dusk-night">
@@ -396,6 +402,7 @@ export function MapScreen({
           onClick={() => setSearchOpen(true)}
           aria-label="Chercher un lieu"
           data-mode={CLAIR ? (mode === 'SUN' ? 'soleil' : 'ombre') : undefined}
+          style={cycTint && mode === 'SUN' ? { background: cycTint.bg, color: cycTint.fg === 'ink' ? '#0B1A45' : '#FFF1D6' } : undefined}
           className="map-search-btn absolute left-4 top-[calc(env(safe-area-inset-top)+12px)] z-20 flex h-11 w-11 items-center justify-center rounded-full active:scale-95 transition-transform motion-reduce:transition-none"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
@@ -411,6 +418,7 @@ export function MapScreen({
           mode={mode}
           onModeChange={onModeChange}
           className="absolute right-4 top-[calc(env(safe-area-inset-top)+12px)] z-20"
+          tint={cycTint}
         />
       )}
 
@@ -455,7 +463,15 @@ export function MapScreen({
         <div
           ref={panelRef}
           className={`relative rounded-t-[28px] border-t border-dusk-line bg-dusk-night pb-2 text-dusk-shell shadow-[0_-8px_24px_rgba(8,20,58,0.45)]${CLAIR ? ' clair-sheet' : ''}`}
-          data-bain={bain ? (mode === 'SUN' ? 'soleil' : 'ombre') : undefined}
+          data-bain={bain ? (cyc ? (cyc.fgMid === 'ink' ? 'soleil' : 'ombre') : mode === 'SUN' ? 'soleil' : 'ombre') : undefined}
+          data-cycle={bain && cyc ? '' : undefined}
+          data-cyc-mode={bain && cyc ? (mode === 'SUN' ? 'soleil' : 'ombre') : undefined}
+          data-sunup={bain && cyc?.shadow ? '' : undefined}
+          style={
+            bain && cyc
+              ? ({ '--cyc-sheet': cyc.sheet, '--cyc-sky-top': cyc.sky[0], '--cyc-sky-bot': cyc.sky[1] } as CSSProperties)
+              : undefined
+          }
         >
           {layer === 'place' && selectedRec ? (
             <PlaceCard

@@ -30,6 +30,10 @@ export interface Circadian {
   fg: 'ink' | 'cream';
   /** Idem en bas de l'écran : le ciel du soir est sombre en haut, pêche en bas. */
   fgLow: 'ink' | 'cream';
+  /** Idem au milieu du ciel : pour une feuille courte posée en bas (carte). */
+  fgMid: 'ink' | 'cream';
+  /** La carte : un voile de l'heure posé sur le fond, l'eau, les ombres, la lumière. */
+  map: { tint: string; tintOpacity: number; water: string; shadow: string; sun: string };
   /** Décalage de l'ombre portée, en px ; null quand le soleil est couché. */
   shadow: { x: number; y: number } | null;
 }
@@ -59,6 +63,46 @@ const SKY_KEYS = (sr: number, noon: number, ss: number): Key<[string, string]>[]
   [ss + 35, ['#22285E', '#8A62C2']],
   [ss + 75, ['#0E1640', '#26306E']],
 ];
+
+// La carte : rien à midi (la carte claire validée), un voile chaud à l'heure
+// dorée, rose à l'aube, bleu nuit la nuit.
+const TINT_KEYS = (sr: number, noon: number, ss: number): Key<string>[] => [
+  [sr - 60, '#141C4A'],
+  [sr - 10, '#4A4F9E'],
+  [sr + 30, '#F4A3A0'],
+  [sr + 120, '#FFE3C2'],
+  [noon, '#FFE3C2'],
+  [ss - 120, '#FFD28A'],
+  [ss - 50, '#FF9A4D'],
+  [ss, '#F2645E'],
+  [ss + 30, '#5B3F9E'],
+  [ss + 75, '#141C4A'],
+];
+const TINT_OPACITY = (sr: number, noon: number, ss: number): [number, number][] => [
+  [sr - 60, 0.6], [sr - 10, 0.35], [sr + 30, 0.14], [sr + 120, 0.05], [noon, 0],
+  [ss - 120, 0.05], [ss - 50, 0.16], [ss, 0.22], [ss + 30, 0.38], [ss + 75, 0.6],
+];
+const WATER_KEYS = (sr: number, noon: number, ss: number): Key<string>[] => [
+  [sr - 60, '#26306E'], [sr + 30, '#9AA6DA'], [noon, '#8EA6E0'], [ss - 50, '#9D9BD8'], [ss, '#8A7BC8'], [ss + 75, '#26306E'],
+];
+const SHADOW_KEYS = (sr: number, noon: number, ss: number): Key<string>[] => [
+  [sr, '#B9B2DE'], [sr + 120, '#AEBDE3'], [noon, '#AEBDE3'], [ss - 120, '#AEBDE3'], [ss - 30, '#B3A6D9'], [ss, '#A99AD2'],
+];
+const LIGHT_KEYS = (sr: number, noon: number, ss: number): Key<string>[] => [
+  [sr, '#FFC9B0'], [sr + 120, '#FFD9A8'], [noon, '#FFD28A'], [ss - 120, '#FFC870'], [ss - 40, '#FFA552'], [ss, '#FF8A5C'],
+];
+
+function alongNum(keys: [number, number][], m: number): number {
+  if (m <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++) {
+    if (m <= keys[i][0]) {
+      const [m0, v0] = keys[i - 1];
+      const [m1, v1] = keys[i];
+      return v0 + (v1 - v0) * ((m - m0) / (m1 - m0));
+    }
+  }
+  return keys[keys.length - 1][1];
+}
 
 const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const hex = (c: number[]) => '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('').toUpperCase();
@@ -93,7 +137,7 @@ export function luminance(h: string): number {
 const INK_LUM = luminance('#0B1A45');
 const CREAM_LUM = luminance('#FFF1D6');
 /** Encre ou crème : celui qui contraste le plus avec le fond (ratio WCAG). */
-function textOn(bg: string): 'ink' | 'cream' {
+export function textOn(bg: string): 'ink' | 'cream' {
   const l = luminance(bg);
   return (l + 0.05) / (INK_LUM + 0.05) >= (CREAM_LUM + 0.05) / (l + 0.05) ? 'ink' : 'cream';
 }
@@ -122,5 +166,20 @@ export function circadian(date: Date, mode: SunMode): Circadian {
   }
 
   const fg = textOn(mode === 'SUN' ? sheet : sky[0]);
-  return { sheet, sky, fg, fgLow: mode === 'SUN' ? fg : textOn(sky[1]), shadow };
+  const map = {
+    tint: along(TINT_KEYS(sr, noon, ss), 0),
+    tintOpacity: Math.round(alongNum(TINT_OPACITY(sr, noon, ss), 0) * 100) / 100,
+    water: along(WATER_KEYS(sr, noon, ss), 0),
+    shadow: along(SHADOW_KEYS(sr, noon, ss), 0),
+    sun: along(LIGHT_KEYS(sr, noon, ss), 0),
+  };
+  return {
+    sheet,
+    sky,
+    fg,
+    fgLow: mode === 'SUN' ? fg : textOn(sky[1]),
+    fgMid: mode === 'SUN' ? fg : textOn(mix(sky[0], sky[1], 0.5)),
+    map,
+    shadow,
+  };
 }

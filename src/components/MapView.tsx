@@ -29,6 +29,7 @@ import { lightPaint } from '@/utils/light';
 import { litEdges } from '@/utils/litEdges';
 import { lisbonMinutesOfDay } from '@/utils/lisbonTime';
 import { CLAIR } from '@/utils/mapFlags';
+import { CYCLE, circadian } from '@/utils/circadian';
 import { HaloIcon } from './Halo';
 import { createShadowScheduler, type ShadowJob, type ShadowScheduler } from '@/utils/shadowScheduler';
 
@@ -549,6 +550,16 @@ export function MapView({
         map.setPaintProperty('footprints', 'fill-outline-color', DAYMAP.outline);
         map.setPaintProperty('lit-edges', 'line-opacity', 0);
       }
+      // Cycle circadien : un voile de l'heure sous les étiquettes — rien à
+      // midi, chaud à l'heure dorée, bleu nuit la nuit. Un monde entier en
+      // une maille, pour couvrir aussi l'eau.
+      if (CLAIR && CYCLE) {
+        map.addSource('cyc-tint', {
+          type: 'geojson',
+          data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]]] } },
+        });
+        map.addLayer({ id: 'cyc-tint', type: 'fill', source: 'cyc-tint', paint: { 'fill-color': '#000000', 'fill-opacity': 0, 'fill-antialias': false } }, 'labels');
+      }
       map.addLayer({
         id: 'walk-ring',
         type: 'line',
@@ -649,7 +660,14 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !mapReady) return;
     const p = lightPaint(sunPos.elevation, lisbonMinutesOfDay(currentDate));
-    map.setPaintProperty('light', 'fill-color', CLAIR ? DAYMAP.sun : p.color);
+    const cyc = CLAIR && CYCLE ? circadian(currentDate, 'SUN').map : null;
+    map.setPaintProperty('light', 'fill-color', cyc ? cyc.sun : CLAIR ? DAYMAP.sun : p.color);
+    if (cyc && map.getLayer('cyc-tint')) {
+      map.setPaintProperty('cyc-tint', 'fill-color', cyc.tint);
+      map.setPaintProperty('cyc-tint', 'fill-opacity', cyc.tintOpacity);
+      map.setPaintProperty('water', 'fill-color', cyc.water);
+      map.setPaintProperty('building-shadows', 'fill-color', cyc.shadow);
+    }
     map.setPaintProperty('light', 'fill-opacity', CLAIR ? Math.min(p.opacity, 0.3) : p.opacity);
     if (CLAIR) {
       // Sans soleil, plus de rue éclairée : elles s'éteignent.
