@@ -186,6 +186,13 @@ button.cdj-st::before { content: ""; position: absolute; inset: -8px 0; }
 .cdj-legend .s1 { background: #FFC9A6; }
 .cdj-legend .s3 { background: var(--orange); }
 .cdj-legend .night { background: var(--ink); }
+/* Mode Ombre : la frise compte l'ombre. Bleu franc là où elle est franche,
+   sable là où le soleil tape — l'orange n'y désigne plus le but. */
+.cdj-band.shade span, .cdj-legend.shade i { background: #2E6FF2; }
+.cdj-band.shade .s1, .cdj-legend.shade .s1 { background: #7FA6F6; }
+/* Plus de 40 % de soleil : pas un lieu d'ombre, sable comme le plein soleil. */
+.cdj-band.shade :is(.s2, .s3), .cdj-legend.shade .s3 { background: #E2CFA6; }
+.cdj-band.shade .night, .cdj-legend.shade .night { background: var(--ink); }
 
 /* Lignes du menu */
 .cdj-line {
