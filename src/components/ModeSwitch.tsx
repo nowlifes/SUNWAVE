@@ -10,10 +10,14 @@ export function ModeSwitch({
   mode,
   onModeChange,
   className = '',
+  tint,
 }: {
   mode: SunMode;
   onModeChange: (m: SunMode) => void;
   className?: string;
+  /** Cycle circadien : en Soleil, la piste prend la couleur de l'heure au
+   *  lieu de l'orange fixe. */
+  tint?: { bg: string; fg: 'ink' | 'cream' } | null;
 }) {
   const shade = mode === 'SHADE';
   return (
@@ -25,6 +29,7 @@ export function ModeSwitch({
       onClick={() => onModeChange(shade ? 'SUN' : 'SHADE')}
       data-mode={shade ? 'ombre' : 'soleil'}
       className={`mode-switch active:scale-95 ${className}`}
+      style={tint && !shade ? { background: tint.bg, color: tint.fg === 'ink' ? '#0B1A45' : '#FFF1D6' } : undefined}
     >
       <span className="mode-switch-label">{shade ? 'Ombre' : 'Soleil'}</span>
       <span className="mode-switch-thumb" aria-hidden="true">

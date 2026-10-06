@@ -1,5 +1,8 @@
 import type { GeoPoint, Recommendation, SunMode } from '@/types';
 import { MapService } from '@/services/MapService';
+import { SunService } from '@/services/SunService';
+import { isNightAt } from './ficheState';
+import { formatLisbonTime, lisbonMinutesOfDay } from './lisbonTime';
 
 // ---------------------------------------------------------------------------
 // Les phrases que l'app dit sur un lieu — une seule source.
@@ -67,7 +70,18 @@ export interface StatusCopy {
 }
 
 /** Ce qu'il faut savoir d'un lieu maintenant, en deux lignes. */
-export function statusCopy(rec: Recommendation, mode: SunMode): StatusCopy {
+/** Le prochain lever : demain si le soleil est déjà couché. */
+function nextSunrise(at: Date): Date {
+  const afterSunset = lisbonMinutesOfDay(at) >= lisbonMinutesOfDay(SunService.getSunset(at));
+  return SunService.getSunrise(afterSunset ? new Date(at.getTime() + 24 * 3600_000) : at);
+}
+
+/** `at` : l'instant décrit. La nuit en Ombre, « 100 % d'ombre » ou « à l'ombre
+ *  jusqu'au coucher » seraient vrais mais à côté : il fait nuit pour tous. */
+export function statusCopy(rec: Recommendation, mode: SunMode, at?: Date): StatusCopy {
+  if (mode === 'SHADE' && at && isNightAt(at)) {
+    return { title: 'Il fait nuit', detail: `Le soleil revient à ${formatLisbonTime(nextSunrise(at))}` };
+  }
   const isSun = mode === 'SUN';
   const exposure = isSun ? rec.sunPercentage : rec.shadePercentage;
   const le = isSun ? 'le soleil' : "l'ombre";

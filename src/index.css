@@ -198,7 +198,7 @@ body {
   to { --rayons: 15deg; }
 }
 [data-bain='soleil'] .text-dusk-sub,
-[data-bain='soleil'] .text-dusk-dim { color: rgba(11, 26, 69, 0.74) !important; }
+[data-bain='soleil'] .text-dusk-dim { color: rgba(11, 26, 69, 0.86) !important; }
 [data-bain='soleil'] .text-dusk-glow { color: #0B1A45 !important; }
 [data-bain='soleil'] .border-dusk-edge,
 [data-bain='soleil'] .border-dusk-line { border-color: rgba(11, 26, 69, 0.3) !important; }
@@ -273,7 +273,7 @@ body {
   --b-bar: rgba(255, 241, 214, 0.26);
 }
 .bain[data-bain='soleil'] {
-  --b-soft: rgba(11, 26, 69, 0.74);
+  --b-soft: rgba(11, 26, 69, 0.86);
   --b-glass: rgba(255, 241, 214, 0.28);
   --b-hair: rgba(11, 26, 69, 0.2);
   --b-key: #0B1A45;
@@ -465,4 +465,109 @@ body {
   background: #FFF1D6;
   border: 1.5px solid #0B1A45;
   border-radius: 18px;
+}
+
+
+/* ---------------------------------------------------------------------------
+   Cycle circadien (2026-10-06) — la couleur suit le vrai soleil de Lisbonne.
+   NowScreen pose `data-cycle` et les variables --cyc-* (utils/circadian) ;
+   sans elles (`?sanscycle`), les bains ci-dessus restent tels quels.
+--------------------------------------------------------------------------- */
+/* Soleil : la feuille suit le ciel ; les rayons ne tournent que soleil levé. */
+.bain[data-cycle][data-bain='soleil'] {
+  background: var(--cyc-sheet) !important;
+}
+.bain[data-cycle][data-sunup][data-bain='soleil'] {
+  background: repeating-conic-gradient(from var(--rayons) at 100% 0, rgba(255, 225, 77, 0.24) 0 5deg, transparent 5deg 15deg), var(--cyc-sheet) !important;
+}
+/* Ombre : le ciel en fond, plus l'eau. */
+.bain[data-cycle][data-bain='ombre'] {
+  background: linear-gradient(180deg, var(--cyc-sky-top), var(--cyc-sky-bot)) !important;
+  animation: none;
+}
+/* Le texte suit la clarté du fond, quel que soit le mode. */
+.bain[data-cycle][data-fg='ink'] {
+  color: #0B1A45 !important;
+  --b-soft: rgba(11, 26, 69, 0.86);
+  --b-glass: rgba(255, 241, 214, 0.34);
+  --b-hair: rgba(11, 26, 69, 0.2);
+  --b-key: #0B1A45;
+  --b-tick: #0B1A45;
+}
+.bain[data-cycle][data-fg='cream'] {
+  color: #FFF1D6 !important;
+  --b-soft: rgba(255, 241, 214, 0.74);
+  --b-glass: rgba(255, 241, 214, 0.14);
+  --b-hair: rgba(255, 241, 214, 0.22);
+  --b-key: #FFE14D;
+  --b-tick: #FFF1D6;
+}
+.bain[data-cycle][data-fg='ink'] .titre-sticker::before,
+.bain[data-cycle][data-fg='ink'] .titre-sticker::after,
+.bain[data-cycle][data-bain='ombre'] .bain-answer .titre-sticker::before,
+.bain[data-cycle][data-bain='ombre'] .bain-answer .titre-sticker::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 22'%3E%3Cg stroke='%230B1A45' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M3 3 L9 7'/%3E%3Cpath d='M2 11 L10 11'/%3E%3Cpath d='M3 19 L9 15'/%3E%3C/g%3E%3C/svg%3E");
+}
+/* Ombre : la réponse posée sur une carte crème, son ombre tombe du soleil. */
+.bain[data-cycle][data-bain='ombre'] .bain-answer {
+  padding: 18px 16px;
+  border: 1.5px solid #0B1A45;
+  border-radius: 20px;
+  background: #FFF1D6;
+  color: #0B1A45;
+  box-shadow: var(--cyc-sx) var(--cyc-sy) 0 rgba(11, 26, 69, 0.55);
+  --b-soft: rgba(11, 26, 69, 0.86);
+  --b-glass: rgba(11, 26, 69, 0.06);
+  --b-hair: rgba(11, 26, 69, 0.18);
+  --b-key: #2E6FF2;
+  --b-tick: #0B1A45;
+}
+.bain[data-cycle][data-bain='ombre'] .bain-answer .titre-sticker {
+  background: #2E6FF2;
+  color: #FFF1D6;
+}
+/* L'ombre portée suit le soleil : sticker et bouton, soleil levé seulement. */
+.bain[data-cycle][data-sunup] .titre-sticker { box-shadow: var(--cyc-sx) var(--cyc-sy) 0 #0B1A45; }
+.bain[data-cycle][data-sunup] .bain-go { box-shadow: var(--cyc-sx) var(--cyc-sy) 0 rgba(11, 26, 69, 0.45); }
+.bain[data-cycle][data-sunup] .bain-go:active { box-shadow: none; }
+/* Le bas de l'écran suit le bas du ciel (liste « Aussi », pied de page). */
+.bain[data-cycle][data-fg-low='ink'] .bain-low {
+  color: #0B1A45;
+  --b-soft: rgba(11, 26, 69, 0.86);
+  --b-hair: rgba(11, 26, 69, 0.2);
+  --b-key: #0B1A45;
+}
+.bain[data-cycle][data-fg-low='cream'] .bain-low {
+  color: #FFF1D6;
+  --b-soft: rgba(255, 241, 214, 0.74);
+  --b-hair: rgba(255, 241, 214, 0.22);
+  --b-key: #FFE14D;
+}
+
+/* Cycle circadien sur la feuille de la carte : même fond que Maintenant.
+   `data-bain` y choisit seulement l'encre ou le crème (voir MapScreen). */
+.clair-sheet[data-cycle][data-cyc-mode='soleil'] {
+  background: var(--cyc-sheet) !important;
+  animation: none;
+}
+.clair-sheet[data-cycle][data-sunup][data-cyc-mode='soleil'] {
+  background: repeating-conic-gradient(from var(--rayons) at 100% 0, rgba(255, 225, 77, 0.24) 0 5deg, transparent 5deg 15deg), var(--cyc-sheet) !important;
+  animation: soleil-rayons 8s linear infinite;
+}
+.clair-sheet[data-cycle][data-cyc-mode='ombre'] {
+  background: linear-gradient(180deg, var(--cyc-sky-top), var(--cyc-sky-bot)) !important;
+  animation: none;
+}
+/* La bascule posée sur un fond sombre : son trait passe au crème. */
+.bain[data-cycle][data-fg='cream'] .mode-switch {
+  border-color: #FFF1D6;
+  box-shadow: 2px 2px 0 rgba(255, 241, 214, 0.5);
+}
+/* La nuit, la feuille passe au crème (data-bain='ombre') même en Soleil :
+   l'invite et le bouton reprennent les tons du grand bain. */
+.clair-sheet[data-cycle][data-bain='ombre'] .text-dusk-glow { color: rgba(255, 241, 214, 0.72) !important; }
+.clair-sheet[data-cycle][data-bain='ombre'] .bg-dusk-fire {
+  background-color: #FFE14D !important;
+  color: #0B1A45 !important;
+  border-color: transparent !important;
 }

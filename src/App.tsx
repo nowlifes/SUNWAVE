@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { SunMode, Venue, GeoPoint, ScreenName, DiscoverCategory } from '@/types';
 import { LocationService } from '@/services/LocationService';
 import { VenueService } from '@/services/VenueService';
@@ -14,6 +14,7 @@ import { ProfileScreen } from '@/components/ProfileScreen';
 import { BottomNav } from '@/components/BottomNav';
 import { CLAIR } from '@/utils/mapFlags';
 import { PlaceDetailSheet } from '@/components/PlaceDetailSheet';
+import { CYCLE, circadian, themeColor } from '@/utils/circadian';
 
 const LISBON_CENTER: GeoPoint = { lat: 38.7223, lng: -9.1393 };
 const DEFAULT_ZOOM = 14;
@@ -64,6 +65,7 @@ export default function App() {
   const [dusk, setDusk] = useState(false);
   const [mode, setMode] = useState<SunMode>(() => loadFromStorage(STORAGE_KEYS.mode, 'SUN'));
   const [currentDate, setCurrentDate] = useState(new Date());
+  const followNowRef = useRef(true);
   const [userLocation, setUserLocation] = useState<GeoPoint>(LISBON_CENTER);
   const [locationGranted, setLocationGranted] = useState(false);
   const [outsideLisbon, setOutsideLisbon] = useState(false);
@@ -89,6 +91,20 @@ export default function App() {
       root.removeAttribute('data-anim-paused');
     };
   }, []);
+
+  // Cycle circadien : la barre du navigateur et la barre d'onglets prennent la
+  // couleur de l'heure. Sans cycle (`?sanscycle`), on ne touche à rien.
+  const cyc = useMemo(() => (CYCLE ? circadian(currentDate, mode) : null), [currentDate, mode]);
+  useEffect(() => {
+    if (!cyc) return;
+    let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      document.head.appendChild(meta);
+    }
+    meta.content = themeColor(cyc, mode);
+  }, [cyc, mode]);
 
   // Persist state
   useEffect(() => saveToStorage(STORAGE_KEYS.mode, mode), [mode]);
@@ -127,20 +143,21 @@ export default function App() {
     }
   }, [locationRequested]);
 
-  // Refresh "now" time periodically (only if close to now — a time picked on
-  // the map slider must not snap back). The answer screen shows a clock: it
-  // has to tick too.
+  // L'heure suit le vrai « maintenant » sur tous les écrans — le cycle
+  // circadien en dépend partout — et se recale au retour au premier plan
+  // (téléphone verrouillé une heure). Seule une heure choisie sur le curseur
+  // reste en place.
   useEffect(() => {
-    if (screen !== 'map' && screen !== 'now') return;
-    const interval = setInterval(() => {
-      setCurrentDate((prev) => {
-        const diff = Math.abs(prev.getTime() - Date.now());
-        if (diff < 120000) return new Date(); // auto-update if within 2 min of now
-        return prev;
-      });
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [screen]);
+    const tick = () => {
+      if (followNowRef.current && !document.hidden) setCurrentDate(new Date());
+    };
+    const interval = setInterval(tick, 60000);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, []);
 
   const handleRecenter = useCallback(() => {
     LocationService.getCurrentLocation().then((loc) => {
@@ -165,6 +182,8 @@ export default function App() {
   }, []);
 
   const handleTimeChange = useCallback((date: Date) => {
+    // Ramené à moins de 2 min de maintenant : on suit de nouveau l'heure.
+    followNowRef.current = Math.abs(date.getTime() - Date.now()) < 120000;
     setCurrentDate(date);
   }, []);
 
@@ -287,6 +306,7 @@ export default function App() {
         {screen === 'saved' && (
           <SavedScreen
             savedVenues={savedVenues}
+            mode={mode}
             currentDate={currentDate}
             userLocation={userLocation}
             onVenueSelect={handleVenueSelect}
@@ -299,6 +319,7 @@ export default function App() {
             onModeChange={handleModeChange}
             locationLabel={locationLabel}
             locationGranted={locationGranted}
+            currentDate={currentDate}
           />
         )}
 
@@ -320,7 +341,7 @@ export default function App() {
         {/* Bottom navigation */}
         {/* Le mode Ombre n'assombrit plus la barre : l'écran Maintenant est un
             bain clair dans les deux modes. Seul « Plein ouest » reste sombre. */}
-        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} dusk={(screen === 'now' && dusk) || (screen === 'map' && !CLAIR)} />
+        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} dusk={(screen === 'now' && dusk) || (screen === 'map' && !CLAIR)} tint={cyc && (mode === 'SUN' ? cyc.sheet : cyc.deep)} />
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { SunsetService } from '@/services/SunsetService';
 import { categoryLabel, travelLabel } from '@/utils/copy';
 import { formatLisbonTime, APP_TIMEZONE } from '@/utils/lisbonTime';
 import { lightCut } from '@/utils/lightCut';
+import { useCycleScreen } from './useCycleScreen';
 import { untilOf, BAND_FROM, BAND_TO } from '@/utils/carteDuJour';
 import { HourBand } from './HourBand';
 import './carteDuJour.css';
@@ -91,6 +92,7 @@ interface DiscoverScreenProps {
 
 export function DiscoverScreen({ currentDate, userLocation, mode, onModeChange, onCategorySelect }: DiscoverScreenProps) {
   const lightVars = useLightVars(currentDate);
+  const cyc = useCycleScreen(currentDate, mode);
 
   const menu = useMemo(() => {
     const lines = ENVIES.map((envie) => {
@@ -127,7 +129,7 @@ export function DiscoverScreen({ currentDate, userLocation, mode, onModeChange, 
   const isSun = mode === 'SUN';
 
   return (
-    <div className="cdj h-full overflow-y-auto no-scrollbar pb-24" style={lightVars}>
+    <div className="cdj h-full overflow-y-auto no-scrollbar pb-24" style={{ ...lightVars, ...cyc.vars }} {...cyc.attrs}>
       <header className="cdj-hero" style={{ backgroundImage: special ? `url(${PHOTO[special.envie.id]})` : undefined }}>
         <div className="cdj-bar">
           <span className="cdj-st"><i className="orb" aria-hidden="true" />Lisboa · {formatLisbonTime(currentDate)}</span>
@@ -209,6 +211,7 @@ export function DiscoverResults({
   const mode = (category.mode === 'ANY' ? 'SUN' : category.mode) as SunMode;
   const isSun = mode === 'SUN';
   const lightVars = useLightVars(currentDate);
+  const cyc = useCycleScreen(currentDate, mode);
   const recs = useMemo(
     () => RecommendationService.getAnswerList(mode, userLocation, currentDate, category.categories, undefined, 20),
     [mode, userLocation, currentDate, category.categories]
@@ -216,7 +219,7 @@ export function DiscoverResults({
   const count = recs.filter((r) => inItNow(r, mode)).length;
 
   return (
-    <div className="cdj h-full overflow-y-auto no-scrollbar pb-24 animate-slide-in-right motion-reduce:animate-none" style={lightVars}>
+    <div className="cdj h-full overflow-y-auto no-scrollbar pb-24 animate-slide-in-right motion-reduce:animate-none" style={{ ...lightVars, ...cyc.vars }} {...cyc.attrs}>
       <header className="cdj-hero" style={{ backgroundImage: PHOTO[category.id] ? `url(${PHOTO[category.id]})` : undefined, backgroundPosition: '50% 70%' }}>
         <div className="cdj-bar">
           <button type="button" className="cdj-st" onClick={onBack}>
@@ -240,7 +243,7 @@ export function DiscoverResults({
         {recs.map((rec, idx) => {
           const saved = savedVenueIds.includes(rec.venue.id);
           return (
-            <article key={rec.venue.id} className={`cdj-ticket${isSun ? '' : ' shade'}`}>
+            <article key={rec.venue.id} className={`cdj-ticket${isSun ? '' : ' shade'}`} {...cyc.card(rec.sunPercentage >= IN_IT_THRESHOLD.SUN)}>
               <button type="button" onClick={() => onVenueSelect(rec.venue.id)}>
                 <div className="h">
                   <span className="rk">{idx + 1}</span>

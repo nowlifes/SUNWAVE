@@ -180,6 +180,12 @@ button.cdj-st::before { content: ""; position: absolute; inset: -8px 0; }
 .cdj-band .s3 { background: var(--orange); }
 .cdj-now { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; border-radius: 2px; background: var(--ink); }
 .cdj-ticks { display: flex; justify-content: space-between; margin-bottom: 6px; font: 600 10.5px 'Schibsted Grotesk', system-ui, sans-serif; color: var(--sub); }
+.cdj-legend { display: flex; gap: 12px; margin: -2px 0 6px; font: 600 11px 'Schibsted Grotesk', system-ui, sans-serif; color: var(--sub); }
+.cdj-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.cdj-legend i { width: 10px; height: 10px; border-radius: 2px; background: var(--cool); }
+.cdj-legend .s1 { background: #FFC9A6; }
+.cdj-legend .s3 { background: var(--orange); }
+.cdj-legend .night { background: var(--ink); }
 
 /* Lignes du menu */
 .cdj-line {
@@ -269,6 +275,14 @@ button.cdj-st::before { content: ""; position: absolute; inset: -8px 0; }
   transform: none;
 }
 .cdj-sheet-card { padding-bottom: 20px; }
+/* Cycle circadien (utils/circadian) : la feuille sous la carte crème prend la
+   couleur de l'heure, le sol du ciel de la fiche s'y fond. */
+.cdj-sheet[data-cycle] { background: var(--cyc-ground); }
+.cdj-sheet[data-cycle] .cdj-handle { background: var(--cyc-ground); }
+.cdj-sheet[data-cycle][data-fg='cream'] .cdj-handle > div { background: rgba(255, 241, 214, .4); }
+/* En Ombre, le bouton plein reprend le jaune du « Y aller » : le bleu pâle
+   s'effaçait sur la carte crème. */
+.cdj-sheet[data-cycle] .cdj-sheet-card.shade .cdj-cta button:not(.g) { background: #FFE14D; }
 .cdj-sheet-title { margin: 0; font: 800 30px/1 'Funnel Display', system-ui, sans-serif; letter-spacing: -.02em; text-wrap: balance; }
 .cdj-sheet-sub { margin: 6px 0 0; font-size: 13.5px; font-weight: 600; color: var(--sub); }
 .cdj-sheet-status { margin: 14px 0 0; font: 800 26px/1.1 'Funnel Display', system-ui, sans-serif; letter-spacing: -.01em; }
@@ -432,3 +446,24 @@ button.cdj-st::before { content: ""; position: absolute; inset: -8px 0; }
 @media (prefers-reduced-motion: reduce) {
   .cdj * { transition: none !important; }
 }
+
+/* ---------------------------------------------------------------------------
+   Cycle circadien sur l'Explorer et les Favoris (useCycleScreen) : le fond
+   prend la teinte profonde de l'heure, chaque carte la lumière de son lieu.
+   --------------------------------------------------------------------------- */
+.cdj[data-cycle]:not(.cdj-sheet) { background: var(--cyc-ground); }
+.cdj[data-cycle][data-fg='ink'] { --sub: rgba(11, 20, 51, .86); }
+.cdj[data-cycle][data-fg='cream'] { color: var(--cream); --sub: rgba(255, 241, 214, .78); }
+.cdj[data-cycle] :is(.cdj-card, .cdj-ticket, .cdj-fav) { color: var(--ink); --sub: #34487A; }
+.cdj[data-cycle] .cdj-fhead { background: transparent; }
+.cdj[data-cycle][data-fg='cream'] .cdj-dot.o { border-color: var(--cream); }
+/* Le point « Bons maintenant » ne se perd pas sur le fond orange. */
+.cdj[data-cycle] .cdj-dot:not(.o) { border: 1.5px solid var(--ink); }
+/* Un liseré de la lumière du lieu, côté gauche : couleur de l'heure au soleil,
+   bleu à l'ombre, encre la nuit. La carte reste crème, le contraste aussi. */
+.cdj[data-cycle] :is(.cdj-ticket, .cdj-fav)[data-light] {
+  padding-left: 22px;
+  box-shadow: inset 8px 0 0 var(--cyc-edge), var(--sx) var(--sy) 0 var(--ink);
+}
+.cdj[data-cycle] .cdj-fav.later[data-light] { box-shadow: inset 8px 0 0 var(--cyc-edge), calc(var(--sx) * .6) calc(var(--sy) * .6) 0 var(--ink); }
+.cdj[data-cycle] .cdj-fav.off[data-light] { box-shadow: inset 8px 0 0 var(--cyc-edge); }
