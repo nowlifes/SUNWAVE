@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import type { GeoPoint, Recommendation, SunMode } from '@/types';
 import { IN_IT_THRESHOLD, RecommendationService } from '@/services/RecommendationService';
 import { ReliefService } from '@/services/ReliefService';
@@ -7,7 +7,7 @@ import { VenueService } from '@/services/VenueService';
 import { SunTrailService, type SunTrail } from '@/services/SunTrailService';
 import { SunsetService } from '@/services/SunsetService';
 import { SunsetScreen } from './SunsetScreen';
-import { DayRibbon } from './DayRibbon';
+import { DayRibbon, type RibbonTone } from './DayRibbon';
 import { ModeSwitch } from './ModeSwitch';
 import { formatLisbonTime } from '@/utils/lisbonTime';
 import { categoryLabel, formatGap, placeName, statusCopy, statusShort, travelLabel, venueCountLine } from '@/utils/copy';
@@ -17,6 +17,8 @@ import { VoicePile } from './Avatar';
 import { liveReports } from '@/services/LiveReportService';
 import { LIVE_SHORT, liveAge, liveHello, liveWho } from '@/utils/live';
 import { getPseudo, subscribePseudo } from '@/utils/pseudo';
+import { CYCLE, circadian } from '@/utils/circadian';
+import type { HaloTone } from '@/utils/haloMarkup';
 
 // ---------------------------------------------------------------------------
 // L'écran réponse — l'écran d'accueil.
@@ -47,6 +49,12 @@ interface NowScreenProps {
   autoTemperature?: number | null;
   /** L'écran passe à « Plein ouest » (coucher sur l'eau) : la navigation suit. */
   onDuskChange?: (dusk: boolean) => void;
+}
+
+/** Les tons de la réponse : sur la feuille, ou sur la carte crème (Ombre). */
+interface AnswerTones {
+  ribbon: RibbonTone;
+  glyph: HaloTone;
 }
 
 /** La journée que montrent les bandes de lumière. */
@@ -152,6 +160,26 @@ export function NowScreen({
   }, [answers.length]);
 
   const isSun = mode === 'SUN';
+
+  // Le cycle circadien : la couleur du bain suit le vrai soleil (voir
+  // utils/circadian). En Ombre, la réponse se pose sur une carte crème, sur
+  // le ciel : sa bande et son glyphe prennent les tons de jour.
+  const cyc = useMemo(() => (CYCLE ? circadian(currentDate, mode) : null), [currentDate, mode]);
+  const onSheet: RibbonTone = cyc ? (cyc.fg === 'ink' ? 'transat' : 'bain') : isSun ? 'transat' : 'bain';
+  const onSheetLow: RibbonTone = cyc ? (cyc.fgLow === 'ink' ? 'transat' : 'bain') : onSheet;
+  const answerTones: AnswerTones = cyc && !isSun
+    ? { ribbon: 'carte', glyph: 'day' }
+    : { ribbon: onSheet, glyph: onSheet === 'transat' ? 'day' : 'night' };
+  const cycStyle = cyc
+    ? ({
+        '--cyc-sheet': cyc.sheet,
+        '--cyc-sky-top': cyc.sky[0],
+        '--cyc-sky-bot': cyc.sky[1],
+        '--cyc-sx': `${cyc.shadow?.x ?? 0}px`,
+        '--cyc-sy': `${cyc.shadow?.y ?? 3}px`,
+      } as CSSProperties)
+    : undefined;
+
   // La nuit, l'ombre est partout : un classement « à l'ombre » n'a plus de sens.
   const nightShade = !isSun && phase !== 'day';
   const place = placeName(userLocation);
@@ -186,7 +214,15 @@ export function NowScreen({
 
 
   return (
-    <div className="bain absolute inset-0 overflow-y-auto pb-24" data-bain={isSun ? 'soleil' : 'ombre'}>
+    <div
+      className="bain absolute inset-0 overflow-y-auto pb-24"
+      data-bain={isSun ? 'soleil' : 'ombre'}
+      data-cycle={cyc ? '' : undefined}
+      data-fg={cyc?.fg}
+      data-fg-low={cyc?.fgLow}
+      data-sunup={cyc?.shadow ? '' : undefined}
+      style={cycStyle}
+    >
       <div className="px-5 pt-[calc(env(safe-area-inset-top)+14px)]">
         {/* --- l'heure, posée sur le bain ---------------------------------- */}
         <div className="bain-top">
@@ -229,7 +265,7 @@ export function NowScreen({
 
         {/* --- la réponse --------------------------------------------------- */}
         {nightShade ? (
-          <section className="mt-7">
+          <section className="bain-answer mt-7">
             <h2 className="bain-headline">Il fait nuit : l'ombre est partout.</h2>
             <p className="bain-detail">
               Le soleil revient à{' '}
@@ -252,10 +288,11 @@ export function NowScreen({
             onSomethingElse={handleSomethingElse}
             hasAlternatives={answers.length > 1}
             onShare={handleShare}
+            tones={answerTones}
             shareState={shareState}
           />
         ) : (
-          <section className="mt-7">
+          <section className="bain-answer mt-7">
             <h2 className="bain-headline">Tout est fermé pour l'instant.</h2>
             <p className="bain-detail">
               Ouvre la carte pour voir où tombe {isSun ? 'le soleil' : "l'ombre"} malgré tout.
@@ -272,7 +309,7 @@ export function NowScreen({
 
         {/* --- le filet, toujours visible ----------------------------------- */}
         {!nightShade && alternatives.length > 0 && (
-          <section>
+          <section className="bain-low">
             <h2 className="bain-also">Aussi {isSun ? 'au soleil' : 'au frais'}</h2>
             {alternatives.map((alt) => (
               <AlternativeRow
@@ -280,6 +317,7 @@ export function NowScreen({
                 rec={alt}
                 mode={mode}
                 day={ribbonDay}
+                tone={onSheetLow}
                 onSelect={() => onVenueSelect(alt.venue.id)}
               />
             ))}
@@ -287,7 +325,7 @@ export function NowScreen({
         )}
 
         {/* --- la promesse que les gros ne peuvent structurellement pas tenir */}
-        <p className="bain-foot">
+        <p className="bain-foot bain-low">
           <span className="font-bold">{VENUE_COUNT_LINE}</span>
           <br />
           Pas 2 000 adresses aspirées d'une base.
@@ -329,7 +367,9 @@ function AnswerCard({
   hasAlternatives,
   onShare,
   shareState,
+  tones,
 }: {
+  tones: AnswerTones;
   rec: Recommendation;
   mode: SunMode;
   day: RibbonDay;
@@ -376,7 +416,7 @@ function AnswerCard({
   const live = liveReports.getState(rec.venue.id);
 
   return (
-    <section className="mt-7">
+    <section className="bain-answer mt-7">
       {/* La réponse : le sticker de la carte, seul. Le lieu et l'heure suivent. */}
       <h2 className="bain-headline">
         {bigTime ? (
@@ -416,7 +456,7 @@ function AnswerCard({
         {live ? (
           <VoicePile voices={live.voices} sunByHour={rec.venue.sunExposureByHour} category={rec.venue.category} />
         ) : (
-          <LiveGlyph level="none" size={20} tone={isSun ? 'day' : 'night'} className="opacity-60" />
+          <LiveGlyph level="none" size={20} tone={tones.glyph} className="opacity-60" />
         )}
         {live ? (
           <span>
@@ -428,7 +468,7 @@ function AnswerCard({
       </p>
 
       <div className="mt-5">
-        <DayRibbon venue={rec.venue} mode={mode} {...day} tone={isSun ? 'transat' : 'bain'} />
+        <DayRibbon venue={rec.venue} mode={mode} {...day} tone={tones.ribbon} />
       </div>
 
       {relief && (
@@ -548,11 +588,13 @@ function AlternativeRow({
   rec,
   mode,
   day,
+  tone,
   onSelect,
 }: {
   rec: Recommendation;
   mode: SunMode;
   day: RibbonDay;
+  tone: RibbonTone;
   onSelect: () => void;
 }) {
   return (
@@ -563,7 +605,7 @@ function AlternativeRow({
           {travelLabel(rec)} · {statusShort(rec, mode)}
         </small>
       </span>
-      <DayRibbon venue={rec.venue} mode={mode} {...day} size="mini" tone={mode === 'SUN' ? 'transat' : 'bain'} />
+      <DayRibbon venue={rec.venue} mode={mode} {...day} size="mini" tone={tone} />
     </button>
   );
 }

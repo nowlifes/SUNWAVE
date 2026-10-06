@@ -1,0 +1,56 @@
+import { describe, expect, it } from 'vitest';
+import { circadian, luminance } from './circadian';
+
+// Lisbonne le 6 octobre 2026 : lever ~07:35, coucher ~19:12 (heure d'été, UTC+1).
+const at = (hhmm: string) => new Date(`2026-10-06T${hhmm}:00+01:00`);
+const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+
+describe('circadian — mode Soleil', () => {
+  it("l'orange plein n'arrive qu'à l'heure dorée", () => {
+    const [r, g, b] = rgb(circadian(at('18:25'), 'SUN').sheet);
+    expect(r).toBeGreaterThan(240);
+    expect(g).toBeLessThan(140);
+    expect(b).toBeLessThan(80);
+  });
+
+  it('à midi la feuille est paille, pas orange', () => {
+    const [r, g] = rgb(circadian(at('13:20'), 'SUN').sheet);
+    expect(r).toBeGreaterThan(240);
+    expect(g).toBeGreaterThan(210);
+  });
+
+  it('le jour se lit en encre, la nuit en crème', () => {
+    expect(circadian(at('13:20'), 'SUN').fg).toBe('ink');
+    expect(circadian(at('23:00'), 'SUN').fg).toBe('cream');
+    expect(circadian(at('05:30'), 'SUN').fg).toBe('cream');
+  });
+});
+
+describe('circadian — mode Ombre', () => {
+  it('le ciel de nuit est sombre, celui de midi est clair', () => {
+    expect(luminance(circadian(at('23:00'), 'SHADE').sky[0])).toBeLessThan(0.05);
+    expect(luminance(circadian(at('13:20'), 'SHADE').sky[1])).toBeGreaterThan(0.6);
+  });
+});
+
+describe('circadian — le texte reste lisible', () => {
+  it('au coucher, en Ombre : crème en haut du ciel, encre en bas', () => {
+    const c = circadian(at('19:12'), 'SHADE');
+    expect(c.fg).toBe('cream');
+    expect(c.fgLow).toBe('ink');
+  });
+});
+
+describe("circadian — l'ombre portée", () => {
+  it('part à droite le matin, à gauche le soir, disparaît la nuit', () => {
+    expect(circadian(at('09:30'), 'SUN').shadow!.x).toBeGreaterThan(0);
+    expect(circadian(at('18:30'), 'SUN').shadow!.x).toBeLessThan(0);
+    expect(circadian(at('22:00'), 'SUN').shadow).toBeNull();
+  });
+
+  it("s'allonge quand le soleil descend", () => {
+    const noon = circadian(at('13:20'), 'SUN').shadow!;
+    const late = circadian(at('18:45'), 'SUN').shadow!;
+    expect(Math.hypot(late.x, late.y)).toBeGreaterThan(Math.hypot(noon.x, noon.y));
+  });
+});
