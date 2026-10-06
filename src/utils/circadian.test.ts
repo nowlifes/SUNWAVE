@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { circadian, luminance } from './circadian';
+import { circadian, luminance, skyBands } from './circadian';
 
 // Lisbonne le 6 octobre 2026 : lever ~07:35, coucher ~19:12 (heure d'été, UTC+1).
 const at = (hhmm: string) => new Date(`2026-10-06T${hhmm}:00+01:00`);
@@ -62,5 +62,20 @@ describe("circadian — l'ombre portée", () => {
     const noon = circadian(at('13:20'), 'SUN').shadow!;
     const late = circadian(at('18:45'), 'SUN').shadow!;
     expect(Math.hypot(late.x, late.y)).toBeGreaterThan(Math.hypot(noon.x, noon.y));
+  });
+});
+
+describe('circadian — le ciel de la fiche', () => {
+  it('les strates descendent du haut du ciel vers son bas', () => {
+    const c = circadian(at('18:25'), 'SHADE');
+    const bands = skyBands(c, 4);
+    expect(bands).toHaveLength(4);
+    expect(bands[0]).toBe(c.sky[0]);
+    expect(bands[3]).toBe(c.sky[1]);
+    expect(new Set(bands).size).toBe(4);
+  });
+
+  it("le même ciel dans les deux modes : c'est le ciel du lieu, pas un fond", () => {
+    expect(skyBands(circadian(at('09:30'), 'SUN'), 4)).toEqual(skyBands(circadian(at('09:30'), 'SHADE'), 4));
   });
 });

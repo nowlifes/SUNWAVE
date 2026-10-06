@@ -269,6 +269,11 @@ button.cdj-st::before { content: ""; position: absolute; inset: -8px 0; }
   transform: none;
 }
 .cdj-sheet-card { padding-bottom: 20px; }
+/* Cycle circadien (utils/circadian) : la feuille sous la carte crème prend la
+   couleur de l'heure, le sol du ciel de la fiche s'y fond. */
+.cdj-sheet[data-cycle] { background: var(--cyc-ground); }
+.cdj-sheet[data-cycle] .cdj-handle { background: var(--cyc-ground); }
+.cdj-sheet[data-cycle][data-fg='cream'] .cdj-handle > div { background: rgba(255, 241, 214, .4); }
 .cdj-sheet-title { margin: 0; font: 800 30px/1 'Funnel Display', system-ui, sans-serif; letter-spacing: -.02em; text-wrap: balance; }
 .cdj-sheet-sub { margin: 6px 0 0; font-size: 13.5px; font-weight: 600; color: var(--sub); }
 .cdj-sheet-status { margin: 14px 0 0; font: 800 26px/1.1 'Funnel Display', system-ui, sans-serif; letter-spacing: -.01em; }

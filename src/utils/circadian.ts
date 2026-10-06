@@ -142,6 +142,12 @@ export function textOn(bg: string): 'ink' | 'cream' {
   return (l + 0.05) / (INK_LUM + 0.05) >= (CREAM_LUM + 0.05) / (l + 0.05) ? 'ink' : 'cream';
 }
 
+/** Le ciel en strates, du haut vers l'horizon : le ciel de la fiche d'un lieu.
+ *  Identique dans les deux modes — c'est le ciel du lieu, pas un fond d'écran. */
+export function skyBands(c: Circadian, n: number): string[] {
+  return Array.from({ length: n }, (_, i) => mix(c.sky[0], c.sky[1], n === 1 ? 1 : i / (n - 1)));
+}
+
 export function circadian(date: Date, mode: SunMode): Circadian {
   const t = date.getTime();
   const min = (d: Date) => (d.getTime() - t) / 60000;

@@ -10,6 +10,7 @@ import { formatLisbonTime, lisbonHour, lisbonMinutesOfDay } from '@/utils/lisbon
 import { categoryLabel, statusCopy, travelParts } from '@/utils/copy';
 import { LIGHT } from '@/utils/palette';
 import { lightCut } from '@/utils/lightCut';
+import { CYCLE, circadian, textOn } from '@/utils/circadian';
 import { BAND_FROM, BAND_TO } from '@/utils/carteDuJour';
 import type { HaloKind } from '@/utils/haloMarkup';
 import { Squiggle } from './Squiggle';
@@ -83,6 +84,14 @@ export function PlaceDetailSheet({
 
   const isSun = mode === 'SUN';
   const lightVars = useLightVars(currentDate);
+  // Cycle circadien : le ciel du lieu suit l'heure ; la feuille prend la
+  // couleur de la feuille de Maintenant (Soleil) ou le bas du ciel (Ombre).
+  const cyc = useMemo(() => (CYCLE ? circadian(currentDate, mode) : null), [currentDate, mode]);
+  const ground = cyc ? (isSun ? cyc.sheet : cyc.sky[1]) : undefined;
+  const sheetStyle = useMemo(
+    () => (ground ? ({ ...lightVars, '--cyc-ground': ground } as CSSProperties) : lightVars),
+    [lightVars, ground]
+  );
 
   // Les réponses de ceux qui sont sur place : l'heure réelle, pas celle du curseur.
   useSyncExternalStore(
@@ -212,9 +221,14 @@ export function PlaceDetailSheet({
 
       {/* Bottom sheet */}
       <div className="fixed bottom-0 inset-x-0 z-50 animate-slide-up motion-reduce:animate-none">
-        <div className="cdj cdj-sheet mx-auto max-h-[85vh] max-w-xl overflow-y-auto no-scrollbar" style={lightVars}>
+        <div
+          className="cdj cdj-sheet mx-auto max-h-[85vh] max-w-xl overflow-y-auto no-scrollbar"
+          style={sheetStyle}
+          data-cycle={cyc ? '' : undefined}
+          data-fg={ground ? textOn(ground) : undefined}
+        >
           {/* Drag handle */}
-          <div className="sticky top-0 z-10 flex justify-center bg-day py-2.5">
+          <div className="cdj-handle sticky top-0 z-10 flex justify-center bg-day py-2.5">
             <div className="h-1.5 w-10 rounded-full bg-day-line" />
           </div>
 
@@ -222,7 +236,7 @@ export function PlaceDetailSheet({
             <div className="pb-6">
               {/* Le ciel du lieu : son soleil, son horizon, son dernier rayon. */}
               <div className="cdj-sheet-hero">
-                <FicheSky venue={venue} date={currentDate} />
+                <FicheSky venue={venue} date={currentDate} cyc={cyc} ground={ground} />
                 <button type="button" onClick={onClose} aria-label="Fermer" className="cdj-st">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
                     <line x1="18" y1="6" x2="6" y2="18" />
