@@ -14,6 +14,7 @@ import { ProfileScreen } from '@/components/ProfileScreen';
 import { BottomNav } from '@/components/BottomNav';
 import { CLAIR } from '@/utils/mapFlags';
 import { PlaceDetailSheet } from '@/components/PlaceDetailSheet';
+import { CYCLE, circadian, themeColor } from '@/utils/circadian';
 
 const LISBON_CENTER: GeoPoint = { lat: 38.7223, lng: -9.1393 };
 const DEFAULT_ZOOM = 14;
@@ -89,6 +90,19 @@ export default function App() {
       root.removeAttribute('data-anim-paused');
     };
   }, []);
+
+  // Cycle circadien : la barre du navigateur prend la couleur de l'heure.
+  // Sans cycle (`?sanscycle`), on ne touche à rien.
+  useEffect(() => {
+    if (!CYCLE) return;
+    let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      document.head.appendChild(meta);
+    }
+    meta.content = themeColor(circadian(currentDate, mode), mode);
+  }, [currentDate, mode]);
 
   // Persist state
   useEffect(() => saveToStorage(STORAGE_KEYS.mode, mode), [mode]);

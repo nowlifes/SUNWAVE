@@ -166,6 +166,12 @@ export function skyBands(c: Circadian, n: number): string[] {
   return Array.from({ length: n }, (_, i) => mix(c.sky[0], c.sky[1], n === 1 ? 1 : i / (n - 1)));
 }
 
+/** La barre du navigateur (`<meta theme-color>`) prolonge le haut de l'écran :
+ *  la feuille en Soleil, le haut du ciel en Ombre. */
+export function themeColor(c: Circadian, mode: SunMode): string {
+  return mode === 'SUN' ? c.sheet : c.sky[0];
+}
+
 export function circadian(date: Date, mode: SunMode): Circadian {
   const t = date.getTime();
   const min = (d: Date) => (d.getTime() - t) / 60000;

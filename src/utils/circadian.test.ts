@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { circadian, luminance, skyBands } from './circadian';
+import { circadian, luminance, skyBands, themeColor } from './circadian';
 
 // Lisbonne le 6 octobre 2026 : lever ~07:35, coucher ~19:12 (heure d'été, UTC+1).
 const at = (hhmm: string) => new Date(`2026-10-06T${hhmm}:00+01:00`);
@@ -100,5 +100,14 @@ describe('circadian — le fond sous une carte crème', () => {
     expect(b).toBeLessThan(80);
     const [, gNoon] = rgb(circadian(at('13:20'), 'SUN').deep);
     expect(gNoon).toBeGreaterThan(150);
+  });
+});
+
+describe('circadian — la barre du navigateur', () => {
+  it("prend la couleur du haut de l'écran : la feuille en Soleil, le haut du ciel en Ombre", () => {
+    const sun = circadian(at('18:25'), 'SUN');
+    const shade = circadian(at('18:25'), 'SHADE');
+    expect(themeColor(sun, 'SUN')).toBe(sun.sheet);
+    expect(themeColor(shade, 'SHADE')).toBe(shade.sky[0]);
   });
 });
