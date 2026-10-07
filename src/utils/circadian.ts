@@ -208,13 +208,30 @@ function ratioOn(text: 'ink' | 'cream', bg: string): number {
 
 /** Le fond poussé juste assez (même teinte, même saturation) pour que `text`
  *  y tienne 4.5 : plus sombre sous le crème, plus clair sous l'encre. Au
- *  crépuscule, ni l'un ni l'autre n'y arrivait sur le ciel brut. */
+ *  crépuscule, ni l'un ni l'autre n'y arrivait sur le ciel brut.
+ *
+ *  Le texte secondaire (`--b-soft`, `--sub`) pose le même `text` en 74-86 %
+ *  d'opacité, jamais en aplat : un fond qui tient juste 4.5 en aplat retombe
+ *  sous 4.5 une fois le texte éclairci par la transparence. On pousse donc le
+ *  fond pour que la version la plus faible (encre 86 %, crème 74 %, la pire
+ *  des deux) tienne déjà 4.5 ; l'aplat n'en tient alors que davantage. */
 const TEXT_RATIO = 4.5;
+const SOFT_ALPHA: Record<'ink' | 'cream', number> = { ink: 0.86, cream: 0.74 };
+function softRatio(bg: string, text: 'ink' | 'cream'): number {
+  const blended = mix(bg, text === 'ink' ? '#0B1A45' : '#FFF1D6', SOFT_ALPHA[text]);
+  const l1 = luminance(blended);
+  const l2 = luminance(bg);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+}
+// Marge au-delà de 4.5 : `fromHsl` arrondit chaque canal à l'entier le plus
+// proche (hex), ce qui peut faire retomber sous la cible le pas où on
+// s'arrête ; la marge absorbe cet arrondi.
+const ROUNDING_MARGIN = 0.05;
 function legibleFor(bg: string, text: 'ink' | 'cream'): string {
   const [hh, sat, l0] = hsl(bg);
   const step = text === 'cream' ? -0.005 : 0.005;
   let out = bg;
-  for (let l = l0; l > 0 && l < 1 && ratioOn(text, out) < TEXT_RATIO; ) {
+  for (let l = l0; l > 0 && l < 1 && softRatio(out, text) < TEXT_RATIO + ROUNDING_MARGIN; ) {
     l += step;
     out = fromHsl(hh, sat, l);
   }
