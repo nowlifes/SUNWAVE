@@ -1,12 +1,19 @@
 import { useId } from 'react';
 import type { ScreenName } from '@/types';
 import { DAY, LIGHT, NIGHT } from '@/utils/palette';
+import { textOn } from '@/utils/circadian';
+
+const INK = '#0B1A45';
+const CREAM = '#FFF1D6';
 
 interface BottomNavProps {
   activeScreen: ScreenName;
   onScreenChange: (screen: ScreenName) => void;
   /** L'écran est de nuit (carte, ombre, Plein ouest) : la barre suit. */
   dusk?: boolean;
+  /** La couleur de l'heure (cycle circadien) ; absente avec `?sanscycle` :
+   *  la barre d'origine. */
+  tint?: string | null;
 }
 
 const NAV_ITEMS: { screen: ScreenName; label: string }[] = [
@@ -54,17 +61,17 @@ const PATHS: Record<ScreenName, React.ReactNode> = {
   ),
 };
 
-function NavIcon({ screen, active, dusk = false }: { screen: ScreenName; active: boolean; dusk?: boolean }) {
+function NavIcon({ screen, active, dusk = false, color, glow = LIGHT.glow }: { screen: ScreenName; active: boolean; dusk?: boolean; color?: string; glow?: string | null }) {
   const id = useId();
-  const stroke = active ? LIGHT.fire : dusk ? NIGHT.dim : DAY.sub;
+  const stroke = color ?? (active ? LIGHT.fire : dusk ? NIGHT.dim : DAY.sub);
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="block overflow-visible">
-      {active && (
+      {active && glow && (
         <>
           <defs>
             <radialGradient id={id}>
-              <stop offset="0.35" stopColor={LIGHT.glow} stopOpacity="0.42" />
-              <stop offset="1" stopColor={LIGHT.glow} stopOpacity="0" />
+              <stop offset="0.35" stopColor={glow} stopOpacity="0.42" />
+              <stop offset="1" stopColor={glow} stopOpacity="0" />
             </radialGradient>
           </defs>
           <circle cx="12" cy="12" r="13" fill={`url(#${id})`} />
@@ -77,7 +84,42 @@ function NavIcon({ screen, active, dusk = false }: { screen: ScreenName; active:
   );
 }
 
-export function BottomNav({ activeScreen, onScreenChange, dusk = false }: BottomNavProps) {
+/** La barre dans le cycle circadien (variante C validée le 2026-10-06) : la
+ *  barre entière dans la couleur de l'heure, l'onglet actif en pastille crème. */
+function CycleNav({ activeScreen, onScreenChange, tint }: BottomNavProps & { tint: string }) {
+  const onInk = textOn(tint) === 'ink';
+  return (
+    <nav
+      aria-label="Navigation"
+      className="absolute bottom-0 left-0 right-0 z-30 pb-[env(safe-area-inset-bottom)]"
+      style={{ background: tint, borderTop: `1.5px solid ${INK}` }}
+    >
+      <div className="flex items-center gap-1 px-1.5 py-1.5">
+        {NAV_ITEMS.map((item) => {
+          const active = activeScreen === item.screen;
+          const fg = active || onInk ? INK : CREAM;
+          return (
+            <button
+              key={item.screen}
+              onClick={() => onScreenChange(item.screen)}
+              aria-current={active ? 'page' : undefined}
+              style={active ? { background: CREAM, border: `1.5px solid ${INK}`, borderRadius: 16, boxShadow: `2px 3px 0 ${INK}` } : undefined}
+              className="flex min-h-12 min-w-0 flex-1 flex-col items-center gap-1 py-1.5 active:scale-90 transition-transform motion-reduce:transition-none"
+            >
+              <NavIcon screen={item.screen} active={active} color={fg} glow={null} />
+              <span className={`max-w-full truncate text-[11px] ${active ? 'font-bold' : 'font-medium'}`} style={{ color: fg }}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+export function BottomNav({ activeScreen, onScreenChange, dusk = false, tint }: BottomNavProps) {
+  if (tint) return <CycleNav activeScreen={activeScreen} onScreenChange={onScreenChange} tint={tint} />;
   return (
     <nav
       aria-label="Navigation"

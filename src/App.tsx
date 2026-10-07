@@ -91,18 +91,19 @@ export default function App() {
     };
   }, []);
 
-  // Cycle circadien : la barre du navigateur prend la couleur de l'heure.
-  // Sans cycle (`?sanscycle`), on ne touche à rien.
+  // Cycle circadien : la barre du navigateur et la barre d'onglets prennent la
+  // couleur de l'heure. Sans cycle (`?sanscycle`), on ne touche à rien.
+  const cyc = useMemo(() => (CYCLE ? circadian(currentDate, mode) : null), [currentDate, mode]);
   useEffect(() => {
-    if (!CYCLE) return;
+    if (!cyc) return;
     let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (!meta) {
       meta = document.createElement('meta');
       meta.name = 'theme-color';
       document.head.appendChild(meta);
     }
-    meta.content = themeColor(circadian(currentDate, mode), mode);
-  }, [currentDate, mode]);
+    meta.content = themeColor(cyc, mode);
+  }, [cyc, mode]);
 
   // Persist state
   useEffect(() => saveToStorage(STORAGE_KEYS.mode, mode), [mode]);
@@ -335,7 +336,7 @@ export default function App() {
         {/* Bottom navigation */}
         {/* Le mode Ombre n'assombrit plus la barre : l'écran Maintenant est un
             bain clair dans les deux modes. Seul « Plein ouest » reste sombre. */}
-        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} dusk={(screen === 'now' && dusk) || (screen === 'map' && !CLAIR)} />
+        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} dusk={(screen === 'now' && dusk) || (screen === 'map' && !CLAIR)} tint={cyc && (mode === 'SUN' ? cyc.sheet : cyc.deep)} />
       </div>
     </div>
   );
