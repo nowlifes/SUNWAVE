@@ -190,8 +190,8 @@ button.cdj-st::before { content: ""; position: absolute; inset: -8px 0; }
    sable là où le soleil tape — l'orange n'y désigne plus le but. */
 .cdj-band.shade span, .cdj-legend.shade i { background: #2E6FF2; }
 .cdj-band.shade .s1, .cdj-legend.shade .s1 { background: #7FA6F6; }
-.cdj-band.shade .s2 { background: #BFD2F8; }
-.cdj-band.shade .s3, .cdj-legend.shade .s3 { background: #E2CFA6; }
+/* Plus de 40 % de soleil : pas un lieu d'ombre, sable comme le plein soleil. */
+.cdj-band.shade :is(.s2, .s3), .cdj-legend.shade .s3 { background: #E2CFA6; }
 .cdj-band.shade .night, .cdj-legend.shade .night { background: var(--ink); }
 
 /* Lignes du menu */
