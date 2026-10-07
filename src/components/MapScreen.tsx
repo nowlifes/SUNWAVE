@@ -478,6 +478,7 @@ export function MapScreen({
               rec={selectedRec}
               mode={mode}
               isNow={isNow}
+              at={currentDate}
               onClose={() => handleVenueSelect(null)}
               onGo={() => onGetDirections(selectedRec.venue.id)}
               onDetail={() => setDetailOpen(true)}
@@ -524,7 +525,7 @@ export function MapScreen({
               {!quietPanel && (
                 <div className="px-4">
                   {!sheetOpen && best && (
-                    <BestRow rec={best} mode={mode} onOpen={() => handleVenueSelect(best.venue.id)} onGo={() => onGetDirections(best.venue.id)} />
+                    <BestRow rec={best} mode={mode} at={currentDate} onOpen={() => handleVenueSelect(best.venue.id)} onGo={() => onGetDirections(best.venue.id)} />
                   )}
                   {sheetOpen && (
                     <>
@@ -633,7 +634,7 @@ function ModeToggle({ mode, onModeChange }: { mode: SunMode; onModeChange: (m: S
 }
 
 /** « Au soleil jusqu'à 19:24 », ou la phrase de statut habituelle. */
-function StatusLine({ rec, mode, isNow, lead = false }: { rec: Recommendation; mode: SunMode; isNow: boolean; lead?: boolean }) {
+function StatusLine({ rec, mode, isNow, at, lead = false }: { rec: Recommendation; mode: SunMode; isNow: boolean; at: Date; lead?: boolean }) {
   const accent = mode === 'SUN' ? 'text-dusk-glow' : 'text-dusk-sub';
   const cap = (t: string) => (lead ? t.charAt(0).toUpperCase() + t.slice(1) : t.charAt(0).toLowerCase() + t.slice(1));
   if (inIt(rec) && rec.sunWindowEnd) {
@@ -644,7 +645,7 @@ function StatusLine({ rec, mode, isNow, lead = false }: { rec: Recommendation; m
       </>
     );
   }
-  return <>{cap(statusCopy(rec, mode).title)}</>;
+  return <>{cap(statusCopy(rec, mode, at).title)}</>;
 }
 
 /** « 13 lieux à l'ombre à pied » → « 13 lieux [au frais] à pied », et
@@ -664,13 +665,13 @@ function stickerHeadline(headline: string): ReactNode {
   );
 }
 
-function BestRow({ rec, mode, onOpen, onGo }: { rec: Recommendation; mode: SunMode; onOpen: () => void; onGo: () => void }) {
+function BestRow({ rec, mode, at, onOpen, onGo }: { rec: Recommendation; mode: SunMode; at: Date; onOpen: () => void; onGo: () => void }) {
   return (
     <div className="flex items-center gap-3 pb-1">
       <button onClick={onOpen} className="min-h-12 min-w-0 flex-1 text-left active:opacity-70">
         <span className="block truncate text-[16px] font-semibold">{rec.venue.name}</span>
         <span className="line-clamp-2 block text-[13px] leading-snug text-dusk-sub">
-          {travelLabel(rec)} · <StatusLine rec={rec} mode={mode} isNow />
+          {travelLabel(rec)} · <StatusLine rec={rec} mode={mode} isNow at={at} />
         </span>
       </button>
       <button
@@ -689,6 +690,7 @@ function PlaceCard({
   rec,
   mode,
   isNow,
+  at,
   onClose,
   onGo,
   onDetail,
@@ -696,6 +698,7 @@ function PlaceCard({
   rec: Recommendation;
   mode: SunMode;
   isNow: boolean;
+  at: Date;
   onClose: () => void;
   onGo: () => void;
   onDetail: () => void;
@@ -707,7 +710,7 @@ function PlaceCard({
           <h2 className="font-display text-[21px] font-bold leading-tight [font-stretch:90%] [text-wrap:balance]">{rec.venue.name}</h2>
           <p className="mt-0.5 text-[13.5px] leading-snug text-dusk-sub">
             <span className="text-dusk-shell">
-              <StatusLine rec={rec} mode={mode} isNow={isNow} lead />
+              <StatusLine rec={rec} mode={mode} isNow={isNow} at={at} lead />
             </span>{' '}
             · {travelLabel(rec)}
           </p>

@@ -132,7 +132,7 @@ export function PlaceDetailSheet({
   const wanted = isSun ? 'Soleil' : 'Ombre';
   const opposite = isSun ? 'Ombre' : 'Soleil';
   const inIt = (r: Recommendation) => r.sunLeavesInMin !== null;
-  const status = statusCopy(arrivalRec, mode);
+  const status = statusCopy(arrivalRec, mode, arrivalDate);
 
   // Trois lignes : maintenant, à l'arrivée, puis la prochaine bascule.
   const arrivalIn = inIt(arrivalRec);
