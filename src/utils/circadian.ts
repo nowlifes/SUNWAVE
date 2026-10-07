@@ -43,33 +43,35 @@ export interface Circadian {
 
 type Key<T> = [minutes: number, value: T];
 
-const SUN_KEYS = (sr: number, noon: number, ss: number): Key<string>[] => [
-  [sr - 60, '#1E2A66'],
-  [sr - 20, '#5A6FC0'],
-  [sr + 15, '#F4A3A0'],
-  [sr + 100, '#FFC98A'],
-  [noon, '#FFDF73'],
-  [ss - 130, '#FFB54D'],
-  [ss - 50, '#FF7A35'],
-  [ss, '#F2645E'],
-  [ss + 30, '#8E63C9'],
-  [ss + 75, '#1E2A66'],
-];
+// Les 6 nuanciers de la maquette validée (2026-10-06), au hex près. Rien
+// d'autre : pas de corail, pas de mauve, pas de marron.
+export const NUANCIERS = {
+  aube: '#C894A9',
+  matin: '#FFCB88',
+  midi: '#FFDF73',
+  apresMidi: '#FFB54D',
+  doree: '#FB7341',
+  nuit: '#1E2A66',
+} as const;
 
-// La même course que la feuille, en plus saturé : un pastel noie la carte
-// crème. L'orange plein reste réservé à l'heure dorée.
-const DEEP_KEYS = (sr: number, noon: number, ss: number): Key<string>[] => [
-  [sr - 60, '#1E2A66'],
-  [sr - 20, '#4A5BB8'],
-  [sr + 15, '#E8687A'],
-  [sr + 100, '#FF9440'],
-  [noon, '#FFB81F'],
-  [ss - 130, '#FF9A26'],
-  [ss - 50, '#FF6A2B'],
-  [ss, '#E84A4A'],
-  [ss + 30, '#7650BE'],
-  [ss + 75, '#1E2A66'],
-];
+// Fondu seulement entre teintes chaudes voisines (matin → dorée) : le mélange
+// reste dans la famille jaune-orange. Partout ailleurs, bascule nette — un
+// fondu nuit ↔ aube ou dorée → nuit invente du violet ou du marron.
+const SUN_KEYS = (sr: number, noon: number, ss: number): Key<string>[] => {
+  const N = NUANCIERS;
+  return [
+    [sr - 30, N.nuit],
+    [sr - 30, N.aube],
+    [sr + 20, N.aube],
+    [sr + 20, N.matin],
+    [sr + 120, N.matin],
+    [noon, N.midi],
+    [ss - 130, N.apresMidi],
+    [ss - 35, N.doree],
+    [ss + 45, N.doree],
+    [ss + 45, N.nuit],
+  ];
+};
 
 const SKY_KEYS = (sr: number, noon: number, ss: number): Key<[string, string]>[] => [
   [sr - 60, ['#0E1640', '#26306E']],
@@ -82,20 +84,25 @@ const SKY_KEYS = (sr: number, noon: number, ss: number): Key<[string, string]>[]
   [ss + 75, ['#0E1640', '#26306E']],
 ];
 
-// La carte : rien à midi (la carte claire validée), un voile chaud à l'heure
-// dorée, rose à l'aube, bleu nuit la nuit.
-const TINT_KEYS = (sr: number, noon: number, ss: number): Key<string>[] => [
-  [sr - 60, '#141C4A'],
-  [sr - 10, '#4A4F9E'],
-  [sr + 30, '#F4A3A0'],
-  [sr + 120, '#FFE3C2'],
-  [noon, '#FFE3C2'],
-  [ss - 120, '#FFD28A'],
-  [ss - 50, '#FF9A4D'],
-  [ss, '#F2645E'],
-  [ss + 30, '#5B3F9E'],
-  [ss + 75, '#141C4A'],
-];
+// La carte : le voile des nuanciers, quasi nul à midi (la carte claire
+// validée), plus épais à l'heure dorée, bleu nuit la nuit.
+const TINT_KEYS = (sr: number, noon: number, ss: number): Key<string>[] => {
+  // Le voile prend les nuanciers validés, avec les mêmes bascules que la
+  // feuille ; la nuit, un bleu plus profond que la feuille pour la carte.
+  const N = NUANCIERS;
+  return [
+    [sr - 30, '#141C4A'],
+    [sr - 30, N.aube],
+    [sr + 20, N.aube],
+    [sr + 20, N.matin],
+    [sr + 120, N.matin],
+    [noon, N.midi],
+    [ss - 130, N.apresMidi],
+    [ss - 35, N.doree],
+    [ss + 45, N.doree],
+    [ss + 45, '#141C4A'],
+  ];
+};
 const TINT_OPACITY = (sr: number, noon: number, ss: number): [number, number][] => [
   [sr - 60, 0.6], [sr - 10, 0.35], [sr + 30, 0.14], [sr + 120, 0.05], [noon, 0],
   [ss - 120, 0.05], [ss - 50, 0.16], [ss, 0.22], [ss + 30, 0.38], [ss + 75, 0.6],
@@ -130,6 +137,7 @@ const mix = (a: string, b: string, t: number) => {
   return hex(ca.map((v, i) => v + (cb[i] - v) * t));
 };
 
+/** Deux clés à la même minute font une bascule nette, sans fondu. */
 function along<T extends string | [string, string]>(keys: Key<T>[], m: number): T {
   if (m <= keys[0][0]) return keys[0][1];
   for (let i = 1; i < keys.length; i++) {
@@ -154,6 +162,36 @@ export function luminance(h: string): number {
 
 const INK_LUM = luminance('#0B1A45');
 const CREAM_LUM = luminance('#FFF1D6');
+const hsl = (h: string): [number, number, number] => {
+  const [r, g, b] = rgb(h).map((v) => v / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return [0, 0, l];
+  const sat = d / (1 - Math.abs(2 * l - 1));
+  const x = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [(x * 60 + 360) % 360, sat, l];
+};
+const fromHsl = (hh: number, sat: number, l: number) => {
+  const c = (1 - Math.abs(2 * l - 1)) * sat;
+  const x = c * (1 - Math.abs(((hh / 60) % 2) - 1));
+  const m = l - c / 2;
+  const [r, g, b] = hh < 60 ? [c, x, 0] : hh < 120 ? [x, c, 0] : hh < 180 ? [0, c, x] : hh < 240 ? [0, x, c] : hh < 300 ? [x, 0, c] : [c, 0, x];
+  return hex([r, g, b].map((v) => (v + m) * 255));
+};
+
+/** Fond sous une carte crème : la couleur validée elle-même, foncée juste
+ *  assez (même teinte, même saturation) pour un ratio de 1.4 contre le crème.
+ *  Un pastel noyait la carte ; une palette inventée trahissait le cycle. */
+const DEEP_RATIO = 1.4;
+function deepen(h: string): string {
+  const [hh, sat, l0] = hsl(h);
+  let out = h;
+  for (let l = l0; l > 0 && (CREAM_LUM + 0.05) / (luminance(out) + 0.05) < DEEP_RATIO; l -= 0.005) out = fromHsl(hh, sat, l);
+  return out;
+}
+
 /** Encre ou crème : celui qui contraste le plus avec le fond (ratio WCAG). */
 export function textOn(bg: string): 'ink' | 'cream' {
   const l = luminance(bg);
@@ -217,7 +255,7 @@ export function circadian(date: Date, mode: SunMode): Circadian {
   return {
     sheet,
     // En Ombre, le haut du ciel : le bleu franc derrière la carte crème.
-    deep: mode === 'SUN' ? along(DEEP_KEYS(sr, noon, ss), 0) : sky[0],
+    deep: mode === 'SUN' ? deepen(sheet) : sky[0],
     sky,
     fg,
     fgLow: mode === 'SUN' ? fg : textOn(sky[1]),

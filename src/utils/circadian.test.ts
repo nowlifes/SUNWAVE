@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardLight, circadian, luminance, skyBands, themeColor } from './circadian';
+import { cardLight, circadian, luminance, NUANCIERS, skyBands, themeColor } from './circadian';
 
 // Lisbonne le 6 octobre 2026 : lever ~07:35, coucher ~19:12 (heure d'été, UTC+1).
 const at = (hhmm: string) => new Date(`2026-10-06T${hhmm}:00+01:00`);
@@ -11,6 +11,37 @@ describe('circadian — mode Soleil', () => {
     expect(r).toBeGreaterThan(240);
     expect(g).toBeLessThan(140);
     expect(b).toBeLessThan(80);
+  });
+
+  it('à chaque moment, la feuille est le nuancier validé', () => {
+    const near = (a: string, b: string) => rgb(a).every((v, i) => Math.abs(v - rgb(b)[i]) <= 4);
+    const cases: [string, string][] = [
+      ['07:40', NUANCIERS.aube], ['09:35', NUANCIERS.matin], ['13:24', NUANCIERS.midi],
+      ['17:02', NUANCIERS.apresMidi], ['18:37', NUANCIERS.doree], ['20:42', NUANCIERS.nuit],
+    ];
+    for (const [t, hex] of cases) expect(near(circadian(at(t), 'SUN').sheet, hex), `${t} ${circadian(at(t), 'SUN').sheet} ≠ ${hex}`).toBe(true);
+  });
+
+  it("après le coucher, la feuille reste le Dorée validé, puis la nuit — jamais de marron", () => {
+    for (const t of ['18:40', '19:11', '19:30', '19:50']) expect(circadian(at(t), 'SUN').sheet, t).toBe(NUANCIERS.doree);
+    expect(circadian(at('20:00'), 'SUN').sheet).toBe(NUANCIERS.nuit);
+  });
+
+  it('le texte de la feuille garde un contraste ≥ 4.5 à toute heure', () => {
+    const INK = luminance('#0B1A45'), CREAM = luminance('#FFF1D6');
+    for (let h = 0; h < 24 * 60; h += 10) {
+      const d = new Date(at('00:00').getTime() + h * 60000);
+      const c = circadian(d, 'SUN');
+      const l = luminance(c.sheet);
+      const ratio = c.fg === 'ink' ? (l + 0.05) / (INK + 0.05) : (CREAM + 0.05) / (l + 0.05);
+      expect(ratio, `${d.toISOString()} ${c.sheet}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("le voile de la carte reste doré jusqu'à la nuit, sans violet", () => {
+    for (const t of ['19:11', '19:30', '19:50']) expect(circadian(at(t), 'SUN').map.tint, t).toBe(NUANCIERS.doree);
+    expect(circadian(at('07:40'), 'SUN').map.tint).toBe(NUANCIERS.aube);
+    expect(circadian(at('20:00'), 'SUN').map.tint).toBe('#141C4A');
   });
 
   it('à midi la feuille est paille, pas orange', () => {
@@ -123,5 +154,26 @@ describe('circadian — la lumière propre à chaque lieu', () => {
     const [r, , b] = rgb(cardLight(c, 'shade'));
     expect(b).toBeGreaterThan(r);
     expect(luminance(cardLight(c, 'night'))).toBeLessThan(0.05);
+  });
+});
+
+describe('circadian — deep garde la teinte validée', () => {
+  const hue = (h: string) => {
+    const [r, g, b] = rgb(h).map((v) => v / 255);
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    if (d === 0) return 0;
+    const x = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return (x * 60 + 360) % 360;
+  };
+  it('même teinte que la feuille à chaque heure, seule la clarté baisse', () => {
+    for (const t of ['07:40', '08:30', '09:30', '11:00', '13:20', '15:30', '16:50', '17:40', '18:25', '19:00', '19:20', '19:45']) {
+      const c = circadian(at(t), 'SUN');
+      expect(Math.abs(hue(c.deep) - hue(c.sheet)), t).toBeLessThan(4);
+      expect(luminance(c.deep), t).toBeLessThanOrEqual(luminance(c.sheet) + 1e-9);
+    }
+  });
+  it("le matin reste abricot, pas orange", () => {
+    const [, g] = rgb(circadian(at('09:30'), 'SUN').deep);
+    expect(g).toBeGreaterThan(175);
   });
 });
