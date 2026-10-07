@@ -80,7 +80,7 @@ export function SavedScreen({ savedVenues, currentDate, userLocation, onVenueSel
       <p>
         {VenueService.getNeighborhood(row.venue)} · {categoryLabel(row.venue.category).toLowerCase()} · {travelLabel(row.rec)}
       </p>
-      <HourBand venue={row.venue} date={currentDate} showNow={false} />
+      <HourBand venue={row.venue} date={currentDate} showNow={false} mode={mode} />
     </button>
   );
 

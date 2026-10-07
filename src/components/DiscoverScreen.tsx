@@ -154,7 +154,7 @@ export function DiscoverScreen({ currentDate, userLocation, mode, onModeChange, 
               <span className="where">{special.top.venue.name} · {travelLabel(special.top)}</span>
               <UntilPrice rec={special.top} mode={mode} />
             </button>
-            <HourBand venue={special.top.venue} date={currentDate} />
+            <HourBand venue={special.top.venue} date={currentDate} mode={mode} />
             <div className="cdj-ticks" aria-hidden="true">
               <span>{BAND_FROM}h</span><span>14h</span><span>{BAND_TO}h</span>
             </div>
@@ -253,7 +253,7 @@ export function DiscoverResults({
                   </div>
                   <UntilPrice rec={rec} mode={mode} />
                 </div>
-                <HourBand venue={rec.venue} date={currentDate} />
+                <HourBand venue={rec.venue} date={currentDate} mode={mode} />
               </button>
               {idx === 0 && (
                 <div className="cdj-cta">

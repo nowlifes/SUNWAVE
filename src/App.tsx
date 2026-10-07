@@ -14,7 +14,7 @@ import { ProfileScreen } from '@/components/ProfileScreen';
 import { BottomNav } from '@/components/BottomNav';
 import { CLAIR } from '@/utils/mapFlags';
 import { PlaceDetailSheet } from '@/components/PlaceDetailSheet';
-import { CYCLE, circadian, themeColor } from '@/utils/circadian';
+import { CYCLE, barTint, circadian } from '@/utils/circadian';
 
 const LISBON_CENTER: GeoPoint = { lat: 38.7223, lng: -9.1393 };
 const DEFAULT_ZOOM = 14;
@@ -44,6 +44,9 @@ function saveToStorage(key: string, value: unknown) {
     // ignore
   }
 }
+
+/** Le fond de Plein ouest et de la carte sombre (`bg-dusk-night`). */
+const DUSK_NIGHT = '#0B1A45';
 
 export default function App() {
   // Arrivé par une invitation (« ?lieu=… ») : la fiche du lieu s'ouvre tout
@@ -94,7 +97,15 @@ export default function App() {
 
   // Cycle circadien : la barre du navigateur et la barre d'onglets prennent la
   // couleur de l'heure. Sans cycle (`?sanscycle`), on ne touche à rien.
-  const cyc = useMemo(() => (CYCLE ? circadian(currentDate, mode) : null), [currentDate, mode]);
+  // Le mode de la couleur est celui de l'écran affiché : les résultats d'une
+  // envie de l'Explorer suivent l'envie (« au frais » = Ombre), comme leur fond.
+  const screenMode: SunMode =
+    screen === 'discover' && discoverCategory ? (discoverCategory.mode === 'ANY' ? 'SUN' : discoverCategory.mode) : mode;
+  // Plein ouest et la carte sombre restent sombres : barres comprises.
+  const darkScreen = (screen === 'now' && dusk) || (screen === 'map' && !CLAIR);
+  const cyc = useMemo(() => (CYCLE ? circadian(currentDate, screenMode) : null), [currentDate, screenMode]);
+  // Les barres prolongent le fond de l'écran affiché.
+  const barColor = !cyc || darkScreen ? null : barTint(cyc, screenMode, screen === 'discover' || screen === 'saved');
   useEffect(() => {
     if (!cyc) return;
     let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
@@ -103,8 +114,8 @@ export default function App() {
       meta.name = 'theme-color';
       document.head.appendChild(meta);
     }
-    meta.content = themeColor(cyc, mode);
-  }, [cyc, mode]);
+    meta.content = barColor ?? DUSK_NIGHT;
+  }, [cyc, barColor]);
 
   // Persist state
   useEffect(() => saveToStorage(STORAGE_KEYS.mode, mode), [mode]);
@@ -341,7 +352,7 @@ export default function App() {
         {/* Bottom navigation */}
         {/* Le mode Ombre n'assombrit plus la barre : l'écran Maintenant est un
             bain clair dans les deux modes. Seul « Plein ouest » reste sombre. */}
-        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} dusk={(screen === 'now' && dusk) || (screen === 'map' && !CLAIR)} tint={cyc && (mode === 'SUN' ? cyc.sheet : cyc.deep)} />
+        <BottomNav activeScreen={screen} onScreenChange={handleScreenChange} dusk={darkScreen} tint={barColor} />
       </div>
     </div>
   );

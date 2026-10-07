@@ -215,8 +215,6 @@ body {
   box-shadow: 0 3px 0 rgba(11, 26, 69, 0.35) !important;
 }
 [data-bain='soleil'] [aria-pressed='true'] { background-color: #FFE14D !important; color: #0B1A45 !important; box-shadow: none !important; }
-/* La frise d'heure : ses heures de soleil sont orange, comme la feuille. */
-[data-bain='soleil'] .ribbon-good { background: #FFE14D !important; }
 /* Les éclats du sticker, en encre sur l'orange. */
 [data-bain='soleil'] .titre-sticker::before,
 [data-bain='soleil'] .titre-sticker::after {

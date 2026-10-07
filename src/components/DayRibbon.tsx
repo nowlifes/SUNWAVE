@@ -20,8 +20,8 @@ const PALETTE = {
   day: { good: { SUN: LIGHT.fire, SHADE: DAY.sky2 }, none: '#D9E0F1', night: NIGHT.night, now: 'bg-ink', label: 'text-day-sub', nowLabel: 'text-ink' },
   night: { good: { SUN: LIGHT.fire, SHADE: NIGHT.sub }, none: NIGHT.p3, night: NIGHT.deep, now: 'bg-dusk-shell', label: 'text-dusk-dim', nowLabel: 'text-dusk-shell' },
   // Dans les bains, la feuille EST déjà la couleur du mode : la bande ne peut
-  // pas la redire. Le jaune y marque les bonnes heures (comme `.ribbon-good`
-  // sur la carte), le reste est du verre, la nuit de l'encre.
+  // pas la redire. Le jaune y marque les bonnes heures, le reste est du verre,
+  // la nuit de l'encre.
   bain: { good: { SUN: '#FFE14D', SHADE: '#FFE14D' }, none: 'rgba(255,241,214,0.26)', night: 'rgba(11,26,69,0.45)', now: 'bg-cream', label: 'text-cream/70', nowLabel: 'text-cream' },
   transat: { good: { SUN: '#FFE14D', SHADE: '#FFE14D' }, none: 'rgba(255,241,214,0.34)', night: 'rgba(11,26,69,0.38)', now: 'bg-ink', label: 'text-ink/70', nowLabel: 'text-ink' },
   // Sur la carte crème du mode Ombre (cycle circadien) : le bleu du bain

@@ -347,7 +347,7 @@ export function MapScreen({
   // l'orange du transat en Soleil (la fiche d'un lieu garde sa feuille crème).
   const bain = CLAIR && layer !== 'place';
   // Cycle circadien : la feuille et la bascule prennent la couleur de l'heure
-  // (voir utils/circadian). Le texte suit la clarté du milieu de la feuille :
+  // (voir utils/circadian). Un seul texte sur tout le dégradé (`fgMid`) :
   // `data-bain` choisit les règles d'encre (soleil) ou de crème (ombre).
   const cyc = useMemo(() => (CYCLE && CLAIR ? circadian(currentDate, mode) : null), [currentDate, mode]);
   const cycTint = cyc && { bg: cyc.sheet, fg: textTone(cyc.sheet) };
@@ -469,7 +469,7 @@ export function MapScreen({
           data-sunup={bain && cyc?.shadow ? '' : undefined}
           style={
             bain && cyc
-              ? ({ '--cyc-sheet': cyc.sheet, '--cyc-sky-top': cyc.sky[0], '--cyc-sky-bot': cyc.sky[1] } as CSSProperties)
+              ? ({ '--cyc-sheet': cyc.sheet, '--cyc-sky-top': cyc.skySheet[0], '--cyc-sky-bot': cyc.skySheet[1] } as CSSProperties)
               : undefined
           }
         >
