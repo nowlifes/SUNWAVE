@@ -315,6 +315,7 @@ export default function App() {
             onModeChange={handleModeChange}
             locationLabel={locationLabel}
             locationGranted={locationGranted}
+            currentDate={currentDate}
           />
         )}
 
