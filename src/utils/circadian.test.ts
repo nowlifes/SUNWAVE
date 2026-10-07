@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardLight, circadian, luminance, NUANCIERS, skyBands, barTint } from './circadian';
+import { cardLight, circadian, hourCell, hourTint, luminance, NUANCIERS, SAND, skyBands, barTint } from './circadian';
 
 // Lisbonne le 6 octobre 2026 : lever ~07:35, coucher ~19:12 (heure d'été, UTC+1).
 const at = (hhmm: string) => new Date(`2026-10-06T${hhmm}:00+01:00`);
@@ -217,5 +217,27 @@ describe('circadian — lisible toute l’année, toutes les 2 minutes', () => {
   it('la feuille de la carte suit le ciel : identique quand il est déjà lisible', () => {
     const c = circadian(new Date('2026-10-06T12:00:00Z'), 'SHADE');
     expect(c.skySheet).toEqual(c.sky);
+  });
+});
+
+describe('circadian — une case d’heure parle la langue du cycle', () => {
+  it('prend la couleur de son heure : la feuille en Soleil, le haut du ciel en Ombre', () => {
+    expect(hourTint(at('13:00'), 'SUN')).toBe(circadian(at('13:00'), 'SUN').sheet);
+    expect(hourTint(at('13:00'), 'SHADE')).toBe(circadian(at('13:00'), 'SHADE').sky[0]);
+    expect(hourTint(at('23:00'), 'SUN')).toBe(NUANCIERS.nuit);
+  });
+  it('en Soleil : pleine au soleil, à moitié voilée pour un peu, voilée à l’ombre', () => {
+    const t = hourTint(at('13:00'), 'SUN');
+    expect(hourCell(at('13:00'), 'SUN', 80)).toEqual({ background: t, good: true });
+    expect(hourCell(at('13:00'), 'SUN', 25).background).toContain('.34');
+    expect(hourCell(at('13:00'), 'SUN', 5).background).toContain('.62');
+  });
+  it('en Ombre : pleine à l’ombre, sable là où le soleil tape', () => {
+    const t = hourTint(at('13:00'), 'SHADE');
+    expect(hourCell(at('13:00'), 'SHADE', 5)).toEqual({ background: t, good: true });
+    expect(hourCell(at('13:00'), 'SHADE', 60)).toEqual({ background: SAND, good: false });
+  });
+  it('la nuit : la couleur de la nuit, ni bonne ni voilée', () => {
+    expect(hourCell(at('23:00'), 'SUN', null)).toEqual({ background: NUANCIERS.nuit, good: false });
   });
 });

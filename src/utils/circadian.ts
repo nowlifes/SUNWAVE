@@ -301,3 +301,33 @@ export function circadian(date: Date, mode: SunMode): Circadian {
     shadow,
   };
 }
+
+/** La couleur d'une heure de la journée : la feuille du mode Soleil, le haut
+ *  du ciel en Ombre. La même source que le fond : une bande d'heures (curseur
+ *  de la carte, frise d'un lieu) se colore comme la journée elle-même. */
+export function hourTint(date: Date, mode: SunMode): string {
+  const c = circadian(date, mode);
+  return mode === 'SUN' ? c.sheet : c.sky[0];
+}
+
+/** Ce qu'une heure à l'ombre voile de la couleur de l'heure (crème). */
+const VEIL = 'rgba(255, 241, 214, .62)';
+const HALF = 'rgba(255, 241, 214, .34)';
+/** En Ombre, une heure où le soleil tape : du sable, pas d'orange. */
+export const SAND = '#E2CFA6';
+
+/** Le fond d'une case d'heure. `sun` : part de soleil du lieu (0-100), `null`
+ *  la nuit. Le bon moment (soleil en Soleil, ombre en Ombre) garde la couleur
+ *  pleine de l'heure ; un peu, à moitié voilée ; le reste voilé en Soleil,
+ *  sable en Ombre. Mêmes seuils que la fiche : 15 et 40 %. */
+export function hourCell(date: Date, mode: SunMode, sun: number | null): { background: string; good: boolean } {
+  const tint = hourTint(date, mode);
+  if (sun === null) return { background: tint, good: false };
+  const veil = (v: string) => `linear-gradient(${v}, ${v}), ${tint}`;
+  if (mode === 'SUN') {
+    if (sun >= 40) return { background: tint, good: true };
+    return { background: veil(sun >= 15 ? HALF : VEIL), good: false };
+  }
+  if (sun < 15) return { background: tint, good: true };
+  return { background: sun < 40 ? veil(HALF) : SAND, good: false };
+}

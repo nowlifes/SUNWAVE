@@ -18,7 +18,7 @@ import { Squiggle } from './Squiggle';
 import { HaloIcon, LiveGlyph } from './Halo';
 import { VoicePile } from './Avatar';
 import { FicheSky } from './FicheSky';
-import { HourBand } from './HourBand';
+import { HourBand, HourLegend } from './HourBand';
 import './carteDuJour.css';
 
 interface PlaceDetailSheetProps {
@@ -278,21 +278,7 @@ export function PlaceDetailSheet({
                 <div className="cdj-ticks" aria-hidden="true">
                   <span>{BAND_FROM}h</span><span>14h</span><span>{BAND_TO}h</span>
                 </div>
-                {isSun ? (
-                  <p className="cdj-legend">
-                    <span><i className="s3" />soleil</span>
-                    <span><i className="s1" />un peu</span>
-                    <span><i />ombre</span>
-                    <span><i className="night" />nuit</span>
-                  </p>
-                ) : (
-                  <p className="cdj-legend shade">
-                    <span><i />ombre</span>
-                    <span><i className="s1" />un peu</span>
-                    <span><i className="s3" />soleil</span>
-                    <span><i className="night" />nuit</span>
-                  </p>
-                )}
+                <HourLegend date={currentDate} mode={mode} />
 
                 {/* Sur place, en direct : ce que disent ceux qui y sont. Rien tant
                     que personne n'a répondu et qu'on n'est pas soi-même là. */}
