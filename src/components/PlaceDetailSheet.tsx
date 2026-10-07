@@ -6,11 +6,12 @@ import { VenueService } from '@/services/VenueService';
 import { ReportService } from '@/services/ReportService';
 import { liveReports, type LiveAnswer } from '@/services/LiveReportService';
 import { LIVE_ANSWERS, LIVE_SHORT, LIVE_WHY, isDaylight, liveAge, liveLabel, liveQuestion, liveWho } from '@/utils/live';
-import { formatLisbonTime, lisbonHour, lisbonMinutesOfDay } from '@/utils/lisbonTime';
+import { formatLisbonTime, lisbonHour } from '@/utils/lisbonTime';
 import { categoryLabel, statusCopy, travelParts } from '@/utils/copy';
 import { LIGHT } from '@/utils/palette';
 import { lightCut } from '@/utils/lightCut';
 import { CYCLE, circadian, textOn } from '@/utils/circadian';
+import { isNightAt, stateWord } from '@/utils/ficheState';
 import { BAND_FROM, BAND_TO } from '@/utils/carteDuJour';
 import type { HaloKind } from '@/utils/haloMarkup';
 import { Squiggle } from './Squiggle';
@@ -135,7 +136,11 @@ export function PlaceDetailSheet({
 
   // Trois lignes : maintenant, à l'arrivée, puis la prochaine bascule.
   const arrivalIn = inIt(arrivalRec);
-  const nextChange: { at: string; word: string; glyph: Glyph } | null = arrivalIn
+  // On arrive de nuit : pas de « plus tard » — « dès 19:11 nuit » à 5 h 30
+  // annoncerait une nuit déjà là. Même silence en Soleil qu'en Ombre.
+  const nextChange: { at: string; word: string; glyph: Glyph } | null = isNightAt(arrivalDate)
+    ? null
+    : arrivalIn
     ? arrivalRec.sunWindowEnd
       ? { at: arrivalRec.sunWindowEnd, word: arrivalRec.endsAtSunset ? 'Nuit' : opposite, glyph: arrivalRec.endsAtSunset || isSun ? OUT : LIT }
       : null
@@ -143,13 +148,11 @@ export function PlaceDetailSheet({
       ? { at: arrivalRec.sunWindowStart, word: wanted, glyph: isSun ? LIT : OUT }
       : null;
 
-  // Après le coucher, « ombre » serait faux : c'est la nuit, pour tout le monde.
-  const sunsetMin = lisbonMinutesOfDay(SunService.getSunset(currentDate));
-  const isNightAt = (d: Date) => lisbonMinutesOfDay(d) >= sunsetMin;
-  const stateOf = (yes: boolean, d: Date): { glyph: Glyph; word: string } =>
-    !yes && isSun && isNightAt(d)
-      ? { glyph: OUT, word: 'Nuit' }
-      : { glyph: yes === isSun ? { kind: 'sun', alt: Math.max(1, SunService.getSunElevation(d)) } : OUT, word: yes ? wanted : opposite };
+  // La nuit, ni « Soleil » ni « Ombre » : c'est la nuit, dans les deux modes.
+  const stateOf = (yes: boolean, d: Date): { glyph: Glyph; word: string } => {
+    const word = stateWord(yes, isSun, isNightAt(d));
+    return { glyph: word === 'Soleil' ? { kind: 'sun', alt: Math.max(1, SunService.getSunElevation(d)) } : OUT, word };
+  };
   const nowState = stateOf(inIt(rec), currentDate);
   const arrivalState = stateOf(arrivalIn, arrivalDate);
 

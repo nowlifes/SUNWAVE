@@ -836,7 +836,8 @@ export function MapView({
       // L'heure : la fin de la fenêtre si on y est ; sinon « dès 17:30 » ou
       // l'état. Orange seulement pour une heure de soleil.
       const soon = !loud && rec?.sunArrivesInMin != null && !rec.arrivesTomorrow ? rec.sunWindowStart : null;
-      const time = loud ? label?.time ?? null : soon ? `dès ${soon}` : mode === 'SUN' ? 'ombre' : 'soleil';
+      // La nuit, un lieu qui n'est « pas à l'ombre » n'est pas au soleil : « nuit ».
+      const time = loud ? label?.time ?? null : soon ? `dès ${soon}` : alt <= 0 ? 'nuit' : mode === 'SUN' ? 'ombre' : 'soleil';
       const sunHour = mode === 'SUN' && (loud || !!soon);
       const lit = alt > LIT_MIN_ALT && (rec?.sunPercentage ?? 0) >= LIT_PCT;
 
