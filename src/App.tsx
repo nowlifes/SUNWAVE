@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { SunMode, Venue, GeoPoint, ScreenName, DiscoverCategory } from '@/types';
 import { LocationService } from '@/services/LocationService';
 import { VenueService } from '@/services/VenueService';
@@ -65,6 +65,7 @@ export default function App() {
   const [dusk, setDusk] = useState(false);
   const [mode, setMode] = useState<SunMode>(() => loadFromStorage(STORAGE_KEYS.mode, 'SUN'));
   const [currentDate, setCurrentDate] = useState(new Date());
+  const followNowRef = useRef(true);
   const [userLocation, setUserLocation] = useState<GeoPoint>(LISBON_CENTER);
   const [locationGranted, setLocationGranted] = useState(false);
   const [outsideLisbon, setOutsideLisbon] = useState(false);
@@ -142,20 +143,21 @@ export default function App() {
     }
   }, [locationRequested]);
 
-  // Refresh "now" time periodically (only if close to now — a time picked on
-  // the map slider must not snap back). The answer screen shows a clock: it
-  // has to tick too.
+  // L'heure suit le vrai « maintenant » sur tous les écrans — le cycle
+  // circadien en dépend partout — et se recale au retour au premier plan
+  // (téléphone verrouillé une heure). Seule une heure choisie sur le curseur
+  // reste en place.
   useEffect(() => {
-    if (screen !== 'map' && screen !== 'now') return;
-    const interval = setInterval(() => {
-      setCurrentDate((prev) => {
-        const diff = Math.abs(prev.getTime() - Date.now());
-        if (diff < 120000) return new Date(); // auto-update if within 2 min of now
-        return prev;
-      });
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [screen]);
+    const tick = () => {
+      if (followNowRef.current && !document.hidden) setCurrentDate(new Date());
+    };
+    const interval = setInterval(tick, 60000);
+    document.addEventListener('visibilitychange', tick);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, []);
 
   const handleRecenter = useCallback(() => {
     LocationService.getCurrentLocation().then((loc) => {
@@ -180,6 +182,8 @@ export default function App() {
   }, []);
 
   const handleTimeChange = useCallback((date: Date) => {
+    // Ramené à moins de 2 min de maintenant : on suit de nouveau l'heure.
+    followNowRef.current = Math.abs(date.getTime() - Date.now()) < 120000;
     setCurrentDate(date);
   }, []);
 
