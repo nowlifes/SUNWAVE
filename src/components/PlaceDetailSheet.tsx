@@ -272,11 +272,17 @@ export function PlaceDetailSheet({
                 </div>
 
                 {/* La bande de la journée : le composant signature, partagé avec l'Explorer et les Favoris. */}
-                <p className="cdj-rail-label">Les prochaines heures</p>
+                <p className="cdj-rail-label">Le soleil aujourd'hui</p>
                 <HourBand venue={venue} date={currentDate} />
                 <div className="cdj-ticks" aria-hidden="true">
                   <span>{BAND_FROM}h</span><span>14h</span><span>{BAND_TO}h</span>
                 </div>
+                <p className="cdj-legend">
+                  <span><i className="s3" />soleil</span>
+                  <span><i className="s1" />un peu</span>
+                  <span><i />ombre</span>
+                  <span><i className="night" />nuit</span>
+                </p>
 
                 {/* Sur place, en direct : ce que disent ceux qui y sont. Rien tant
                     que personne n'a répondu et qu'on n'est pas soi-même là. */}
