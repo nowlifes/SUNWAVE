@@ -136,9 +136,10 @@ export function PlaceDetailSheet({
 
   // Trois lignes : maintenant, à l'arrivée, puis la prochaine bascule.
   const arrivalIn = inIt(arrivalRec);
-  // On arrive de nuit : pas de « plus tard » — « dès 19:11 nuit » à 5 h 30
-  // annoncerait une nuit déjà là. Même silence en Soleil qu'en Ombre.
-  const nextChange: { at: string; word: string; glyph: Glyph } | null = isNightAt(arrivalDate)
+  // On arrive de nuit dans la fenêtre : pas de « plus tard » — « dès 19:11
+  // nuit » à 5 h 30 annoncerait une nuit déjà là. Hors fenêtre, le soleil
+  // de 8 h reste à annoncer.
+  const nextChange: { at: string; word: string; glyph: Glyph } | null = isNightAt(arrivalDate) && arrivalIn
     ? null
     : arrivalIn
     ? arrivalRec.sunWindowEnd

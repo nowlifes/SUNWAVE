@@ -95,7 +95,7 @@ export function SavedScreen({ savedVenues, currentDate, userLocation, onVenueSel
         <div className="flex flex-col items-center justify-center px-6 py-20">
           <HaloIcon kind="sun" tone="day" alt={30} size={44} className="mb-4" />
           <p className="text-center text-sm font-semibold">Aucun lieu enregistré.</p>
-          <p className="mt-1 text-center text-xs text-day-sub">Touche « Garder » sur un lieu pour voir ici ses heures de soleil.</p>
+          <p className="mt-1 text-center text-xs text-[color:var(--sub)]">Touche « Garder » sur un lieu pour voir ici ses heures de soleil.</p>
         </div>
       ) : (
         <>

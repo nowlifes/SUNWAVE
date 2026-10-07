@@ -198,7 +198,7 @@ body {
   to { --rayons: 15deg; }
 }
 [data-bain='soleil'] .text-dusk-sub,
-[data-bain='soleil'] .text-dusk-dim { color: rgba(11, 26, 69, 0.74) !important; }
+[data-bain='soleil'] .text-dusk-dim { color: rgba(11, 26, 69, 0.86) !important; }
 [data-bain='soleil'] .text-dusk-glow { color: #0B1A45 !important; }
 [data-bain='soleil'] .border-dusk-edge,
 [data-bain='soleil'] .border-dusk-line { border-color: rgba(11, 26, 69, 0.3) !important; }
@@ -273,7 +273,7 @@ body {
   --b-bar: rgba(255, 241, 214, 0.26);
 }
 .bain[data-bain='soleil'] {
-  --b-soft: rgba(11, 26, 69, 0.74);
+  --b-soft: rgba(11, 26, 69, 0.86);
   --b-glass: rgba(255, 241, 214, 0.28);
   --b-hair: rgba(11, 26, 69, 0.2);
   --b-key: #0B1A45;
@@ -488,7 +488,7 @@ body {
 /* Le texte suit la clarté du fond, quel que soit le mode. */
 .bain[data-cycle][data-fg='ink'] {
   color: #0B1A45 !important;
-  --b-soft: rgba(11, 26, 69, 0.74);
+  --b-soft: rgba(11, 26, 69, 0.86);
   --b-glass: rgba(255, 241, 214, 0.34);
   --b-hair: rgba(11, 26, 69, 0.2);
   --b-key: #0B1A45;
@@ -516,7 +516,7 @@ body {
   background: #FFF1D6;
   color: #0B1A45;
   box-shadow: var(--cyc-sx) var(--cyc-sy) 0 rgba(11, 26, 69, 0.55);
-  --b-soft: rgba(11, 26, 69, 0.74);
+  --b-soft: rgba(11, 26, 69, 0.86);
   --b-glass: rgba(11, 26, 69, 0.06);
   --b-hair: rgba(11, 26, 69, 0.18);
   --b-key: #2E6FF2;
@@ -533,7 +533,7 @@ body {
 /* Le bas de l'écran suit le bas du ciel (liste « Aussi », pied de page). */
 .bain[data-cycle][data-fg-low='ink'] .bain-low {
   color: #0B1A45;
-  --b-soft: rgba(11, 26, 69, 0.74);
+  --b-soft: rgba(11, 26, 69, 0.86);
   --b-hair: rgba(11, 26, 69, 0.2);
   --b-key: #0B1A45;
 }

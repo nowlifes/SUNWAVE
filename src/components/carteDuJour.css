@@ -452,6 +452,7 @@ button.cdj-st::before { content: ""; position: absolute; inset: -8px 0; }
    prend la teinte profonde de l'heure, chaque carte la lumière de son lieu.
    --------------------------------------------------------------------------- */
 .cdj[data-cycle]:not(.cdj-sheet) { background: var(--cyc-ground); }
+.cdj[data-cycle][data-fg='ink'] { --sub: rgba(11, 20, 51, .86); }
 .cdj[data-cycle][data-fg='cream'] { color: var(--cream); --sub: rgba(255, 241, 214, .78); }
 .cdj[data-cycle] :is(.cdj-card, .cdj-ticket, .cdj-fav) { color: var(--ink); --sub: #34487A; }
 .cdj[data-cycle] .cdj-fhead { background: transparent; }
