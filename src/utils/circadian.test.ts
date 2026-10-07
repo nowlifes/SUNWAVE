@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardLight, circadian, luminance, NUANCIERS, skyBands, themeColor } from './circadian';
+import { cardLight, circadian, luminance, NUANCIERS, skyBands, barTint } from './circadian';
 
 // Lisbonne le 6 octobre 2026 : lever ~07:35, coucher ~19:12 (heure d'été, UTC+1).
 const at = (hhmm: string) => new Date(`2026-10-06T${hhmm}:00+01:00`);
@@ -138,8 +138,13 @@ describe('circadian — la barre du navigateur', () => {
   it("prend la couleur du haut de l'écran : la feuille en Soleil, le haut du ciel en Ombre", () => {
     const sun = circadian(at('18:25'), 'SUN');
     const shade = circadian(at('18:25'), 'SHADE');
-    expect(themeColor(sun, 'SUN')).toBe(sun.sheet);
-    expect(themeColor(shade, 'SHADE')).toBe(shade.sky[0]);
+    expect(barTint(sun, 'SUN', false)).toBe(sun.sheet);
+    expect(barTint(shade, 'SHADE', false)).toBe(shade.sky[0]);
+  });
+  it('sous des cartes crème (Explorer, Favoris), prend le fond profond de l’écran', () => {
+    const sun = circadian(at('13:00'), 'SUN');
+    expect(barTint(sun, 'SUN', true)).toBe(sun.deep);
+    expect(barTint(sun, 'SUN', true)).not.toBe(sun.sheet);
   });
 });
 
@@ -175,5 +180,42 @@ describe('circadian — deep garde la teinte validée', () => {
   it("le matin reste abricot, pas orange", () => {
     const [, g] = rgb(circadian(at('09:30'), 'SUN').deep);
     expect(g).toBeGreaterThan(175);
+  });
+});
+
+describe('circadian — lisible toute l’année, toutes les 2 minutes', () => {
+  const INK = luminance('#0B1A45'), CREAM = luminance('#FFF1D6');
+  const ratio = (text: 'ink' | 'cream', bg: string) => {
+    const l = luminance(bg);
+    return text === 'ink' ? (l + 0.05) / (INK + 0.05) : (CREAM + 0.05) / (l + 0.05);
+  };
+  const days = ['2026-06-21', '2026-10-06', '2026-12-21'];
+  const each = (fn: (d: Date) => void) => {
+    for (const day of days) {
+      const t0 = new Date(`${day}T00:00:00Z`).getTime();
+      for (let m = 0; m < 24 * 60; m += 2) fn(new Date(t0 + m * 60000));
+    }
+  };
+
+  it('en Ombre, le haut et le bas du ciel portent leur texte à ≥ 4.5', () => {
+    each((d) => {
+      const c = circadian(d, 'SHADE');
+      expect(ratio(c.fg, c.sky[0]), `${d.toISOString()} haut ${c.sky[0]}`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(c.fgLow, c.sky[1]), `${d.toISOString()} bas ${c.sky[1]}`).toBeGreaterThanOrEqual(4.5);
+    });
+  });
+
+  it('la feuille de la carte en Ombre : un seul texte, lisible en haut comme en bas', () => {
+    each((d) => {
+      const c = circadian(d, 'SHADE');
+      const [top, bot] = c.skySheet;
+      expect(ratio(c.fgMid, top), `${d.toISOString()} haut ${top}`).toBeGreaterThanOrEqual(4.5);
+      expect(ratio(c.fgMid, bot), `${d.toISOString()} bas ${bot}`).toBeGreaterThanOrEqual(4.5);
+    });
+  });
+
+  it('la feuille de la carte suit le ciel : identique quand il est déjà lisible', () => {
+    const c = circadian(new Date('2026-10-06T12:00:00Z'), 'SHADE');
+    expect(c.skySheet).toEqual(c.sky);
   });
 });

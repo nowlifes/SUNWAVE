@@ -6,7 +6,7 @@ import { SunService } from '@/services/SunService';
 //
 // Mode Soleil (« la feuille suit le ciel ») : rose à l'aube, abricot le matin,
 // paille à midi, miel l'après-midi. L'orange plein n'arrive qu'à l'heure dorée
-// — il devient un moment, plus un fond permanent. Puis corail, mauve, nuit.
+// — il devient un moment, plus un fond permanent. Puis la nuit.
 //
 // Mode Ombre (« le ciel en fond ») : un dégradé de ciel réel derrière une
 // carte crème.
@@ -33,8 +33,12 @@ export interface Circadian {
   fg: 'ink' | 'cream';
   /** Idem en bas de l'écran : le ciel du soir est sombre en haut, pêche en bas. */
   fgLow: 'ink' | 'cream';
-  /** Idem au milieu du ciel : pour une feuille courte posée en bas (carte). */
+  /** Le texte unique d'une feuille courte posée en bas (carte) sur tout le
+   *  dégradé du ciel : celui qui tient le mieux aux deux bouts. */
   fgMid: 'ink' | 'cream';
+  /** Le ciel de cette feuille, haut puis bas : `sky`, ou en aplat le bout qui
+   *  porte `fgMid` quand l'autre ne le porte pas. Identique à `sky` le plus souvent. */
+  skySheet: [string, string];
   /** La carte : un voile de l'heure posé sur le fond, l'eau, les ombres, la lumière. */
   map: { tint: string; tintOpacity: number; water: string; shadow: string; sun: string };
   /** Décalage de l'ombre portée, en px ; null quand le soleil est couché. */
@@ -194,8 +198,27 @@ function deepen(h: string): string {
 
 /** Encre ou crème : celui qui contraste le plus avec le fond (ratio WCAG). */
 export function textOn(bg: string): 'ink' | 'cream' {
+  return ratioOn('ink', bg) >= ratioOn('cream', bg) ? 'ink' : 'cream';
+}
+
+function ratioOn(text: 'ink' | 'cream', bg: string): number {
   const l = luminance(bg);
-  return (l + 0.05) / (INK_LUM + 0.05) >= (CREAM_LUM + 0.05) / (l + 0.05) ? 'ink' : 'cream';
+  return text === 'ink' ? (l + 0.05) / (INK_LUM + 0.05) : (CREAM_LUM + 0.05) / (l + 0.05);
+}
+
+/** Le fond poussé juste assez (même teinte, même saturation) pour que `text`
+ *  y tienne 4.5 : plus sombre sous le crème, plus clair sous l'encre. Au
+ *  crépuscule, ni l'un ni l'autre n'y arrivait sur le ciel brut. */
+const TEXT_RATIO = 4.5;
+function legibleFor(bg: string, text: 'ink' | 'cream'): string {
+  const [hh, sat, l0] = hsl(bg);
+  const step = text === 'cream' ? -0.005 : 0.005;
+  let out = bg;
+  for (let l = l0; l > 0 && l < 1 && ratioOn(text, out) < TEXT_RATIO; ) {
+    l += step;
+    out = fromHsl(hh, sat, l);
+  }
+  return out;
 }
 
 /** Le ciel en strates, du haut vers l'horizon : le ciel de la fiche d'un lieu.
@@ -215,10 +238,11 @@ export function cardLight(c: Circadian, light: VenueLight): string {
   return '#1E2A66';
 }
 
-/** La barre du navigateur (`<meta theme-color>`) prolonge le haut de l'écran :
- *  la feuille en Soleil, le haut du ciel en Ombre. */
-export function themeColor(c: Circadian, mode: SunMode): string {
-  return mode === 'SUN' ? c.sheet : c.sky[0];
+/** Les barres (navigateur et onglets) prolongent le fond de l'écran : la
+ *  feuille en Soleil, le fond profond sous des cartes crème (Explorer,
+ *  Favoris), le haut du ciel en Ombre (`deep` vaut alors `sky[0]`). */
+export function barTint(c: Circadian, mode: SunMode, underCards: boolean): string {
+  return mode === 'SUN' && !underCards ? c.sheet : c.deep;
 }
 
 export function circadian(date: Date, mode: SunMode): Circadian {
@@ -230,7 +254,19 @@ export function circadian(date: Date, mode: SunMode): Circadian {
   const noon = (sr + ss) / 2;
 
   const sheet = along(SUN_KEYS(sr, noon, ss), 0);
-  const sky = along(SKY_KEYS(sr, noon, ss), 0);
+  const rawSky = along(SKY_KEYS(sr, noon, ss), 0);
+  const fgTop = textOn(rawSky[0]);
+  const fgBot = textOn(rawSky[1]);
+  const sky: [string, string] = [legibleFor(rawSky[0], fgTop), legibleFor(rawSky[1], fgBot)];
+  // La feuille de la carte : un seul texte sur tout le dégradé.
+  const minOn = (t: 'ink' | 'cream') => Math.min(ratioOn(t, sky[0]), ratioOn(t, sky[1]));
+  const fgSheet = minOn('ink') >= minOn('cream') ? 'ink' : 'cream';
+  // Un bout qui ne porte pas ce texte prend la couleur de l'autre : la feuille
+  // passe en aplat. Foncer la pêche de l'aube donnait du rouge brique, la
+  // mêler au bleu du violet — deux teintes hors palette.
+  const holds = (c: string) => ratioOn(fgSheet, c) >= TEXT_RATIO;
+  const skySheet: [string, string] =
+    holds(sky[0]) && holds(sky[1]) ? sky : holds(sky[0]) ? [sky[0], sky[0]] : [sky[1], sky[1]];
 
   const { elevation, azimuth } = SunService.getSunPosition(date);
   let shadow: Circadian['shadow'] = null;
@@ -244,7 +280,7 @@ export function circadian(date: Date, mode: SunMode): Circadian {
     };
   }
 
-  const fg = textOn(mode === 'SUN' ? sheet : sky[0]);
+  const fg = mode === 'SUN' ? textOn(sheet) : fgTop;
   const map = {
     tint: along(TINT_KEYS(sr, noon, ss), 0),
     tintOpacity: Math.round(alongNum(TINT_OPACITY(sr, noon, ss), 0) * 100) / 100,
@@ -258,8 +294,9 @@ export function circadian(date: Date, mode: SunMode): Circadian {
     deep: mode === 'SUN' ? deepen(sheet) : sky[0],
     sky,
     fg,
-    fgLow: mode === 'SUN' ? fg : textOn(sky[1]),
-    fgMid: mode === 'SUN' ? fg : textOn(mix(sky[0], sky[1], 0.5)),
+    fgLow: mode === 'SUN' ? fg : fgBot,
+    fgMid: mode === 'SUN' ? fg : fgSheet,
+    skySheet,
     map,
     shadow,
   };
