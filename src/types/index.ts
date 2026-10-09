@@ -69,6 +69,8 @@ export interface Venue {
   /** Where the heights used for that computation came from. */
   heightProvenance: HeightProvenance;
   description: string;
+  /** La description en anglais ; absente → on retombe sur `description`. */
+  descriptionEn?: string;
   /** Vu sur place. Faux pour un lieu relevé dans OSM sans visite : il ne
    *  compte pas dans la promesse « vérifiés à pied » de l'accueil. */
   verifiedOnFoot: boolean;

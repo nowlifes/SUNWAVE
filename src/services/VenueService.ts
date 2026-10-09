@@ -1,5 +1,6 @@
 import type { Venue, VenueCategory } from '@/types';
 import { lisbonVenues, RETIRED_VENUE_IDS } from '@/data/lisbonVenues';
+import { tr } from '@/utils/lang';
 
 class VenueServiceClass {
   private venues: Venue[] = lisbonVenues;
@@ -41,7 +42,8 @@ class VenueServiceClass {
         v.name.toLowerCase().includes(q) ||
         v.address.toLowerCase().includes(q) ||
         v.category.toLowerCase().includes(q) ||
-        v.description.toLowerCase().includes(q)
+        v.description.toLowerCase().includes(q) ||
+        (v.descriptionEn?.toLowerCase().includes(q) ?? false)
     );
   }
 
@@ -55,7 +57,7 @@ class VenueServiceClass {
    */
   getNeighborhood(venue: Venue): string {
     const last = venue.address.split(',').pop()?.trim();
-    return last || 'Lisbonne';
+    return last || tr('Lisbonne', 'Lisbon');
   }
 }
 
