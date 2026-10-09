@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { PSEUDO_MAX, normalizePseudo } from '@/utils/pseudo';
 import type { Venue, SunMode } from '@/types';
 import type { LiveAnswer } from '@/services/LiveReportService';
-import { LIVE_ANSWERS, LIVE_WHY, liveCount, liveLabel, liveQuestion } from '@/utils/live';
+import { LIVE_ANSWERS, liveCount, liveLabel, liveQuestion, liveWhy } from '@/utils/live';
+import { tr } from '@/utils/lang';
 import { shortVenueName } from '@/utils/mapGuide';
 import { LiveGlyph } from './Halo';
 
@@ -54,20 +55,20 @@ export function LiveQuestion({ venue, mode, onAnswer, onDismiss, answered, onDon
       )}
       <div
         role="group"
-        aria-label="Question sur place"
+        aria-label={tr('Question sur place', 'Question on the spot')}
         className="pointer-events-auto relative rounded-[20px] border-[1.5px] border-ink bg-cream p-4 text-ink shadow-[4px_4px_0_#0B1A45] animate-scale-in motion-reduce:animate-none"
       >
         {!answered && (
           <button
             onClick={onDismiss}
-            aria-label="Pas maintenant"
+            aria-label={tr('Pas maintenant', 'Not now')}
             className="absolute right-1.5 top-1.5 flex h-11 w-11 items-center justify-center rounded-[14px] border-[1.5px] border-ink bg-white text-[18px] font-bold active:scale-95 transition-transform motion-reduce:transition-none"
           >
             ✕
           </button>
         )}
         <p className="mr-12 text-[10.5px] font-bold uppercase leading-tight tracking-[0.1em] text-day-ember">
-          {shortVenueName(venue.name)} · {answered ? 'ta réponse' : 'tu es sur place'}
+          {shortVenueName(venue.name)} · {answered ? tr('ta réponse', 'your answer') : tr('tu es sur place', 'you’re here')}
         </p>
         <p className="mr-12 mt-1.5 font-display text-[22px] font-extrabold leading-[1.1] tracking-[-0.02em] [text-wrap:balance]">
           {liveQuestion(venue.category, mode)}
@@ -95,7 +96,7 @@ export function LiveQuestion({ venue, mode, onAnswer, onDismiss, answered, onDon
           })}
         </div>
         <p className="mt-3 text-[13px] font-medium leading-snug text-day-sub">
-          {answered ? liveCount(answered.total) : LIVE_WHY}
+          {answered ? liveCount(answered.total) : liveWhy()}
         </p>
         {askPseudo && (
           <form
@@ -106,9 +107,11 @@ export function LiveQuestion({ venue, mode, onAnswer, onDismiss, answered, onDon
             }}
           >
             <label htmlFor="live-pseudo" className="block font-display text-[15px] font-extrabold leading-snug">
-              Tu signes tes réponses ?
+              {tr('Tu signes tes réponses ?', 'Sign your answers?')}
             </label>
-            <p className="mt-0.5 text-[12.5px] leading-snug text-day-sub">Les autres verront « confirmé par … ». Un pseudo, pas ton vrai nom.</p>
+            <p className="mt-0.5 text-[12.5px] leading-snug text-day-sub">
+              {tr('Les autres verront « confirmé par … ». Un pseudo, pas ton vrai nom.', 'Others will see “confirmed by …”. A nickname, not your real name.')}
+            </p>
             <div className="mt-2 flex gap-2">
               <input
                 id="live-pseudo"
@@ -119,7 +122,7 @@ export function LiveQuestion({ venue, mode, onAnswer, onDismiss, answered, onDon
                 }}
                 maxLength={PSEUDO_MAX}
                 autoComplete="nickname"
-                placeholder="Ton pseudo"
+                placeholder={tr('Ton pseudo', 'Your nickname')}
                 aria-invalid={invalid}
                 className="min-h-11 min-w-0 flex-1 rounded-[12px] border-[1.5px] border-ink bg-white px-3 text-[15px] font-semibold outline-none focus:shadow-[2px_2px_0_#0B1A45]"
               />
@@ -132,11 +135,11 @@ export function LiveQuestion({ venue, mode, onAnswer, onDismiss, answered, onDon
             </div>
             {invalid && (
               <p role="alert" className="mt-1.5 text-[12.5px] font-semibold text-day-ember">
-                Lettres, chiffres, espaces et . _ ' - seulement.
+                {tr("Lettres, chiffres, espaces et . _ ' - seulement.", "Letters, numbers, spaces and . _ ' - only.")}
               </p>
             )}
             <button type="button" onClick={() => onPseudo?.(null)} className="mt-1 min-h-11 text-[13px] font-semibold text-day-sub underline underline-offset-2">
-              Plus tard
+              {tr('Plus tard', 'Later')}
             </button>
           </form>
         )}

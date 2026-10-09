@@ -10,6 +10,7 @@ import { lightCut } from '@/utils/lightCut';
 import { useCycleScreen } from './useCycleScreen';
 import { untilOf, BAND_FROM, BAND_TO } from '@/utils/carteDuJour';
 import { HourBand } from './HourBand';
+import { getLang, tr, useLang } from '@/utils/lang';
 import './carteDuJour.css';
 
 // ---------------------------------------------------------------------------
@@ -19,24 +20,49 @@ import './carteDuJour.css';
 // l'en-tête. Le coucher ferme la carte, comme un dessert.
 // ---------------------------------------------------------------------------
 
-interface Envie extends DiscoverCategory {
+interface Envie extends Omit<DiscoverCategory, 'label' | 'description'> {
   photo: string;
-  /** Ce qu'on compte sur la ligne : « 4 terrasses ». */
-  noun: [string, string];
 }
 
 const ENVIES: Envie[] = [
-  { id: 'drink', label: 'Un verre', icon: '', mode: 'ANY', categories: ['bar', 'rooftop'], description: 'Bars et rooftops', photo: 'verre', noun: ['bar', 'bars'] },
-  { id: 'coffee', label: 'Café', icon: '', mode: 'ANY', categories: ['cafe'], description: 'Terrasses de café', photo: 'cafe', noun: ['terrasse', 'terrasses'] },
-  { id: 'eat', label: 'Manger', icon: '', mode: 'ANY', categories: ['restaurant'], description: 'Manger dehors', photo: 'manger', noun: ['table', 'tables'] },
-  { id: 'beach', label: 'Plage', icon: '', mode: 'ANY', categories: ['beach'], description: "Au bord de l'eau", photo: 'plage', noun: ['plage', 'plages'] },
-  { id: 'park', label: 'Parc', icon: '', mode: 'ANY', categories: ['park'], description: 'Jardins et espaces verts', photo: 'parc', noun: ['jardin', 'jardins'] },
+  { id: 'drink', icon: '', mode: 'ANY', categories: ['bar', 'rooftop'], photo: 'verre' },
+  { id: 'coffee', icon: '', mode: 'ANY', categories: ['cafe'], photo: 'cafe' },
+  { id: 'eat', icon: '', mode: 'ANY', categories: ['restaurant'], photo: 'manger' },
+  { id: 'beach', icon: '', mode: 'ANY', categories: ['beach'], photo: 'plage' },
+  { id: 'park', icon: '', mode: 'ANY', categories: ['park'], photo: 'parc' },
 ];
 
 const BELLE_LUMIERE: Envie = {
-  id: 'best_light', label: 'Belle lumière', icon: '', mode: 'SUN', categories: ['viewpoint', 'square'],
-  description: "Miradouros et places, pour l'heure dorée", photo: 'lumiere', noun: ['lieu', 'lieux'],
+  id: 'best_light', icon: '', mode: 'SUN', categories: ['viewpoint', 'square'], photo: 'lumiere',
 };
+
+type Pair = [fr: string, en: string];
+
+/** Les mots d'une envie, dans les deux langues : lus au rendu, pas figés au
+ *  chargement du module. `noun` : ce qu'on compte sur la ligne (« 4 terrasses »). */
+const ENVIE_TEXT: Record<string, { label: Pair; description: Pair; noun: [one: Pair, many: Pair] }> = {
+  drink: { label: ['Un verre', 'A drink'], description: ['Bars et rooftops', 'Bars and rooftops'], noun: [['bar', 'bar'], ['bars', 'bars']] },
+  coffee: { label: ['Café', 'Coffee'], description: ['Terrasses de café', 'Café terraces'], noun: [['terrasse', 'terrace'], ['terrasses', 'terraces']] },
+  eat: { label: ['Manger', 'Food'], description: ['Manger dehors', 'Eating outside'], noun: [['table', 'table'], ['tables', 'tables']] },
+  beach: { label: ['Plage', 'Beach'], description: ["Au bord de l'eau", 'By the water'], noun: [['plage', 'beach'], ['plages', 'beaches']] },
+  park: { label: ['Parc', 'Park'], description: ['Jardins et espaces verts', 'Gardens and green spaces'], noun: [['jardin', 'garden'], ['jardins', 'gardens']] },
+  best_light: {
+    label: ['Belle lumière', 'Good light'],
+    description: ["Miradouros et places, pour l'heure dorée", 'Miradouros and squares, for golden hour'],
+    noun: [['lieu', 'place'], ['lieux', 'places']],
+  },
+};
+
+/** L'envie complète, avec ses mots dans la langue courante. */
+function categoryOf(envie: Envie): DiscoverCategory {
+  const t = ENVIE_TEXT[envie.id];
+  return { ...envie, label: tr(...t.label), description: tr(...t.description) };
+}
+
+const nounOf = (envie: Envie, count: number) => tr(...ENVIE_TEXT[envie.id].noun[count > 1 ? 1 : 0]);
+
+/** Graduation de la règle : « 14h » en français, « 14:00 » en anglais. */
+const tick = (h: number) => (getLang() === 'en' ? `${h}:00` : `${h}h`);
 
 const PHOTO: Record<string, string> = Object.fromEntries(
   [...ENVIES, BELLE_LUMIERE].map((e) => [e.id, `/da/${e.photo}.jpg`])
@@ -58,7 +84,9 @@ function useLightVars(date: Date): CSSProperties {
   }, [date]);
 }
 
-const DAY_LABEL = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'short', timeZone: APP_TIMEZONE });
+/** Construit au rendu : la langue peut avoir changé depuis le chargement. */
+const dayLabel = (d: Date) =>
+  new Intl.DateTimeFormat(getLang() === 'en' ? 'en-GB' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'short', timeZone: APP_TIMEZONE }).format(d);
 
 function UntilPrice({ rec, mode }: { rec: Recommendation; mode: SunMode }) {
   const u = untilOf(rec, mode);
@@ -75,9 +103,9 @@ function UntilPrice({ rec, mode }: { rec: Recommendation; mode: SunMode }) {
 
 function ModeToggle({ mode, onChange }: { mode: SunMode; onChange: (m: SunMode) => void }) {
   return (
-    <div className="cdj-seg" role="group" aria-label="Lumière">
-      <button type="button" aria-pressed={mode === 'SUN'} onClick={() => onChange('SUN')}>Soleil</button>
-      <button type="button" className="shade" aria-pressed={mode === 'SHADE'} onClick={() => onChange('SHADE')}>Ombre</button>
+    <div className="cdj-seg" role="group" aria-label={tr('Lumière', 'Light')}>
+      <button type="button" aria-pressed={mode === 'SUN'} onClick={() => onChange('SUN')}>{tr('Soleil', 'Sun')}</button>
+      <button type="button" className="shade" aria-pressed={mode === 'SHADE'} onClick={() => onChange('SHADE')}>{tr('Ombre', 'Shade')}</button>
     </div>
   );
 }
@@ -93,6 +121,7 @@ interface DiscoverScreenProps {
 export function DiscoverScreen({ currentDate, userLocation, mode, onModeChange, onCategorySelect }: DiscoverScreenProps) {
   const lightVars = useLightVars(currentDate);
   const cyc = useCycleScreen(currentDate, mode);
+  const lang = useLang();
 
   const menu = useMemo(() => {
     const lines = ENVIES.map((envie) => {
@@ -119,12 +148,14 @@ export function DiscoverScreen({ currentDate, userLocation, mode, onModeChange, 
   const dessert = useMemo(() => {
     const light = SunsetService.waterSunsets(VenueService.getAllVenues(), currentDate)[0];
     return light
-      ? { time: formatLisbonTime(light.time), where: `${light.venue.name}, sur l'eau` }
-      : { time: formatLisbonTime(SunService.getSunset(currentDate)), where: 'Plein ouest' };
-  }, [currentDate]);
+      ? { time: formatLisbonTime(light.time), where: tr(`${light.venue.name}, sur l'eau`, `${light.venue.name}, on the water`) }
+      : { time: formatLisbonTime(SunService.getSunset(currentDate)), where: tr('Plein ouest', 'Due west') };
+    // `lang` : le texte du dessert change avec la langue.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `lang` : tr() lit la langue hors de React, le texte du memo doit suivre la bascule.
+  }, [currentDate, lang]);
 
   const venueCount = VenueService.getAllVenues().length;
-  const select = (envie: Envie) => onCategorySelect({ ...envie, mode: envie.mode === 'ANY' ? mode : envie.mode });
+  const select = (envie: Envie) => onCategorySelect({ ...categoryOf(envie), mode: envie.mode === 'ANY' ? mode : envie.mode });
   const { special, others } = menu;
   const isSun = mode === 'SUN';
 
@@ -135,28 +166,28 @@ export function DiscoverScreen({ currentDate, userLocation, mode, onModeChange, 
           <span className="cdj-st"><i className="orb" aria-hidden="true" />Lisboa · {formatLisbonTime(currentDate)}</span>
           <ModeToggle mode={mode} onChange={onModeChange} />
         </div>
-        <h1>Aujourd'hui dehors</h1>
-        <p className="sub">Choisis une envie, on te dit où et jusqu'à quand.</p>
+        <h1>{tr("Aujourd'hui dehors", 'Out today')}</h1>
+        <p className="sub">{tr("Choisis une envie, on te dit où et jusqu'à quand.", 'Pick a mood, we’ll tell you where and until when.')}</p>
       </header>
 
-      <section className="cdj-card" aria-label="La carte du jour">
+      <section className="cdj-card" aria-label={tr('La carte du jour', 'Today’s map')}>
         <div className="cdj-menuhead">
-          <h2>La carte du jour</h2>
-          <span>{DAY_LABEL.format(currentDate)}</span>
+          <h2>{tr('La carte du jour', 'Today’s map')}</h2>
+          <span>{dayLabel(currentDate)}</span>
         </div>
         <div className="cdj-rule" />
 
         {special?.top && (
           <>
             <button type="button" className="cdj-special" onClick={() => select(special.envie)}>
-              <span className="cdj-tag">Plat du jour</span>
-              <b>{special.envie.label} {isSun ? 'au soleil' : 'au frais'}</b>
+              <span className="cdj-tag">{tr('Plat du jour', 'Today’s special')}</span>
+              <b>{tr(...ENVIE_TEXT[special.envie.id].label)} {isSun ? tr('au soleil', 'in the sun') : tr('au frais', 'in the shade')}</b>
               <span className="where">{special.top.venue.name} · {travelLabel(special.top)}</span>
               <UntilPrice rec={special.top} mode={mode} />
             </button>
             <HourBand venue={special.top.venue} date={currentDate} mode={mode} />
             <div className="cdj-ticks" aria-hidden="true">
-              <span>{BAND_FROM}h</span><span>14h</span><span>{BAND_TO}h</span>
+              <span>{tick(BAND_FROM)}</span><span>{tick(14)}</span><span>{tick(BAND_TO)}</span>
             </div>
           </>
         )}
@@ -165,14 +196,15 @@ export function DiscoverScreen({ currentDate, userLocation, mode, onModeChange, 
           <button key={envie.id} type="button" className="cdj-line" onClick={() => select(envie)}>
             <span className="cdj-th" style={{ backgroundImage: `url(${PHOTO[envie.id]})` }} aria-hidden="true" />
             <span className="cdj-nm">
-              <b>{envie.label}</b>
+              <b>{tr(...ENVIE_TEXT[envie.id].label)}</b>
               <i aria-hidden="true" />
               <em>
                 {far
-                  ? `${VenueService.getNeighborhood(top!.venue)} · ${count || '?'}`
+                  ? // Rien à compter (la nuit, par exemple) : le quartier seul, pas « Almada · ? ».
+                    `${VenueService.getNeighborhood(top!.venue)}${count > 0 ? ` · ${count} ${nounOf(envie, count)}` : ''}`
                   : count > 0
-                    ? `${count} ${envie.noun[count > 1 ? 1 : 0]}`
-                    : 'plus tard'}
+                    ? `${count} ${nounOf(envie, count)}`
+                    : tr('plus tard', 'later')}
               </em>
             </span>
             <UntilPrice rec={top!} mode={mode} />
@@ -182,14 +214,19 @@ export function DiscoverScreen({ currentDate, userLocation, mode, onModeChange, 
         <button type="button" className="cdj-dessert" onClick={() => select(BELLE_LUMIERE)}>
           <span className="cdj-th" style={{ backgroundImage: `url(${PHOTO.best_light})` }} aria-hidden="true" />
           <span>
-            <b>Le dessert : le coucher</b>
+            <b>{tr('Le dessert : le coucher', 'Dessert: the sunset')}</b>
             <span>{dessert.where}</span>
           </span>
           <strong>{dessert.time}</strong>
         </button>
       </section>
 
-      <p className="cdj-more">{ENVIES.length + 1} envies · {venueCount} lieux calculés à l'ombre des vrais bâtiments</p>
+      <p className="cdj-more">
+        {tr(
+          `${ENVIES.length + 1} envies · ${venueCount} lieux calculés à l'ombre des vrais bâtiments`,
+          `${ENVIES.length + 1} moods · ${venueCount} places worked out from the shadows of real buildings`
+        )}
+      </p>
     </div>
   );
 }
@@ -212,6 +249,12 @@ export function DiscoverResults({
   const isSun = mode === 'SUN';
   const lightVars = useLightVars(currentDate);
   const cyc = useCycleScreen(currentDate, mode);
+  useLang();
+  // L'envie arrive figée dans la langue du moment du choix : on relit ses mots
+  // par son id pour suivre une bascule de langue faite entre-temps.
+  const text = ENVIE_TEXT[category.id];
+  const label = text ? tr(...text.label) : category.label;
+  const description = text ? tr(...text.description) : category.description;
   const recs = useMemo(
     () => RecommendationService.getAnswerList(mode, userLocation, currentDate, category.categories, undefined, 20),
     [mode, userLocation, currentDate, category.categories]
@@ -226,19 +269,25 @@ export function DiscoverResults({
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <polyline points="15 18 9 12 15 6" />
             </svg>
-            La carte
+            {tr('La carte', 'Back')}
           </button>
           <span className="cdj-st cdj-st--gold">
-            {count > 0 ? `${count} ${isSun ? 'au soleil' : 'au frais'}` : isSun ? 'soleil plus tard' : 'ombre plus tard'}
+            {count > 0
+              ? `${count} ${isSun ? tr('au soleil', 'in the sun') : tr('au frais', 'in the shade')}`
+              : isSun
+                ? tr('soleil plus tard', 'sun later')
+                : tr('ombre plus tard', 'shade later')}
           </span>
         </div>
-        <h1>{category.label}</h1>
-        <p className="sub">{category.description}, {isSun ? 'du plus longtemps au soleil' : 'du plus longtemps au frais'}.</p>
+        <h1>{label}</h1>
+        <p className="sub">
+          {description}, {isSun ? tr('du plus longtemps au soleil', 'longest in the sun first') : tr('du plus longtemps au frais', 'longest in the shade first')}.
+        </p>
       </header>
 
       <div className="cdj-tickets">
         {recs.length === 0 && (
-          <div className="cdj-ticket"><p>Aucun lieu ouvert de ce genre pour l'instant.</p></div>
+          <div className="cdj-ticket"><p>{tr("Aucun lieu ouvert de ce genre pour l'instant.", 'Nothing like this is open right now.')}</p></div>
         )}
         {recs.map((rec, idx) => {
           const saved = savedVenueIds.includes(rec.venue.id);
@@ -257,9 +306,9 @@ export function DiscoverResults({
               </button>
               {idx === 0 && (
                 <div className="cdj-cta">
-                  <button type="button" onClick={() => onDirections(rec.venue.id)}>M'y emmener</button>
+                  <button type="button" onClick={() => onDirections(rec.venue.id)}>{tr("M'y emmener", 'Take me there')}</button>
                   <button type="button" className="g" aria-pressed={saved} onClick={() => onSave(rec.venue.id)}>
-                    {saved ? 'Gardé' : 'Garder'}
+                    {saved ? tr('Gardé', 'Saved') : tr('Garder', 'Save')}
                   </button>
                 </div>
               )}

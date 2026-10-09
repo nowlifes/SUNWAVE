@@ -5,13 +5,13 @@ import { SunService } from '@/services/SunService';
 import { VenueService } from '@/services/VenueService';
 import { ReportService } from '@/services/ReportService';
 import { liveReports, type LiveAnswer } from '@/services/LiveReportService';
-import { LIVE_ANSWERS, LIVE_SHORT, LIVE_WHY, isDaylight, liveAge, liveLabel, liveQuestion, liveWho } from '@/utils/live';
+import { LIVE_ANSWERS, LIVE_SHORT, isDaylight, liveAge, liveLabel, liveQuestion, liveWho, liveWhy } from '@/utils/live';
 import { formatLisbonTime, lisbonHour } from '@/utils/lisbonTime';
 import { categoryLabel, statusCopy, travelParts } from '@/utils/copy';
 import { LIGHT } from '@/utils/palette';
 import { lightCut } from '@/utils/lightCut';
 import { CYCLE, circadian, textOn } from '@/utils/circadian';
-import { isNightAt, stateWord } from '@/utils/ficheState';
+import { isNightAt, stateLabel, stateWord } from '@/utils/ficheState';
 import { BAND_FROM, BAND_TO } from '@/utils/carteDuJour';
 import type { HaloKind } from '@/utils/haloMarkup';
 import { Squiggle } from './Squiggle';
@@ -19,6 +19,7 @@ import { HaloIcon, LiveGlyph } from './Halo';
 import { VoicePile } from './Avatar';
 import { FicheSky } from './FicheSky';
 import { HourBand, HourLegend } from './HourBand';
+import { getLang, tr, useLang } from '@/utils/lang';
 import './carteDuJour.css';
 
 interface PlaceDetailSheetProps {
@@ -33,15 +34,18 @@ interface PlaceDetailSheetProps {
   onGetDirections: () => void;
 }
 
-const REPORT_OPTIONS: { type: ReportType; label: string }[] = [
-  { type: 'terrace_shaded', label: "La terrasse est en fait à l'ombre" },
-  { type: 'terrace_sunny', label: 'La terrasse est en fait au soleil' },
-  { type: 'terrace_missing', label: "Il n'y a pas de terrasse" },
-  { type: 'venue_closed', label: 'Le lieu est fermé' },
-  { type: 'building_missing', label: 'Un bâtiment manque sur la carte' },
-  { type: 'outdoor_different', label: "L'espace extérieur est différent" },
-  { type: 'other', label: 'Autre chose' },
+const REPORT_OPTIONS: { type: ReportType; label: [fr: string, en: string] }[] = [
+  { type: 'terrace_shaded', label: ["La terrasse est en fait à l'ombre", 'The terrace is actually in the shade'] },
+  { type: 'terrace_sunny', label: ['La terrasse est en fait au soleil', 'The terrace is actually in the sun'] },
+  { type: 'terrace_missing', label: ["Il n'y a pas de terrasse", 'There’s no terrace'] },
+  { type: 'venue_closed', label: ['Le lieu est fermé', 'The place is closed'] },
+  { type: 'building_missing', label: ['Un bâtiment manque sur la carte', 'A building is missing from the map'] },
+  { type: 'outdoor_different', label: ["L'espace extérieur est différent", 'The outdoor space is different'] },
+  { type: 'other', label: ['Autre chose', 'Something else'] },
 ];
+
+/** Graduation de la règle : « 14h » en français, « 14:00 » en anglais. */
+const tick = (h: number) => (getLang() === 'en' ? `${h}:00` : `${h}h`);
 
 /** L'état d'une heure dans la grammaire halo (plus d'emoji météo) : ça brille
  *  au soleil, éteint à l'ombre ; la nuit, rien ne brille. */
@@ -49,6 +53,8 @@ interface Glyph {
   kind: HaloKind;
   alt: number;
 }
+type StateWord = ReturnType<typeof stateWord>;
+
 const LIT: Glyph = { kind: 'sun', alt: 30 };
 const OUT: Glyph = { kind: 'shade', alt: 0 };
 
@@ -84,6 +90,7 @@ export function PlaceDetailSheet({
   const [showMore, setShowMore] = useState(false);
 
   const isSun = mode === 'SUN';
+  useLang();
   const lightVars = useLightVars(currentDate);
   // Cycle circadien : le ciel du lieu suit l'heure ; la feuille prend la
   // teinte profonde de l'heure, pour que la carte crème se détache.
@@ -116,7 +123,8 @@ export function PlaceDetailSheet({
   // Ce qui compte, c'est l'état à l'arrivée, pas celui de maintenant : douze
   // minutes de marche suffisent à faire perdre le soleil à une terrasse.
   const travel = travelParts(rec);
-  const walkable = travel.unit === 'min à pied' && rec.walkTimeMin >= 1;
+  // Comparé dans la langue courante : travelParts renvoie l'unité traduite.
+  const walkable = travel.unit === tr('min à pied', 'min walk') && rec.walkTimeMin >= 1;
   const arrivalDate = useMemo(
     () => new Date(currentDate.getTime() + rec.walkTimeMin * 60_000),
     [currentDate, rec.walkTimeMin]
@@ -139,7 +147,7 @@ export function PlaceDetailSheet({
   // On arrive de nuit dans la fenêtre : pas de « plus tard » — « dès 19:11
   // nuit » à 5 h 30 annoncerait une nuit déjà là. Hors fenêtre, le soleil
   // de 8 h reste à annoncer.
-  const nextChange: { at: string; word: string; glyph: Glyph } | null = isNightAt(arrivalDate) && arrivalIn
+  const nextChange: { at: string; word: StateWord; glyph: Glyph } | null = isNightAt(arrivalDate) && arrivalIn
     ? null
     : arrivalIn
     ? arrivalRec.sunWindowEnd
@@ -150,7 +158,7 @@ export function PlaceDetailSheet({
       : null;
 
   // La nuit, ni « Soleil » ni « Ombre » : c'est la nuit, dans les deux modes.
-  const stateOf = (yes: boolean, d: Date): { glyph: Glyph; word: string } => {
+  const stateOf = (yes: boolean, d: Date): { glyph: Glyph; word: StateWord } => {
     const word = stateWord(yes, isSun, isNightAt(d));
     return { glyph: word === 'Soleil' ? { kind: 'sun', alt: Math.max(1, SunService.getSunElevation(d)) } : OUT, word };
   };
@@ -195,17 +203,20 @@ export function PlaceDetailSheet({
   const provVerdict =
     prov.total === 0 ? 'open' : estimatedShare > 0.5 ? 'estimated' : estimatedShare > 0.2 ? 'mixed' : 'measured';
   const reliability = {
-    open: "Rien de haut autour : le chiffre ne dépend d'aucune hauteur devinée.",
-    measured: 'Les immeubles voisins sont mesurés : le chiffre est fiable.',
-    mixed: 'Une partie des immeubles voisins est estimée : le chiffre est assez fiable.',
-    estimated: 'Les immeubles voisins sont surtout estimés, pas mesurés : le chiffre est approximatif.',
+    open: tr("Rien de haut autour : le chiffre ne dépend d'aucune hauteur devinée.", 'Nothing tall around: the figure doesn’t rely on any guessed height.'),
+    measured: tr('Les immeubles voisins sont mesurés : le chiffre est fiable.', 'The nearby buildings are measured: the figure is reliable.'),
+    mixed: tr('Une partie des immeubles voisins est estimée : le chiffre est assez fiable.', 'Some nearby buildings are estimated: the figure is fairly reliable.'),
+    estimated: tr(
+      'Les immeubles voisins sont surtout estimés, pas mesurés : le chiffre est approximatif.',
+      'The nearby buildings are mostly estimated, not measured: the figure is a rough estimate.'
+    ),
   }[provVerdict];
 
   // Même règle que l'ancienne fiche : la phrase-réponse est chaude en mode
   // Soleil (encre-chaude sur crème), sobre en mode Ombre — jamais l'inverse.
   const statusTone = isSun ? 'warm' : 'cool';
 
-  const Row = ({ label, sub, glyph, word, highlight }: { label: string; sub: string; glyph: Glyph; word: string; highlight?: boolean }) => (
+  const Row = ({ label, sub, glyph, word, highlight }: { label: string; sub: string; glyph: Glyph; word: StateWord; highlight?: boolean }) => (
     <div className={`cdj-drow${highlight ? ' hi' : ''}`}>
       <span className="lbl">
         <b>{label}</b>
@@ -213,7 +224,7 @@ export function PlaceDetailSheet({
       </span>
       <span className="val">
         <HaloIcon kind={glyph.kind} tone="day" alt={glyph.alt} size={22} />
-        {word}
+        {stateLabel(word)}
       </span>
     </div>
   );
@@ -241,7 +252,7 @@ export function PlaceDetailSheet({
               {/* Le ciel du lieu : son soleil, son horizon, son dernier rayon. */}
               <div className="cdj-sheet-hero">
                 <FicheSky venue={venue} date={currentDate} cyc={cyc} ground={ground} />
-                <button type="button" onClick={onClose} aria-label="Fermer" className="cdj-st">
+                <button type="button" onClick={onClose} aria-label={tr('Fermer', 'Close')} className="cdj-st">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
                     <line x1="18" y1="6" x2="6" y2="18" />
                     <line x1="6" y1="6" x2="18" y2="18" />
@@ -260,23 +271,24 @@ export function PlaceDetailSheet({
                 {/* La réponse : une phrase, lisible en deux secondes. */}
                 <p className={`cdj-sheet-status ${statusTone}`}>{status.title}</p>
                 <p className="cdj-sheet-open">
-                  {rec.isOpen ? 'Ouvert' : 'Fermé'} · {venue.verifiedOnFoot ? 'Vérifié à pied' : 'À vérifier sur place'}
+                  {rec.isOpen ? tr('Ouvert', 'Open') : tr('Fermé', 'Closed')} ·{' '}
+                  {venue.verifiedOnFoot ? tr('Vérifié à pied', 'Checked on foot') : tr('À vérifier sur place', 'Not yet checked on the spot')}
                 </p>
 
                 {/* Trois lignes : maintenant, à l'arrivée, plus tard — chacune finit par une heure. */}
                 <div className="cdj-rows">
-                  <Row label="Maintenant" sub={formatLisbonTime(currentDate)} glyph={nowState.glyph} word={nowState.word} />
+                  <Row label={tr('Maintenant', 'Now')} sub={formatLisbonTime(currentDate)} glyph={nowState.glyph} word={nowState.word} />
                   {walkable && (
-                    <Row label="À ton arrivée" sub={formatLisbonTime(arrivalDate)} glyph={arrivalState.glyph} word={arrivalState.word} highlight />
+                    <Row label={tr('À ton arrivée', 'When you get there')} sub={formatLisbonTime(arrivalDate)} glyph={arrivalState.glyph} word={arrivalState.word} highlight />
                   )}
-                  {nextChange && <Row label="Plus tard" sub={`dès ${nextChange.at}`} glyph={nextChange.glyph} word={nextChange.word} />}
+                  {nextChange && <Row label={tr('Plus tard', 'Later')} sub={tr(`dès ${nextChange.at}`, `from ${nextChange.at}`)} glyph={nextChange.glyph} word={nextChange.word} />}
                 </div>
 
                 {/* La bande de la journée : le composant signature, partagé avec l'Explorer et les Favoris. */}
-                <p className="cdj-rail-label">{isSun ? "Le soleil aujourd'hui" : "L'ombre aujourd'hui"}</p>
+                <p className="cdj-rail-label">{isSun ? tr("Le soleil aujourd'hui", 'Sun today') : tr("L'ombre aujourd'hui", 'Shade today')}</p>
                 <HourBand venue={venue} date={currentDate} mode={mode} />
                 <div className="cdj-ticks" aria-hidden="true">
-                  <span>{BAND_FROM}h</span><span>14h</span><span>{BAND_TO}h</span>
+                  <span>{tick(BAND_FROM)}</span><span>{tick(14)}</span><span>{tick(BAND_TO)}</span>
                 </div>
                 <HourLegend date={currentDate} mode={mode} />
 
@@ -286,7 +298,7 @@ export function PlaceDetailSheet({
                   <div className="cdj-live">
                     <p className="cdj-live-head">
                       <HaloIcon kind="you" tone="day" size={15} />
-                      Sur place, en direct
+                      {tr('Sur place, en direct', 'Live, on the spot')}
                     </p>
                     {live && (
                       <p className="cdj-live-now">
@@ -301,7 +313,7 @@ export function PlaceDetailSheet({
                     {canAsk && !answered && (
                       <>
                         <p className="cdj-live-q">
-                          {liveQuestion(venue.category, mode)} {LIVE_WHY}
+                          {liveQuestion(venue.category, mode)} {liveWhy()}
                         </p>
                         <div className="cdj-live-ask">
                           {LIVE_ANSWERS.map((a) => (
@@ -313,43 +325,52 @@ export function PlaceDetailSheet({
                         </div>
                       </>
                     )}
-                    {canAsk && answered && <p className="cdj-live-thanks">Merci, les autres le voient</p>}
+                    {canAsk && answered && <p className="cdj-live-thanks">{tr('Merci, les autres le voient', 'Thanks, others can see it')}</p>}
                   </div>
                 )}
 
                 {/* Actions : un bouton plein, un bouton fantôme — même vocabulaire que les tickets de l'Explorer. */}
                 <div className="cdj-cta">
-                  <button type="button" onClick={onGetDirections}>M'y emmener</button>
+                  <button type="button" onClick={onGetDirections}>{tr("M'y emmener", 'Take me there')}</button>
                   <button type="button" className="g" onClick={handleSave} aria-pressed={saved}>
                     <svg width="17" height="17" viewBox="0 0 24 24" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
                       <path d="M7 3.5h10v17l-5-3.5-5 3.5z" />
                     </svg>
-                    {saved ? 'Enregistré' : 'Enregistrer'}
+                    {saved ? tr('Enregistré', 'Saved') : tr('Enregistrer', 'Save')}
                   </button>
                 </div>
 
                 {/* Le reste, à la demande : d'où vient le chiffre, ce qu'est le lieu. */}
                 <div className="cdj-more-links">
                   <button type="button" onClick={() => setShowMore((v) => !v)}>
-                    {showMore ? 'Masquer' : "Plus d'infos"}
+                    {showMore ? tr('Masquer', 'Hide') : tr("Plus d'infos", 'More info')}
                   </button>
                   <span aria-hidden>·</span>
-                  <button type="button" onClick={() => setShowReport(true)}>Signaler une erreur</button>
+                  <button type="button" onClick={() => setShowReport(true)}>{tr('Signaler une erreur', 'Report a mistake')}</button>
                 </div>
 
                 {showMore && (
                   <div className="cdj-more-box">
-                    <p>{venue.description}</p>
+                    <p>{tr(venue.description, venue.descriptionEn ?? venue.description)}</p>
                     <p>{reliability}</p>
                     {prov.total > 0 && (
                       <p>
-                        {prov.total} bâtiments autour : {prov.tagged} mesurés, {prov.levels} déduits des étages, {prov.estimated} estimés.
+                        {tr(
+                          `${prov.total} bâtiments autour : ${prov.tagged} mesurés, ${prov.levels} déduits des étages, ${prov.estimated} estimés.`,
+                          `${prov.total} buildings around: ${prov.tagged} measured, ${prov.levels} worked out from their floors, ${prov.estimated} estimated.`
+                        )}
                       </p>
                     )}
                     <p>
                       {showRange
-                        ? `Un étage de plus ou de moins chez les voisins ferait varier ${isSun ? 'le soleil' : "l'ombre"} de ${nowBand.lo} % à ${nowBand.hi} % en ce moment (${displayPct} % calculé).`
-                        : `Un étage de plus ou de moins chez les voisins ne change presque rien à cette heure (${displayPct} %).`}
+                        ? tr(
+                            `Un étage de plus ou de moins chez les voisins ferait varier ${isSun ? 'le soleil' : "l'ombre"} de ${nowBand.lo} % à ${nowBand.hi} % en ce moment (${displayPct} % calculé).`,
+                            `One floor more or less on the buildings next door would move the ${isSun ? 'sun' : 'shade'} between ${nowBand.lo}% and ${nowBand.hi}% right now (${displayPct}% calculated).`
+                          )
+                        : tr(
+                            `Un étage de plus ou de moins chez les voisins ne change presque rien à cette heure (${displayPct} %).`,
+                            `One floor more or less on the buildings next door barely changes anything at this hour (${displayPct}%).`
+                          )}
                     </p>
                   </div>
                 )}
@@ -360,13 +381,13 @@ export function PlaceDetailSheet({
             <div className="cdj-card cdj-sheet-card pt-2">
               {!reportSubmitted ? (
                 <>
-                  <h3 className="mb-4 font-display text-[1.4rem] font-extrabold [font-stretch:90%]">Quelque chose cloche ?</h3>
+                  <h3 className="mb-4 font-display text-[1.4rem] font-extrabold [font-stretch:90%]">{tr('Quelque chose cloche ?', 'Something wrong?')}</h3>
                   {REPORT_OPTIONS.map((opt) => (
                     <button key={opt.type} type="button" className="cdj-report-opt" onClick={() => handleSubmitReport(opt.type)}>
-                      {opt.label}
+                      {tr(...opt.label)}
                     </button>
                   ))}
-                  <button type="button" className="cdj-report-cancel" onClick={() => setShowReport(false)}>Annuler</button>
+                  <button type="button" className="cdj-report-cancel" onClick={() => setShowReport(false)}>{tr('Annuler', 'Cancel')}</button>
                 </>
               ) : (
                 <div className="cdj-report-done animate-scale-in motion-reduce:animate-none">
@@ -375,8 +396,8 @@ export function PlaceDetailSheet({
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </div>
-                  <b>Merci !</b>
-                  <p>On s'en sert pour corriger la carte.</p>
+                  <b>{tr('Merci !', 'Thanks!')}</b>
+                  <p>{tr("On s'en sert pour corriger la carte.", 'We’ll use it to fix the map.')}</p>
                 </div>
               )}
             </div>

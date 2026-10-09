@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { bandCells, favGroup, nowFraction, untilOf, BAND_FROM, BAND_TO } from './carteDuJour';
+import { setLang } from '@/utils/lang';
 
 const flat = (v: number) => Array.from({ length: 24 }, () => v);
 
@@ -81,5 +82,22 @@ describe('untilOf', () => {
   it('à l’ombre, dit « au frais »', () => {
     const r = { ...base, sunPercentage: 0, shadePercentage: 100 };
     expect(untilOf(r, 'SHADE')).toEqual({ label: "au frais jusqu'à", value: '18:10', cool: true });
+  });
+});
+
+describe('untilOf en anglais', () => {
+  afterEach(() => setLang('fr'));
+  const base = {
+    sunPercentage: 80, shadePercentage: 20, sunLeavesInMin: 60, sunArrivesInMin: null,
+    sunWindowStart: '15:00', sunWindowEnd: '18:10', arrivesTomorrow: false, endsAtSunset: false, lastsUntilSunset: false,
+  };
+
+  it('until / sunset / tomorrow from / in the shade', () => {
+    setLang('en');
+    expect(untilOf(base, 'SUN')).toEqual({ label: 'until', value: '18:10', cool: false });
+    expect(untilOf({ ...base, endsAtSunset: true }, 'SUN').value).toBe('sunset');
+    const later = { ...base, sunPercentage: 10, sunLeavesInMin: null, sunArrivesInMin: 900, sunWindowStart: '09:00', arrivesTomorrow: true };
+    expect(untilOf(later, 'SUN').label).toBe('tomorrow from');
+    expect(untilOf({ ...base, sunPercentage: 0, shadePercentage: 100 }, 'SHADE').label).toBe('in the shade until');
   });
 });
