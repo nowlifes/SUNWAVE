@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import type { ScreenName } from '@/types';
 import { DAY, LIGHT, NIGHT } from '@/utils/palette';
+import { tr } from '@/utils/lang';
 
 interface BottomNavProps {
   activeScreen: ScreenName;
@@ -9,12 +10,13 @@ interface BottomNavProps {
   dusk?: boolean;
 }
 
-const NAV_ITEMS: { screen: ScreenName; label: string }[] = [
-  { screen: 'now', label: 'Maintenant' },
-  { screen: 'map', label: 'Carte' },
-  { screen: 'discover', label: 'Explorer' },
-  { screen: 'saved', label: 'Favoris' },
-  { screen: 'profile', label: 'Profil' },
+// Une fonction, pas une constante : le libellé suit la langue.
+const navItems = (): { screen: ScreenName; label: string }[] => [
+  { screen: 'now', label: tr('Maintenant', 'Now') },
+  { screen: 'map', label: tr('Carte', 'Map') },
+  { screen: 'discover', label: tr('Explorer', 'Explore') },
+  { screen: 'saved', label: tr('Favoris', 'Saved') },
+  { screen: 'profile', label: tr('Profil', 'Profile') },
 ];
 
 // Cinq icônes, un seul trait de 1,8 ; chacune a son rond, comme le reste de
@@ -84,7 +86,7 @@ export function BottomNav({ activeScreen, onScreenChange, dusk = false }: Bottom
       className={`absolute bottom-0 left-0 right-0 z-30 border-t ${dusk ? 'border-dusk-cobalt bg-dusk-deep' : 'border-day-line bg-day-2'}`}
     >
       <div className="flex items-center px-1 py-1.5 pb-[env(safe-area-inset-bottom)]">
-        {NAV_ITEMS.map((item) => {
+        {navItems().map((item) => {
           const active = activeScreen === item.screen;
           return (
             <button

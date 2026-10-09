@@ -1,5 +1,6 @@
 import type { GeoPoint, Recommendation, SunMode } from '@/types';
 import { MapService } from '@/services/MapService';
+import { getLang, tr } from '@/utils/lang';
 
 // ---------------------------------------------------------------------------
 // Les phrases que l'app dit sur un lieu — une seule source.
@@ -10,21 +11,27 @@ import { MapService } from '@/services/MapService';
 // change d'un écran à l'autre, c'est un chiffre auquel on ne croit plus.
 // ---------------------------------------------------------------------------
 
-const CATEGORY_LABEL: Record<string, string> = {
-  rooftop: 'Rooftop',
-  terrace: 'Terrasse',
-  miradouro: 'Belvédère',
-  viewpoint: 'Belvédère',
-  park: 'Parc',
-  beach: 'Plage',
-  square: 'Place',
-  cafe: 'Café',
-  bar: 'Bar',
-  restaurant: 'Restaurant',
+const CATEGORY_LABEL: Record<string, [fr: string, en: string]> = {
+  rooftop: ['Rooftop', 'Rooftop'],
+  terrace: ['Terrasse', 'Terrace'],
+  miradouro: ['Belvédère', 'Viewpoint'],
+  viewpoint: ['Belvédère', 'Viewpoint'],
+  park: ['Parc', 'Park'],
+  beach: ['Plage', 'Beach'],
+  square: ['Place', 'Square'],
+  cafe: ['Café', 'Café'],
+  bar: ['Bar', 'Bar'],
+  restaurant: ['Restaurant', 'Restaurant'],
 };
 
 export function categoryLabel(category: string): string {
-  return CATEGORY_LABEL[category] ?? category.charAt(0).toUpperCase() + category.slice(1);
+  const label = CATEGORY_LABEL[category];
+  return label ? tr(...label) : category.charAt(0).toUpperCase() + category.slice(1);
+}
+
+/** « 45 % » en français, « 45% » en anglais. */
+export function pct(n: number): string {
+  return getLang() === 'en' ? `${n}%` : `${n} %`;
 }
 
 /** Au-delà, « N min à pied » ne décrit plus un trajet que quelqu'un fera —
@@ -33,8 +40,8 @@ const MAX_WALK_MIN = 20;
 
 /** Le trajet en deux morceaux, pour les écrans qui grossissent le chiffre. */
 export function travelParts(rec: Pick<Recommendation, 'walkTimeMin' | 'distanceM'>): { value: string; unit: string } {
-  if (rec.walkTimeMin <= MAX_WALK_MIN) return { value: String(rec.walkTimeMin), unit: 'min à pied' };
-  return { value: MapService.formatDistance(rec.distanceM), unit: 'd\'ici' };
+  if (rec.walkTimeMin <= MAX_WALK_MIN) return { value: String(rec.walkTimeMin), unit: tr('min à pied', 'min walk') };
+  return { value: MapService.formatDistance(rec.distanceM), unit: tr('d\'ici', 'away') };
 }
 
 /** « 12 min à pied », ou « 11,1 km d'ici » quand ce n'est plus de la marche. */
@@ -46,8 +53,11 @@ export function travelLabel(rec: Pick<Recommendation, 'walkTimeMin' | 'distanceM
 /** La promesse de l'accueil. Un lieu relevé dans OSM sans visite ne compte
  *  pas dans « vérifiés à pied » : il est annoncé à part. */
 export function venueCountLine(total: number, verified: number): string {
-  if (verified === total) return `${total} lieux, tous vérifiés à pied.`;
-  return `${verified} lieux vérifiés à pied, ${total - verified} encore à vérifier.`;
+  if (verified === total) return tr(`${total} lieux, tous vérifiés à pied.`, `${total} places, all checked on foot.`);
+  return tr(
+    `${verified} lieux vérifiés à pied, ${total - verified} encore à vérifier.`,
+    `${verified} places checked on foot, ${total - verified} still to check.`
+  );
 }
 
 /** « 45 min », « 2h », « 5h 2m » — comme on le dit. */
@@ -69,14 +79,17 @@ export interface StatusCopy {
 /** Ce qu'il faut savoir d'un lieu maintenant, en deux lignes. */
 export function statusCopy(rec: Recommendation, mode: SunMode): StatusCopy {
   const isSun = mode === 'SUN';
-  const exposure = isSun ? rec.sunPercentage : rec.shadePercentage;
-  const le = isSun ? 'le soleil' : "l'ombre";
-  const de = isSun ? 'de soleil' : "d'ombre";
+  const exposure = pct(isSun ? rec.sunPercentage : rec.shadePercentage);
+  const le = isSun ? tr('le soleil', 'the sun') : tr("l'ombre", 'the shade');
+  const de = isSun ? tr('de soleil', 'sun') : tr("d'ombre", 'shade');
 
   if (rec.sunLeavesInMin !== null && rec.lastsUntilSunset) {
     return {
-      title: "À l'ombre jusqu'au coucher du soleil",
-      detail: `${exposure} % ${de} maintenant · encore ${formatGap(rec.sunLeavesInMin)}`,
+      title: tr("À l'ombre jusqu'au coucher du soleil", 'In the shade until sunset'),
+      detail: tr(
+        `${exposure} ${de} maintenant · encore ${formatGap(rec.sunLeavesInMin)}`,
+        `${exposure} ${de} now · ${formatGap(rec.sunLeavesInMin)} left`
+      ),
     };
   }
   // Rien ne cache le soleil d'ici le coucher : « perd le soleil dans 1h 47m »
@@ -84,28 +97,44 @@ export function statusCopy(rec: Recommendation, mode: SunMode): StatusCopy {
   // le temps restant.
   if (isSun && rec.sunLeavesInMin !== null && rec.endsAtSunset) {
     return {
-      title: "Au soleil jusqu'au coucher",
-      detail: `${exposure} % de soleil maintenant · dernier rayon à ${rec.sunWindowEnd}`,
+      title: tr("Au soleil jusqu'au coucher", 'In the sun until sunset'),
+      detail: tr(
+        `${exposure} de soleil maintenant · dernier rayon à ${rec.sunWindowEnd}`,
+        `${exposure} sun now · last light at ${rec.sunWindowEnd}`
+      ),
     };
   }
   if (rec.sunLeavesInMin !== null) {
     return {
-      title: `Perd ${le} dans ${formatGap(rec.sunLeavesInMin)}`,
-      detail: `${exposure} % ${de} maintenant${rec.sunWindowEnd ? ` · jusqu'à ${rec.sunWindowEnd}` : ''}`,
+      title: tr(`Perd ${le} dans ${formatGap(rec.sunLeavesInMin)}`, `Loses ${le} in ${formatGap(rec.sunLeavesInMin)}`),
+      detail: tr(
+        `${exposure} ${de} maintenant${rec.sunWindowEnd ? ` · jusqu'à ${rec.sunWindowEnd}` : ''}`,
+        `${exposure} ${de} now${rec.sunWindowEnd ? ` · until ${rec.sunWindowEnd}` : ''}`
+      ),
     };
   }
   if (rec.sunArrivesInMin !== null && rec.arrivesTomorrow) {
-    return { title: `Soleil demain dès ${rec.sunWindowStart}`, detail: `Dans ${formatGap(rec.sunArrivesInMin)}` };
+    return {
+      title: tr(`Soleil demain dès ${rec.sunWindowStart}`, `Sun tomorrow from ${rec.sunWindowStart}`),
+      detail: tr(`Dans ${formatGap(rec.sunArrivesInMin)}`, `In ${formatGap(rec.sunArrivesInMin)}`),
+    };
   }
   if (rec.sunArrivesInMin !== null) {
+    const gap = formatGap(rec.sunArrivesInMin);
     return {
-      title: `${isSun ? 'Le soleil arrive' : "L'ombre arrive"} dans ${formatGap(rec.sunArrivesInMin)}`,
-      detail: `${rec.sunWindowStart ? `À partir de ${rec.sunWindowStart}` : 'Plus tard'} · ${exposure} % maintenant`,
+      title: isSun
+        ? tr(`Le soleil arrive dans ${gap}`, `Sun arrives in ${gap}`)
+        : tr(`L'ombre arrive dans ${gap}`, `Shade arrives in ${gap}`),
+      detail: rec.sunWindowStart
+        ? tr(`À partir de ${rec.sunWindowStart} · ${exposure} maintenant`, `From ${rec.sunWindowStart} · ${exposure} now`)
+        : tr(`Plus tard · ${exposure} maintenant`, `Later · ${exposure} now`),
     };
   }
   return {
-    title: `${exposure} % ${de} maintenant`,
-    detail: isSun ? "Pas de soleil franc d'ici ce soir" : "Pas d'ombre franche d'ici le coucher",
+    title: tr(`${exposure} ${de} maintenant`, `${exposure} ${de} now`),
+    detail: isSun
+      ? tr("Pas de soleil franc d'ici ce soir", 'No full sun before this evening')
+      : tr("Pas d'ombre franche d'ici le coucher", 'No real shade before sunset'),
   };
 }
 
@@ -113,12 +142,16 @@ export function statusCopy(rec: Recommendation, mode: SunMode): StatusCopy {
 export function statusShort(rec: Recommendation, mode: SunMode): string {
   const exposure = mode === 'SUN' ? rec.sunPercentage : rec.shadePercentage;
   if (rec.sunLeavesInMin !== null) {
-    return rec.lastsUntilSunset ? "jusqu'au coucher" : `encore ${formatGap(rec.sunLeavesInMin)}`;
+    const gap = formatGap(rec.sunLeavesInMin);
+    return rec.lastsUntilSunset ? tr("jusqu'au coucher", 'until sunset') : tr(`encore ${gap}`, `${gap} left`);
   }
   if (rec.sunArrivesInMin !== null) {
-    return rec.arrivesTomorrow ? `demain dès ${rec.sunWindowStart}` : `dans ${formatGap(rec.sunArrivesInMin)}`;
+    const gap = formatGap(rec.sunArrivesInMin);
+    return rec.arrivesTomorrow
+      ? tr(`demain dès ${rec.sunWindowStart}`, `tomorrow from ${rec.sunWindowStart}`)
+      : tr(`dans ${gap}`, `in ${gap}`);
   }
-  return `${exposure} %`;
+  return pct(exposure);
 }
 
 /** « 3h40 », « 2h », « 34 min » — là où la place manque (pastille de carte). */
@@ -130,10 +163,12 @@ function compactGap(minutes: number): string {
   return m === 0 ? `${h}h` : `${h}h${String(m).padStart(2, '0')}`;
 }
 
-/** « 16:00 » → « 16h », « 09:00 » → « 9h ». */
+/** « 16:00 » → « 16h », « 09:00 » → « 9h ». En anglais, « 16:00 », « 9:00 »
+ *  (« 16h » ne se lit pas en anglais). */
 function hourLabel(hhmm: string | null): string {
   if (!hhmm) return '';
   const [h, m] = hhmm.split(':').map(Number);
+  if (getLang() === 'en') return `${h}:${String(m).padStart(2, '0')}`;
   return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`;
 }
 
@@ -143,16 +178,17 @@ export function markerLabel(rec: Recommendation, mode: SunMode): string {
   // À l'ombre jusqu'au coucher, tous partagent la même durée ; la
   // profondeur de l'ombre, elle, varie d'un lieu à l'autre.
   if (mode === 'SHADE' && rec.lastsUntilSunset && rec.sunLeavesInMin !== null) {
-    return `${rec.shadePercentage} %`;
+    return pct(rec.shadePercentage);
   }
   if (rec.sunLeavesInMin !== null) {
     const gap = compactGap(rec.sunLeavesInMin);
     return mode === 'SUN' ? `☀ ${gap}` : gap;
   }
   if (rec.sunArrivesInMin !== null) {
-    return rec.arrivesTomorrow ? `demain ${hourLabel(rec.sunWindowStart)}` : `dès ${hourLabel(rec.sunWindowStart)}`;
+    const at = hourLabel(rec.sunWindowStart);
+    return rec.arrivesTomorrow ? tr(`demain ${at}`, `tmrw ${at}`) : tr(`dès ${at}`, `from ${at}`);
   }
-  return `${mode === 'SUN' ? rec.sunPercentage : rec.shadePercentage} %`;
+  return pct(mode === 'SUN' ? rec.sunPercentage : rec.shadePercentage);
 }
 
 /** La rive où l'on est, pour l'en-tête. Même découpe que les grilles de
@@ -160,8 +196,9 @@ export function markerLabel(rec: Recommendation, mode: SunMode): string {
  *  l'ouest de -9.2, Almada à l'est. */
 export function placeName(p: GeoPoint, inSentence = false): string {
   const south = p.lat < 38.6925 || (p.lng > -9.185 && p.lat < 38.7);
-  if (!south) return 'Lisbonne';
+  if (!south) return tr('Lisbonne', 'Lisbon');
   if (p.lng >= -9.2) return 'Almada';
   // « Le soleil quitte la Costa da Caparica », pas « quitte Costa da Caparica ».
-  return inSentence ? 'la Costa da Caparica' : 'Costa da Caparica';
+  // L'anglais n'a pas d'article : « The sun leaves Costa da Caparica ».
+  return inSentence ? tr('la Costa da Caparica', 'Costa da Caparica') : 'Costa da Caparica';
 }
