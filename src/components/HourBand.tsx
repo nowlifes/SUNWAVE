@@ -5,6 +5,7 @@ import { lisbonBuildings } from '@/data/lisbonBuildings';
 import { lisbonMinutesOfDay, setLisbonTime } from '@/utils/lisbonTime';
 import { BAND_FROM, bandCells, nowFraction } from '@/utils/carteDuJour';
 import { hourCell, hourTint } from '@/utils/circadian';
+import { tr } from '@/utils/lang';
 
 /** La journée d'un lieu, de 8 h à 21 h : une case par heure, de la couleur du
  *  ciel à cette heure (voir hourCell). Le bon moment (soleil en Soleil, ombre
@@ -37,14 +38,14 @@ export function HourLegend({ date, mode }: { date: Date; mode: SunMode }) {
   const bad = hourCell(at, mode, mode === 'SUN' ? 0 : 100).background;
   const nightTint = hourTint(setLisbonTime(date, 23, 0), mode);
   const items = mode === 'SUN'
-    ? [['soleil', good], ['un peu', half], ['ombre', bad]]
-    : [['ombre', good], ['un peu', half], ['soleil', bad]];
+    ? [[tr('soleil', 'sun'), good], [tr('un peu', 'a little'), half], [tr('ombre', 'shade'), bad]]
+    : [[tr('ombre', 'shade'), good], [tr('un peu', 'a little'), half], [tr('soleil', 'sun'), bad]];
   return (
     <p className="cdj-legend">
       {items.map(([label, bg]) => (
         <span key={label}><i style={{ background: bg }} />{label}</span>
       ))}
-      <span><i style={{ background: nightTint }} />nuit</span>
+      <span><i style={{ background: nightTint }} />{tr('nuit', 'night')}</span>
     </p>
   );
 }

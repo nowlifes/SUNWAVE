@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { isNightAt, stateWord } from './ficheState';
+import { afterEach, describe, expect, it } from 'vitest';
+import { setLang } from '@/utils/lang';
+import { isNightAt, stateLabel, stateWord } from './ficheState';
 
 // Lisbonne le 6 octobre 2026 : lever ~07:37, coucher ~19:11 (UTC+1).
 const at = (hhmm: string) => new Date(`2026-10-06T${hhmm}:00+01:00`);
@@ -22,5 +23,17 @@ describe('fiche — la nuit', () => {
     expect(isNightAt(at('05:30'))).toBe(true);
     expect(isNightAt(at('13:00'))).toBe(false);
     expect(isNightAt(at('19:00'))).toBe(false);
+  });
+});
+
+describe('fiche — le mot en anglais', () => {
+  afterEach(() => setLang('fr'));
+  it('le libellé suit la langue, l’identifiant reste français', () => {
+    expect(stateLabel(stateWord(true, true, false))).toBe('Soleil');
+    setLang('en');
+    expect(stateWord(true, true, false)).toBe('Soleil');
+    expect(stateLabel('Soleil')).toBe('Sun');
+    expect(stateLabel('Ombre')).toBe('Shade');
+    expect(stateLabel('Nuit')).toBe('Night');
   });
 });

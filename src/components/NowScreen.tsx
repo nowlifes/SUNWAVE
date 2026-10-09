@@ -19,6 +19,7 @@ import { LIVE_SHORT, liveAge, liveHello, liveWho } from '@/utils/live';
 import { getPseudo, subscribePseudo } from '@/utils/pseudo';
 import { CYCLE, circadian } from '@/utils/circadian';
 import type { HaloTone } from '@/utils/haloMarkup';
+import { tr, useLang } from '@/utils/lang';
 
 // ---------------------------------------------------------------------------
 // L'écran réponse — l'écran d'accueil.
@@ -67,7 +68,7 @@ interface RibbonDay {
 
 // Compté, pas écrit en dur : le chiffre suit les ajouts et les retraits.
 const ALL_VENUES = VenueService.getVenuesByCategory([]);
-const VENUE_COUNT_LINE = venueCountLine(ALL_VENUES.length, ALL_VENUES.filter((v) => v.verifiedOnFoot).length);
+const VERIFIED_COUNT = ALL_VENUES.filter((v) => v.verifiedOnFoot).length;
 
 export function NowScreen({
   mode,
@@ -86,6 +87,8 @@ export function NowScreen({
   // premier choix qui ne plaît pas ne doit jamais être une impasse. C'est ce
   // qui rend une réponse unique sans risque.
   const [pickIndex, setPickIndex] = useState(0);
+  // Réabonne l'écran à la bascule de langue (les phrases se composent au rendu).
+  useLang();
   // « Salut Léa. » en tête du ciel, dès qu'un pseudo est choisi.
   const hello = liveHello(useSyncExternalStore(subscribePseudo, getPseudo));
 
@@ -237,14 +240,19 @@ export function NowScreen({
           {hello && <span className="font-bold">{hello} </span>}
           {phase === 'day' ? (
             <>
-              Le soleil quitte {placeInSentence} dans <span className="font-bold">{formatGap(minutesToSunset)}</span>.
+              {tr(`Le soleil quitte ${placeInSentence} dans `, `The sun leaves ${placeInSentence} in `)}
+              <span className="font-bold">{formatGap(minutesToSunset)}</span>.
             </>
           ) : phase === 'before' ? (
             <>
-              Le soleil se lève à <span className="font-bold">{formatLisbonTime(sunrise)}</span>.
+              {tr('Le soleil se lève à ', 'The sun rises at ')}
+              <span className="font-bold">{formatLisbonTime(sunrise)}</span>.
             </>
           ) : (
-            <>Le soleil est couché sur {placeInSentence}.{isSun && ' Voici où il revient en premier demain.'}</>
+            <>
+              {tr(`Le soleil est couché sur ${placeInSentence}.`, `The sun has set over ${placeInSentence}.`)}
+              {isSun && tr(' Voici où il revient en premier demain.', ' Here’s where it comes back first tomorrow.')}
+            </>
           )}
         </p>
 
@@ -252,13 +260,15 @@ export function NowScreen({
         {autoTemperature !== null && (
           <div className="bain-live mt-4 justify-between">
             <span>
-              Il fait {autoTemperature} °C : on te montre {isSun ? 'le soleil' : "l'ombre"}.
+              {isSun
+                ? tr(`Il fait ${autoTemperature} °C : on te montre le soleil.`, `It’s ${autoTemperature}°C, so here’s the sun.`)
+                : tr(`Il fait ${autoTemperature} °C : on te montre l'ombre.`, `It’s ${autoTemperature}°C, so here’s the shade.`)}
             </span>
             <button
               onClick={() => onModeChange(isSun ? 'SHADE' : 'SUN')}
               className="min-h-11 shrink-0 px-1 font-bold underline active:opacity-70 transition-opacity motion-reduce:transition-none"
             >
-              {isSun ? "L'ombre plutôt ?" : 'Le soleil plutôt ?'}
+              {isSun ? tr("L'ombre plutôt ?", 'Shade instead?') : tr('Le soleil plutôt ?', 'Sun instead?')}
             </button>
           </div>
         )}
@@ -266,15 +276,15 @@ export function NowScreen({
         {/* --- la réponse --------------------------------------------------- */}
         {nightShade ? (
           <section className="bain-answer mt-7">
-            <h2 className="bain-headline">Il fait nuit : l'ombre est partout.</h2>
+            <h2 className="bain-headline">{tr("Il fait nuit : l'ombre est partout.", 'It’s night: shade is everywhere.')}</h2>
             <p className="bain-detail">
-              Le soleil revient à{' '}
-              <span className="font-bold" style={{ color: 'var(--b-key)' }}>{formatLisbonTime(nextSunrise)}</span>. Le mode ombre
-              reprendra son sens à ce moment-là.
+              {tr('Le soleil revient à', 'The sun is back at')}{' '}
+              <span className="font-bold" style={{ color: 'var(--b-key)' }}>{formatLisbonTime(nextSunrise)}</span>.{' '}
+              {tr('Le mode ombre reprendra son sens à ce moment-là.', 'Shade mode will make sense again then.')}
             </p>
             <div className="bain-actions">
               <button className="bain-go" onClick={() => onModeChange('SUN')}>
-                Voir où le soleil revient
+                {tr('Voir où le soleil revient', 'See where the sun comes back')}
               </button>
             </div>
           </section>
@@ -293,13 +303,15 @@ export function NowScreen({
           />
         ) : (
           <section className="bain-answer mt-7">
-            <h2 className="bain-headline">Tout est fermé pour l'instant.</h2>
+            <h2 className="bain-headline">{tr("Tout est fermé pour l'instant.", 'Everything’s closed for now.')}</h2>
             <p className="bain-detail">
-              Ouvre la carte pour voir où tombe {isSun ? 'le soleil' : "l'ombre"} malgré tout.
+              {isSun
+                ? tr('Ouvre la carte pour voir où tombe le soleil malgré tout.', 'Open the map to see where the sun falls anyway.')
+                : tr("Ouvre la carte pour voir où tombe l'ombre malgré tout.", 'Open the map to see where the shade falls anyway.')}
             </p>
             <div className="bain-actions">
               <button className="bain-go" onClick={onOpenMap}>
-                Voir la carte
+                {tr('Voir la carte', 'See the map')}
               </button>
             </div>
           </section>
@@ -310,7 +322,7 @@ export function NowScreen({
         {/* --- le filet, toujours visible ----------------------------------- */}
         {!nightShade && alternatives.length > 0 && (
           <section className="bain-low">
-            <h2 className="bain-also">Aussi {isSun ? 'au soleil' : 'au frais'}</h2>
+            <h2 className="bain-also">{isSun ? tr('Aussi au soleil', 'Also in the sun') : tr('Aussi au frais', 'Also in the shade')}</h2>
             {alternatives.map((alt) => (
               <AlternativeRow
                 key={alt.venue.id}
@@ -326,19 +338,22 @@ export function NowScreen({
 
         {/* --- la promesse que les gros ne peuvent structurellement pas tenir */}
         <p className="bain-foot bain-low">
-          <span className="font-bold">{VENUE_COUNT_LINE}</span>
+          <span className="font-bold">{venueCountLine(ALL_VENUES.length, VERIFIED_COUNT)}</span>
           <br />
-          Pas 2 000 adresses aspirées d'une base.
+          {tr("Pas 2 000 adresses aspirées d'une base.", 'Not 2,000 addresses scraped from a database.')}
           {outsideLisbon ? (
             <>
               <br />
-              Tu n'es pas à Lisbonne : temps de marche depuis le centre.
+              {tr("Tu n'es pas à Lisbonne : temps de marche depuis le centre.", 'You’re not in Lisbon: walking times from the centre.')}
             </>
           ) : (
             !locationGranted && (
               <>
                 <br />
-                Temps de marche depuis le centre — active ta position pour les tiens.
+                {tr(
+                  'Temps de marche depuis le centre — active ta position pour les tiens.',
+                  'Walking times from the centre. Turn on your location for yours.'
+                )}
               </>
             )
           )}
@@ -353,8 +368,12 @@ export function NowScreen({
 /** « dernier rayon », « puis le soleil revient ici » : ce que dit l'heure géante. */
 function bigTimeCaption(rec: Recommendation, mode: SunMode): [string, string] {
   // À l'ombre jusqu'au coucher : le soleil ne revient pas, la nuit tombe.
-  if (mode === 'SHADE') return rec.lastsUntilSunset ? ['coucher du', 'soleil'] : ['puis le soleil', 'revient ici'];
-  return rec.endsAtSunset ? ['dernier', 'rayon'] : ['puis', "l'ombre"];
+  if (mode === 'SHADE') {
+    return rec.lastsUntilSunset
+      ? [tr('coucher du', 'sunset'), tr('soleil', '')]
+      : [tr('puis le soleil', 'then the sun'), tr('revient ici', 'comes back')];
+  }
+  return rec.endsAtSunset ? [tr('dernier', 'last'), tr('rayon', 'light')] : [tr('puis', 'then'), tr("l'ombre", 'shade')];
 }
 
 function AnswerCard({
@@ -402,10 +421,12 @@ function AnswerCard({
   //
   // Et seulement quand le lieu EST au soleil : la nuit, « garde le soleil
   // après les rues d'en bas » ne décrit rien.
+  const lang = useLang();
   const relief = useMemo(
     () =>
       isSun && inItNow ? ReliefService.explain({ lat: rec.venue.latitude, lng: rec.venue.longitude }) : null,
-    [isSun, inItNow, rec.venue.latitude, rec.venue.longitude]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `lang` : tr() lit la langue hors de React, le texte du memo doit suivre la bascule.
+    [isSun, inItNow, rec.venue.latitude, rec.venue.longitude, lang]
   );
 
   // Ce que disent ceux qui sont sur place : l'algo prédit, eux confirment.
@@ -420,7 +441,7 @@ function AnswerCard({
       {/* La réponse : le sticker de la carte, seul. Le lieu et l'heure suivent. */}
       <h2 className="bain-headline">
         {bigTime ? (
-          <span className="titre-sticker">{isSun ? 'Au soleil' : 'Au frais'}</span>
+          <span className="titre-sticker">{isSun ? tr('Au soleil', 'In the sun') : tr('Au frais', 'In the shade')}</span>
         ) : (
           `${status.title}.`
         )}
@@ -435,7 +456,7 @@ function AnswerCard({
         </button>
         <button
           onClick={onShare}
-          aria-label="Inviter quelqu'un"
+          aria-label={tr("Inviter quelqu'un", 'Invite someone')}
           className="mt-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-full opacity-75 active:scale-90 transition-transform motion-reduce:transition-none"
         >
           <ShareIcon />
@@ -446,7 +467,7 @@ function AnswerCard({
       {bigTime && (
         <p className="bain-until">
           <b>{bigTime}</b>
-          <span>{cap1} {cap2}</span>
+          <span>{cap2 ? `${cap1} ${cap2}` : cap1}</span>
         </p>
       )}
       <p className="bain-detail">{status.detail}</p>
@@ -463,7 +484,7 @@ function AnswerCard({
             <span className="font-bold">{LIVE_SHORT[live.level]}</span> · {liveWho(live.count, live.by)}, {liveAge(live.ageMin)}
           </span>
         ) : (
-          <span>Pas encore confirmé sur place. Sois le premier.</span>
+          <span>{tr('Pas encore confirmé sur place. Sois le premier.', 'Not confirmed on the spot yet. Be the first.')}</span>
         )}
       </p>
 
@@ -481,18 +502,18 @@ function AnswerCard({
       {shareState !== 'idle' && (
         <p role="status" className="bain-detail text-center font-bold">
           {shareState === 'copied'
-            ? "Invitation copiée — colle-la dans ta conversation."
-            : 'Copie impossible sur cet appareil.'}
+            ? tr('Invitation copiée — colle-la dans ta conversation.', 'Invite copied. Paste it into your chat.')
+            : tr('Copie impossible sur cet appareil.', 'Can’t copy on this device.')}
         </p>
       )}
 
       <div className="bain-actions">
         <button className="bain-go" onClick={onDirections}>
-          M'y emmener
+          {tr("M'y emmener", 'Take me there')}
         </button>
         {hasAlternatives && (
           <button className="bain-alt" onClick={onSomethingElse}>
-            Autre chose
+            {tr('Autre chose', 'Something else')}
           </button>
         )}
       </div>
@@ -510,27 +531,29 @@ function SunTrailCard({ trail, onSelect }: { trail: SunTrail; onSelect: (venueId
 
   return (
     <div className="mt-7 rounded-[20px] p-5" style={{ background: 'var(--b-glass)' }}>
-      <p className="text-[12px] font-bold uppercase tracking-[0.06em] opacity-75">Suivre le soleil</p>
+      <p className="text-[12px] font-bold uppercase tracking-[0.06em] opacity-75">{tr('Suivre le soleil', 'Follow the sun')}</p>
       <h2 className="mt-1 font-display text-[1.6rem] font-extrabold leading-tight tracking-[-0.02em]">
-        Et après <span className="tabular-nums">{formatLisbonTime(first.leaveAt)}</span> ?
+        {tr('Et après ', 'And after ')}
+        <span className="tabular-nums">{formatLisbonTime(first.leaveAt)}</span>
+        {tr(' ?', '?')}
       </h2>
       <p className="mt-0.5 text-[13px] opacity-75">
         {trail.untilSunset
-          ? `Au soleil jusqu'au coucher, à ${formatLisbonTime(last.leaveAt)}.`
-          : `Au soleil jusqu'à ${formatLisbonTime(last.leaveAt)}.`}
+          ? tr(`Au soleil jusqu'au coucher, à ${formatLisbonTime(last.leaveAt)}.`, `In the sun until sunset, at ${formatLisbonTime(last.leaveAt)}.`)
+          : tr(`Au soleil jusqu'à ${formatLisbonTime(last.leaveAt)}.`, `In the sun until ${formatLisbonTime(last.leaveAt)}.`)}
       </p>
 
       <ol className="mt-4">
         <TrailRow
-          time={`jusqu'à ${formatLisbonTime(first.leaveAt)}`}
+          time={tr(`jusqu'à ${formatLisbonTime(first.leaveAt)}`, `until ${formatLisbonTime(first.leaveAt)}`)}
           name={first.rec.venue.name}
-          detail={first.closes ? 'ferme' : undefined}
+          detail={first.closes ? tr('ferme', 'closes') : undefined}
           muted
         />
         {next.map((stop) => (
           <li key={stop.rec.venue.id}>
             <p className="ml-[5px] border-l-2 border-dashed py-1.5 pl-[17px] text-[11.5px] opacity-70" style={{ borderColor: 'var(--b-hair)' }}>
-              {stop.walkMin} min à pied
+              {stop.walkMin} {tr('min à pied', 'min walk')}
             </p>
             <button
               onClick={() => onSelect(stop.rec.venue.id)}
@@ -540,7 +563,7 @@ function SunTrailCard({ trail, onSelect }: { trail: SunTrail; onSelect: (venueId
                 as="div"
                 time={`${formatLisbonTime(stop.arriveAt)} – ${formatLisbonTime(stop.leaveAt)}`}
                 name={stop.rec.venue.name}
-                detail={`${categoryLabel(stop.rec.venue.category)}${stop.closes ? ' · ferme' : ''}`}
+                detail={`${categoryLabel(stop.rec.venue.category)}${stop.closes ? ` · ${tr('ferme', 'closes')}` : ''}`}
               />
             </button>
           </li>

@@ -6,6 +6,7 @@ import { lisbonBuildings } from '@/data/lisbonBuildings';
 import { lisbonMinutesOfDay } from '@/utils/lisbonTime';
 import { RIBBON_END_MIN, RIBBON_START_MIN, ribbonCells } from '@/utils/ribbon';
 import { DAY, LIGHT, NIGHT } from '@/utils/palette';
+import { tr } from '@/utils/lang';
 
 // ---------------------------------------------------------------------------
 // La bande de lumière — la journée d'un lieu d'un seul coup d'œil : quand le
@@ -102,7 +103,7 @@ export function DayRibbon({ venue, mode, date, sunrise, sunset, size = 'full', h
             className={`absolute -translate-x-1/2 whitespace-nowrap font-sans font-bold ${nowLabel}`}
             style={{ left: `clamp(2.5rem, ${pct(nowMin)}, calc(100% - 2.5rem))` }}
           >
-            maintenant
+            {tr('maintenant', 'now')}
           </span>
         )}
         {(!showNow || RIBBON_END_MIN - nowMin > 150) && <span className="absolute right-0">21:00</span>}
@@ -114,7 +115,15 @@ export function DayRibbon({ venue, mode, date, sunrise, sunset, size = 'full', h
 /** Ce que la bande montre, dit à voix haute pour un lecteur d'écran. */
 function ribbonLabel(cells: { startMin: number; value: number | null }[], mode: SunMode): string {
   const good = cells.filter((c) => c.value !== null && c.value >= IN_IT_THRESHOLD[mode]);
-  if (good.length === 0) return `Pas ${mode === 'SUN' ? 'de soleil' : "d'ombre"} franc aujourd'hui`;
+  if (good.length === 0) {
+    return mode === 'SUN'
+      ? tr("Pas de soleil franc aujourd'hui", 'No full sun today')
+      : tr("Pas d'ombre franc aujourd'hui", 'No real shade today');
+  }
   const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-  return `${mode === 'SUN' ? 'Soleil' : 'Ombre'} de ${hhmm(good[0].startMin)} à ${hhmm(good[good.length - 1].startMin + 30)}`;
+  const from = hhmm(good[0].startMin);
+  const to = hhmm(good[good.length - 1].startMin + 30);
+  return mode === 'SUN'
+    ? tr(`Soleil de ${from} à ${to}`, `Sun from ${from} to ${to}`)
+    : tr(`Ombre de ${from} à ${to}`, `Shade from ${from} to ${to}`);
 }

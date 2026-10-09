@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { setLang } from '@/utils/lang';
 import type { Recommendation } from '@/types';
 import type { SunTrail } from '@/services/SunTrailService';
 import { inviteText, inviteUrl, venueIdFromUrl, sunsetInviteText } from './share';
@@ -66,6 +67,40 @@ describe('sunsetInviteText', () => {
   it("donne le lieu et la minute où le soleil touche l'eau", () => {
     expect(sunsetInviteText('Praia do Paraíso', '19:35')).toBe(
       "Le soleil plonge dans l'océan à 19:35, vu de Praia do Paraíso. On y va ?"
+    );
+  });
+});
+
+describe('invitation en anglais', () => {
+  afterEach(() => setLang('fr'));
+
+  it('un lieu, son soleil, puis la suite du parcours', () => {
+    setLang('en');
+    const trail: SunTrail = {
+      untilSunset: true,
+      stops: [
+        { rec: rec('Taberna'), walkMin: 11, arriveAt: at('14:41'), leaveAt: at('17:45'), closes: false },
+        { rec: rec('Park Bar'), walkMin: 4, arriveAt: at('17:49'), leaveAt: at('19:32'), closes: false },
+      ],
+    };
+    expect(inviteText(rec('Taberna'), 'SUN', null, '19:32')).toBe('☀ Meet in the sun? Taberna, in the sun until 17:45.');
+    expect(inviteText(rec('Taberna'), 'SUN', trail, '19:32')).toBe(
+      '☀ Meet in the sun? Taberna, in the sun until 17:45, then Park Bar until sunset (19:32).'
+    );
+  });
+
+  it("à l'ombre, et le soleil qui arrive", () => {
+    setLang('en');
+    const shade = rec('Janis', { sunWindowEnd: '19:32', lastsUntilSunset: true });
+    expect(inviteText(shade, 'SHADE', null, '19:32')).toBe('Meet in the shade? Janis, in the shade until sunset (19:32).');
+    const later = rec('Largo', { sunLeavesInMin: null, sunArrivesInMin: 60, sunWindowStart: '15:30' });
+    expect(inviteText(later, 'SUN', null, '19:32')).toBe('☀ Meet in the sun? Largo, in the sun from 15:30.');
+  });
+
+  it('le coucher sur l\'eau', () => {
+    setLang('en');
+    expect(sunsetInviteText('Praia do Paraíso', '19:35')).toBe(
+      'The sun dips into the ocean at 19:35, seen from Praia do Paraíso. Shall we go?'
     );
   });
 });

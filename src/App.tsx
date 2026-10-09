@@ -250,6 +250,7 @@ export default function App() {
   const locationLabel = useMemo(() => {
     if (locationGranted) return tr('Ta position', 'Your location');
     return tr('Lisbonne, Portugal', 'Lisbon, Portugal');
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `lang` : tr() lit la langue hors de React, le texte du memo doit suivre la bascule.
   }, [locationGranted, lang]);
 
   return (

@@ -1,4 +1,5 @@
 import type { SunMode } from '@/types';
+import { tr } from '@/utils/lang';
 
 /** L'interrupteur des bains : la piste prend la couleur du mode (orange du
  *  transat, bleu du bain), le pouce jaune glisse d'un côté à l'autre en
@@ -25,13 +26,13 @@ export function ModeSwitch({
       type="button"
       role="switch"
       aria-checked={shade}
-      aria-label="Chercher l'ombre"
+      aria-label={tr("Chercher l'ombre", 'Look for shade')}
       onClick={() => onModeChange(shade ? 'SUN' : 'SHADE')}
       data-mode={shade ? 'ombre' : 'soleil'}
       className={`mode-switch active:scale-95 ${className}`}
       style={tint && !shade ? { background: tint.bg, color: tint.fg === 'ink' ? '#0B1A45' : '#FFF1D6' } : undefined}
     >
-      <span className="mode-switch-label">{shade ? 'Ombre' : 'Soleil'}</span>
+      <span className="mode-switch-label">{shade ? tr('Ombre', 'Shade') : tr('Soleil', 'Sun')}</span>
       <span className="mode-switch-thumb" aria-hidden="true">
         {shade ? (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
