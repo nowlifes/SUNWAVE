@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { ReliefService } from './ReliefService';
+import { setLang } from '@/utils/lang';
 
 // Deux points réels de Lisbonne, choisis parce que le terrain les sépare
 // franchement — si la proéminence ne les distingue pas, elle ne mesure rien.
@@ -47,5 +48,24 @@ describe('explain', () => {
   // foi passerait, et « 40 m » se couperait en fin de ligne comme avant.
   it('colle le nombre à son unité avec une espace insécable', () => {
     expect(ReliefService.explain(SENHORA_DO_MONTE)).toContain(`${String.fromCharCode(0xa0)}m au-dessus`);
+  });
+});
+
+describe('explain en anglais', () => {
+  afterEach(() => setLang('fr'));
+
+  it('dit la même hauteur, en anglais, avec la même espace insécable', () => {
+    const fr = ReliefService.explain(SENHORA_DO_MONTE)!;
+    setLang('en');
+    const en = ReliefService.explain(SENHORA_DO_MONTE)!;
+    expect(en).toMatch(/^Keeps the sun /);
+    expect(en).toContain(`${String.fromCharCode(0xa0)}m above them.`);
+    const metres = (s: string) => s.match(/(\d+)\s*m (au-dessus|above)/)![1];
+    expect(metres(en)).toBe(metres(fr));
+  });
+
+  it('se tait aussi en anglais sur le terrain plat', () => {
+    setLang('en');
+    expect(ReliefService.explain(PRACA_DO_COMERCIO)).toBeNull();
   });
 });
