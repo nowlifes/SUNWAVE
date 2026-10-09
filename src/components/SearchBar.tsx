@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { Venue } from '@/types';
 import { VenueService } from '@/services/VenueService';
+import { tr } from '@/utils/lang';
 
 interface SearchBarProps {
   onSelectVenue: (venue: Venue) => void;
@@ -11,7 +12,7 @@ interface SearchBarProps {
   autoFocus?: boolean;
 }
 
-export function SearchBar({ onSelectVenue, placeholder = 'Chercher un lieu', tone = 'day', autoFocus = false }: SearchBarProps) {
+export function SearchBar({ onSelectVenue, placeholder, tone = 'day', autoFocus = false }: SearchBarProps) {
   const night = tone === 'night';
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Venue[]>([]);
@@ -50,13 +51,13 @@ export function SearchBar({ onSelectVenue, placeholder = 'Chercher un lieu', ton
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 200)}
-          placeholder={placeholder}
+          placeholder={placeholder ?? tr('Chercher un lieu', 'Search for a place')}
           className={`flex-1 bg-transparent text-sm font-medium outline-none ${night ? 'text-dusk-shell placeholder:text-dusk-dim' : 'text-ink placeholder:text-day-sub'}`}
         />
         {query && (
           <button
             onClick={() => { setQuery(''); setResults([]); }}
-            aria-label="Effacer"
+            aria-label={tr('Effacer', 'Clear')}
             className={`-mr-3 flex h-11 w-11 items-center justify-center ${night ? 'text-dusk-sub' : 'text-day-sub'}`}
           >
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">

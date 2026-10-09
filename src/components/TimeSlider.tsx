@@ -4,6 +4,7 @@ import type { SunMode } from '@/types';
 import { formatLisbonTime, lisbonMinutesOfDay, setLisbonTime, snapToQuarter } from '@/utils/lisbonTime';
 import { RIBBON_END_MIN, RIBBON_START_MIN, type RibbonCell } from '@/utils/ribbon';
 import { hourCell } from '@/utils/circadian';
+import { tr } from '@/utils/lang';
 
 // ---------------------------------------------------------------------------
 // La bande de lumière EST le curseur d'heure : on glisse le doigt sur la
@@ -141,14 +142,14 @@ export function TimeSlider({ mode, currentDate, onTimeChange, cells, onScrubStar
             {formatLisbonTime(currentDate)}
           </span>
           {isNow ? (
-            <span className="text-[13px] font-medium text-dusk-sub">maintenant</span>
+            <span className="text-[13px] font-medium text-dusk-sub">{tr('maintenant', 'now')}</span>
           ) : (
             <button
               onClick={() => onTimeChange(new Date())}
-              aria-label="Revenir à maintenant"
+              aria-label={tr('Revenir à maintenant', 'Back to now')}
               className="-my-3 min-h-11 whitespace-nowrap px-1 text-[13px] font-semibold text-dusk-glow active:opacity-70"
             >
-              ← maintenant
+              {tr('← maintenant', '← now')}
             </button>
           )}
         </div>
@@ -165,7 +166,7 @@ export function TimeSlider({ mode, currentDate, onTimeChange, cells, onScrubStar
         ref={trackRef}
         role="slider"
         tabIndex={0}
-        aria-label="Heure de la carte"
+        aria-label={tr('Heure de la carte', 'Map time')}
         aria-valuemin={RIBBON_START_MIN}
         aria-valuemax={RIBBON_END_MIN}
         aria-valuenow={nowMin}

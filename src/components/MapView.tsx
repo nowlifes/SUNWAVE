@@ -32,6 +32,7 @@ import { CLAIR } from '@/utils/mapFlags';
 import { CYCLE, circadian } from '@/utils/circadian';
 import { isNightAt } from '@/utils/ficheState';
 import { HaloIcon } from './Halo';
+import { tr, useLang } from '@/utils/lang';
 import { createShadowScheduler, type ShadowJob, type ShadowScheduler } from '@/utils/shadowScheduler';
 
 setWorkerUrl(maplibreWorkerUrl);
@@ -318,6 +319,9 @@ export function MapView({
     (cb) => liveReports.subscribe(cb),
     () => liveReports.getVersion()
   );
+  // Les marqueurs MapLibre sont du DOM posé à la main : React ne les
+  // redessine pas. La langue entre dans les deps des effets qui les écrivent.
+  const lang = useLang();
   const markersRef = useRef<Marker[]>([]);
   const userMarkerRef = useRef<Marker | null>(null);
   const ringLabelRef = useRef<Marker | null>(null);
@@ -360,7 +364,8 @@ export function MapView({
     if (!venue) return null;
     const rec = recommendations.find((r) => r.venue.id === selectedVenueId) ?? null;
     return { venue, walk: rec ? travelParts(rec) : null };
-  }, [selectedVenueId, venues, recommendations]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `lang` : tr() lit la langue hors de React, le texte du memo doit suivre la bascule.
+  }, [selectedVenueId, venues, recommendations, lang]);
 
   // Tout ce que le rendu d'une image lit : une ref, mise à jour à chaque rendu
   // React, lue par la boucle rAF (jamais d'état périmé, jamais de re-rendu).
@@ -579,7 +584,7 @@ export function MapView({
       // Une tuile qui manque se rattrape seule ; une source GeoJSON ou un
       // style qui échoue, non : on le dit plutôt que d'afficher une carte vide.
       const msg = e.error?.message ?? '';
-      if (!/tile|Failed to fetch|NetworkError|AJAXError/i.test(msg)) setMapError(msg || 'Carte indisponible');
+      if (!/tile|Failed to fetch|NetworkError|AJAXError/i.test(msg)) setMapError(msg || tr('Carte indisponible', 'Map unavailable'));
     });
     map.on('move', schedule);
     map.on('resize', schedule);
@@ -694,7 +699,7 @@ export function MapView({
         (map.getSource('building-shadows') as GeoJSONSource | undefined)?.setData(data.shadows);
         (map.getSource('lit-edges') as GeoJSONSource | undefined)?.setData(data.edges);
       },
-      onError: (e) => setMapError(`ombres : ${e.message}`),
+      onError: (e) => setMapError(tr(`ombres : ${e.message}`, `shadows: ${e.message}`)),
     });
     shadowsRef.current = scheduler;
     return () => {
@@ -761,7 +766,6 @@ export function MapView({
     if (!userMarkerRef.current) {
       const el = document.createElement('div');
       el.setAttribute('role', 'img');
-      el.setAttribute('aria-label', 'Toi');
       el.style.pointerEvents = 'none';
       if (CLAIR) {
         el.style.cssText += ';position:relative;width:96px;height:96px';
@@ -771,19 +775,20 @@ export function MapView({
       }
       userMarkerRef.current = new Marker({ element: el, anchor: 'center' });
     }
+    userMarkerRef.current.getElement().setAttribute('aria-label', tr('Toi', 'You'));
     userMarkerRef.current.setLngLat([userLocation.lng, userLocation.lat]).addTo(map);
 
     if (!ringLabelRef.current) {
       const el = document.createElement('div');
-      el.textContent = '10 min à pied';
       el.style.cssText = CLAIR
         ? `pointer-events:none;font:700 12px 'Funnel Display',sans-serif;color:${DAYMAP.ink};background:#FFF1D6;border:1.5px solid ${DAYMAP.ink};border-radius:8px;padding:1px 7px;white-space:nowrap`
         : `pointer-events:none;font:600 12px Geist,sans-serif;color:${C.sub};text-shadow:0 1px 3px ${C.night},0 0 6px ${C.night};white-space:nowrap`;
       ringLabelRef.current = new Marker({ element: el, anchor: 'bottom', offset: [0, -4] });
     }
+    ringLabelRef.current.getElement().textContent = tr('10 min à pied', '10 min walk');
     const top = ring[0];
     ringLabelRef.current.setLngLat(top).addTo(map);
-  }, [userLocation, mapReady]);
+  }, [userLocation, mapReady, lang]);
 
   // Pastilles halo : le rond brille si le lieu est au soleil, éteint à
   // l'ombre, bat s'il est choisi ; à côté, une étiquette « nom heure ». 6 à
@@ -824,7 +829,7 @@ export function MapView({
       placed.some((o) => b.x0 < o.x1 && b.x1 > o.x0 && b.y0 < o.y1 && b.y1 > o.y0);
     let quiet = 0;
     const loudAvailable = candidates.filter((c) => c.label?.inIt).length;
-    const inWord = mode === 'SUN' ? 'au soleil' : "à l'ombre";
+    const inWord = mode === 'SUN' ? tr('au soleil', 'in the sun') : tr("à l'ombre", 'in the shade');
     const alt = sunPos.elevation;
     // La même nuit que la fiche : entre le coucher et le lever.
     const night = isNightAt(currentDate);
@@ -840,7 +845,15 @@ export function MapView({
       // l'état. Orange seulement pour une heure de soleil.
       const soon = !loud && rec?.sunArrivesInMin != null && !rec.arrivesTomorrow ? rec.sunWindowStart : null;
       // La nuit, un lieu qui n'est « pas à l'ombre » n'est pas au soleil : « nuit ».
-      const time = loud ? label?.time ?? null : soon ? `dès ${soon}` : night ? 'nuit' : mode === 'SUN' ? 'ombre' : 'soleil';
+      const time = loud
+        ? label?.time ?? null
+        : soon
+          ? tr(`dès ${soon}`, `from ${soon}`)
+          : night
+            ? tr('nuit', 'night')
+            : mode === 'SUN'
+              ? tr('ombre', 'shade')
+              : tr('soleil', 'sun');
       const sunHour = mode === 'SUN' && (loud || !!soon);
       const lit = alt > LIT_MIN_ALT && (rec?.sunPercentage ?? 0) >= LIT_PCT;
 
@@ -875,10 +888,13 @@ export function MapView({
       el.type = 'button';
       // Ce que disent ceux qui sont sur place (question « il reste des places ? »).
       const live = liveReports.getState(v.id);
-      const liveNote = live ? `, ${LIVE_SHORT[live.level].toLowerCase()} d'après ceux sur place` : '';
+      const liveShort = live ? LIVE_SHORT[live.level].toLowerCase() : '';
+      const liveNote = live ? tr(`, ${liveShort} d'après ceux sur place`, `, ${liveShort} according to people there`) : '';
       el.setAttribute(
         'aria-label',
-        (loud && label?.time ? `${v.name}, ${inWord} jusqu'à ${label.time}` : `${v.name}, ${lit ? 'au soleil' : "à l'ombre"}`) + liveNote
+        (loud && label?.time
+          ? tr(`${v.name}, ${inWord} jusqu'à ${label.time}`, `${v.name}, ${inWord} until ${label.time}`)
+          : `${v.name}, ${lit ? tr('au soleil', 'in the sun') : tr("à l'ombre", 'in the shade')}`) + liveNote
       );
       // Pas de `position` ici : .maplibregl-marker est déjà absolu (et sert de
       // repère à l'étiquette) ; « relative » empilait les pastilles dans le flux.
@@ -941,7 +957,7 @@ export function MapView({
     // mapZoom / mapCenter : non lus directement (map.project reflète déjà la
     // vue), mais le tri visible/caché ne vaut que pour la vue où il a été
     // calculé — sans eux, pan et zoom garderaient les pastilles d'avant.
-  }, [venues, recommendations, mode, selectedVenueId, mapReady, onVenueSelect, mapZoom, mapCenter, insets, userLocation, sunPos, currentDate, liveVersion]);
+  }, [venues, recommendations, mode, selectedVenueId, mapReady, onVenueSelect, mapZoom, mapCenter, insets, userLocation, sunPos, currentDate, liveVersion, lang]);
 
   // La bulle « ici » et le pointillé vers le voisin qui fait mieux.
   useEffect(() => {
@@ -986,7 +1002,7 @@ export function MapView({
 
   const edgeIsSun = sunEdge && sunPos.elevation > LIT_MIN_ALT;
   const edgeLabel = selected?.walk
-    ? selected.walk.unit === 'min à pied'
+    ? selected.walk.unit === tr('min à pied', 'min walk')
       ? `${selected.walk.value} min`
       : selected.walk.value
     : '';
@@ -996,7 +1012,7 @@ export function MapView({
       <div ref={containerRef} className="absolute inset-0" style={{ background: C.night }} />
       {mapError && (
         <p role="alert" className="absolute inset-x-4 top-20 z-10 rounded-2xl bg-dusk-panel px-4 py-3 text-[13px] text-dusk-shell">
-          La carte n'a pas pu se charger ({mapError}).
+          {tr(`La carte n'a pas pu se charger (${mapError}).`, `The map couldn’t load (${mapError}).`)}
         </p>
       )}
 
@@ -1006,7 +1022,16 @@ export function MapView({
         type="button"
         onClick={edgeIsSun ? undefined : recenterOnSelected}
         disabled={edgeIsSun || !selected}
-        aria-label={edgeIsSun ? 'Le soleil est de ce côté' : selected ? `Recentrer sur ${selected.venue.name}${edgeLabel ? `, ${edgeLabel} à pied` : ''}` : ''}
+        aria-label={
+          edgeIsSun
+            ? tr('Le soleil est de ce côté', 'The sun is this way')
+            : selected
+              ? tr(
+                  `Recentrer sur ${selected.venue.name}${edgeLabel ? `, ${edgeLabel} à pied` : ''}`,
+                  `Recentre on ${selected.venue.name}${edgeLabel ? `, ${edgeLabel} away` : ''}`
+                )
+              : ''
+        }
         className={`absolute left-0 top-0 z-10 flex min-h-11 items-center gap-1.5 rounded-full font-mono text-[13px] font-bold text-dusk-shell ${
           edgeIsSun ? 'cursor-default' : 'bg-dusk-deep shadow-[0_0_0_1px_#233B7C]'
         }`}
@@ -1036,7 +1061,7 @@ export function MapView({
           className={`absolute right-4 ${CLAIR ? 'top-[calc(env(safe-area-inset-top)+68px)]' : 'top-[calc(env(safe-area-inset-top)+12px)]'} z-20 flex min-h-11 items-center gap-2 rounded-full border border-dusk-line bg-dusk-deep pl-2.5 pr-4 text-[13px] font-bold text-dusk-shell active:scale-95 transition-transform motion-reduce:transition-none`}
         >
           <HaloIcon kind="you" tone="night" size={22} />
-          Revenir sur moi
+          {tr('Revenir sur moi', 'Back to me')}
         </button>
       )}
 
@@ -1069,7 +1094,9 @@ function ProbeBubble({ probe, onClose, onNeighbour }: { probe: ProbeView; onClos
           >
             <span className="min-w-0 flex-1">
               <span className="block text-[12.5px] text-dusk-sub">
-                Plus longtemps {probe.mode === 'SUN' ? 'au soleil' : "à l'ombre"}, à {probe.neighbour.walkMin} min
+                {probe.mode === 'SUN'
+                  ? tr(`Plus longtemps au soleil, à ${probe.neighbour.walkMin} min`, `Longer in the sun, ${probe.neighbour.walkMin} min away`)
+                  : tr(`Plus longtemps à l'ombre, à ${probe.neighbour.walkMin} min`, `Longer in the shade, ${probe.neighbour.walkMin} min away`)}
               </span>
               <span className="block truncate text-[14px] font-semibold">
                 {probe.neighbour.name}
@@ -1081,7 +1108,7 @@ function ProbeBubble({ probe, onClose, onNeighbour }: { probe: ProbeView; onClos
         )}
         <button
           onClick={onClose}
-          aria-label="Fermer"
+          aria-label={tr('Fermer', 'Close')}
           className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center text-dusk-sub active:opacity-70"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
