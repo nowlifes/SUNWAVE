@@ -1,5 +1,5 @@
 import { useMemo, type CSSProperties } from 'react';
-import type { GeoPoint, Recommendation, Venue } from '@/types';
+import type { GeoPoint, Recommendation, SunMode, Venue } from '@/types';
 import { RecommendationService } from '@/services/RecommendationService';
 import { VenueService } from '@/services/VenueService';
 import { VenueSunService } from '@/services/VenueSunService';
@@ -11,6 +11,7 @@ import { categoryLabel, statusShort, travelLabel } from '@/utils/copy';
 import { favGroup, nowFraction, BAND_FROM, BAND_TO, type FavGroup } from '@/utils/carteDuJour';
 import { HaloIcon } from './Halo';
 import { HourBand } from './HourBand';
+import { useCycleScreen } from './useCycleScreen';
 import './carteDuJour.css';
 
 // ---------------------------------------------------------------------------
@@ -24,6 +25,7 @@ interface SavedScreenProps {
   currentDate: Date;
   userLocation: GeoPoint;
   onVenueSelect: (venueId: string) => void;
+  mode?: SunMode;
 }
 
 const RULER = [BAND_FROM, 11, 14, 17, BAND_TO];
@@ -43,7 +45,8 @@ function rightLabel({ rec, group }: Row): string {
   return 'demain';
 }
 
-export function SavedScreen({ savedVenues, currentDate, userLocation, onVenueSelect }: SavedScreenProps) {
+export function SavedScreen({ savedVenues, currentDate, userLocation, onVenueSelect, mode = 'SUN' }: SavedScreenProps) {
+  const cyc = useCycleScreen(currentDate, mode);
   const lightVars = useMemo(() => {
     const cut = lightCut(SunService.getSunAzimuth(currentDate), SunService.getSunElevation(currentDate));
     return { '--sx': `${cut.dx}px`, '--sy': `${cut.dy}px`, '--f': nowFraction(lisbonMinutesOfDay(currentDate)).toFixed(3) } as CSSProperties;
@@ -68,6 +71,7 @@ export function SavedScreen({ savedVenues, currentDate, userLocation, onVenueSel
       type="button"
       className={`cdj-fav${row.group === 'now' ? '' : ` ${row.group}`}`}
       onClick={() => onVenueSelect(row.venue.id)}
+      {...cyc.card(row.group === 'now')}
     >
       <div className="h">
         <h3>{row.venue.name}</h3>
@@ -76,12 +80,12 @@ export function SavedScreen({ savedVenues, currentDate, userLocation, onVenueSel
       <p>
         {VenueService.getNeighborhood(row.venue)} · {categoryLabel(row.venue.category).toLowerCase()} · {travelLabel(row.rec)}
       </p>
-      <HourBand venue={row.venue} date={currentDate} showNow={false} />
+      <HourBand venue={row.venue} date={currentDate} showNow={false} mode={mode} />
     </button>
   );
 
   return (
-    <div className="cdj h-full overflow-y-auto no-scrollbar pb-24" style={lightVars}>
+    <div className="cdj h-full overflow-y-auto no-scrollbar pb-24" style={{ ...lightVars, ...cyc.vars }} {...cyc.attrs}>
       <header className="cdj-fhead">
         <h1>Mes lieux, aujourd'hui</h1>
         <p>Quand y aller pour avoir la bonne lumière.</p>
@@ -91,7 +95,7 @@ export function SavedScreen({ savedVenues, currentDate, userLocation, onVenueSel
         <div className="flex flex-col items-center justify-center px-6 py-20">
           <HaloIcon kind="sun" tone="day" alt={30} size={44} className="mb-4" />
           <p className="text-center text-sm font-semibold">Aucun lieu enregistré.</p>
-          <p className="mt-1 text-center text-xs text-day-sub">Touche « Garder » sur un lieu pour voir ici ses heures de soleil.</p>
+          <p className="mt-1 text-center text-xs text-[color:var(--sub)]">Touche « Garder » sur un lieu pour voir ici ses heures de soleil.</p>
         </div>
       ) : (
         <>

@@ -29,6 +29,8 @@ import { lightPaint } from '@/utils/light';
 import { litEdges } from '@/utils/litEdges';
 import { lisbonMinutesOfDay } from '@/utils/lisbonTime';
 import { CLAIR } from '@/utils/mapFlags';
+import { CYCLE, circadian } from '@/utils/circadian';
+import { isNightAt } from '@/utils/ficheState';
 import { HaloIcon } from './Halo';
 import { createShadowScheduler, type ShadowJob, type ShadowScheduler } from '@/utils/shadowScheduler';
 
@@ -549,6 +551,16 @@ export function MapView({
         map.setPaintProperty('footprints', 'fill-outline-color', DAYMAP.outline);
         map.setPaintProperty('lit-edges', 'line-opacity', 0);
       }
+      // Cycle circadien : un voile de l'heure sous les étiquettes — rien à
+      // midi, chaud à l'heure dorée, bleu nuit la nuit. Un monde entier en
+      // une maille, pour couvrir aussi l'eau.
+      if (CLAIR && CYCLE) {
+        map.addSource('cyc-tint', {
+          type: 'geojson',
+          data: { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]]] } },
+        });
+        map.addLayer({ id: 'cyc-tint', type: 'fill', source: 'cyc-tint', paint: { 'fill-color': '#000000', 'fill-opacity': 0, 'fill-antialias': false } }, 'labels');
+      }
       map.addLayer({
         id: 'walk-ring',
         type: 'line',
@@ -649,7 +661,14 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !mapReady) return;
     const p = lightPaint(sunPos.elevation, lisbonMinutesOfDay(currentDate));
-    map.setPaintProperty('light', 'fill-color', CLAIR ? DAYMAP.sun : p.color);
+    const cyc = CLAIR && CYCLE ? circadian(currentDate, 'SUN').map : null;
+    map.setPaintProperty('light', 'fill-color', cyc ? cyc.sun : CLAIR ? DAYMAP.sun : p.color);
+    if (cyc && map.getLayer('cyc-tint')) {
+      map.setPaintProperty('cyc-tint', 'fill-color', cyc.tint);
+      map.setPaintProperty('cyc-tint', 'fill-opacity', cyc.tintOpacity);
+      map.setPaintProperty('water', 'fill-color', cyc.water);
+      map.setPaintProperty('building-shadows', 'fill-color', cyc.shadow);
+    }
     map.setPaintProperty('light', 'fill-opacity', CLAIR ? Math.min(p.opacity, 0.3) : p.opacity);
     if (CLAIR) {
       // Sans soleil, plus de rue éclairée : elles s'éteignent.
@@ -807,6 +826,8 @@ export function MapView({
     const loudAvailable = candidates.filter((c) => c.label?.inIt).length;
     const inWord = mode === 'SUN' ? 'au soleil' : "à l'ombre";
     const alt = sunPos.elevation;
+    // La même nuit que la fiche : entre le coucher et le lever.
+    const night = isNightAt(currentDate);
 
     for (const { venue: v, rec, label, px: p } of candidates) {
       if (markersRef.current.length >= MAX_PILLS) break;
@@ -818,7 +839,8 @@ export function MapView({
       // L'heure : la fin de la fenêtre si on y est ; sinon « dès 17:30 » ou
       // l'état. Orange seulement pour une heure de soleil.
       const soon = !loud && rec?.sunArrivesInMin != null && !rec.arrivesTomorrow ? rec.sunWindowStart : null;
-      const time = loud ? label?.time ?? null : soon ? `dès ${soon}` : mode === 'SUN' ? 'ombre' : 'soleil';
+      // La nuit, un lieu qui n'est « pas à l'ombre » n'est pas au soleil : « nuit ».
+      const time = loud ? label?.time ?? null : soon ? `dès ${soon}` : night ? 'nuit' : mode === 'SUN' ? 'ombre' : 'soleil';
       const sunHour = mode === 'SUN' && (loud || !!soon);
       const lit = alt > LIT_MIN_ALT && (rec?.sunPercentage ?? 0) >= LIT_PCT;
 
@@ -919,7 +941,7 @@ export function MapView({
     // mapZoom / mapCenter : non lus directement (map.project reflète déjà la
     // vue), mais le tri visible/caché ne vaut que pour la vue où il a été
     // calculé — sans eux, pan et zoom garderaient les pastilles d'avant.
-  }, [venues, recommendations, mode, selectedVenueId, mapReady, onVenueSelect, mapZoom, mapCenter, insets, userLocation, sunPos, liveVersion]);
+  }, [venues, recommendations, mode, selectedVenueId, mapReady, onVenueSelect, mapZoom, mapCenter, insets, userLocation, sunPos, currentDate, liveVersion]);
 
   // La bulle « ici » et le pointillé vers le voisin qui fait mieux.
   useEffect(() => {

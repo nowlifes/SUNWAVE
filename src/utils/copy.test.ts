@@ -175,3 +175,17 @@ describe('placeName', () => {
     expect(placeName({ lat: 38.7107, lng: -9.1365 }, true)).toBe('Lisbonne');
   });
 });
+
+describe('statusCopy — la nuit en mode Ombre', () => {
+  const at = (hhmm: string) => new Date(`2026-10-06T${hhmm}:00+01:00`);
+  it("ne promet ni ombre ni soleil : il fait nuit, et le soleil revient à l'heure du lever", () => {
+    const shaded = rec({ sunLeavesInMin: 600, lastsUntilSunset: true });
+    expect(statusCopy(shaded, 'SHADE', at('05:30'))).toEqual({ title: 'Il fait nuit', detail: 'Le soleil revient à 07:37' });
+    expect(statusCopy(rec({}), 'SHADE', at('22:00')).title).toBe('Il fait nuit');
+    expect(statusCopy(rec({}), 'SHADE', at('22:00')).detail).toMatch(/^Le soleil revient à 07:3\d$/);
+  });
+  it('le jour, rien ne change', () => {
+    const shaded = rec({ sunLeavesInMin: 300, lastsUntilSunset: true });
+    expect(statusCopy(shaded, 'SHADE', at('13:00')).title).toBe("À l'ombre jusqu'au coucher du soleil");
+  });
+});

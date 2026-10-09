@@ -9,6 +9,7 @@ import { lisbonMinutesOfDay, setLisbonTime } from '@/utils/lisbonTime';
 import { haloLook } from '@/utils/halo';
 import { lastRayMinute, sunGlyph } from '@/utils/ficheSky';
 import { DAY, LIGHT, NIGHT } from '@/utils/palette';
+import { skyBands, textOn, type Circadian } from '@/utils/circadian';
 
 // ---------------------------------------------------------------------------
 // Le ciel de la fiche : strates du jour, le disque du soleil et son halo à
@@ -28,10 +29,15 @@ const BANDS = [
   { y: 125, h: 40, fill: DAY.sky3 },
   { y: 165, h: HORIZON - 165, fill: DAY.sky4 },
 ];
+const INK = '#0B1A45';
+const CREAM = '#FFF1D6';
 
 const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
-export function FicheSky({ venue, date }: { venue: Venue; date: Date }) {
+/** `cyc` : le ciel suit l'heure (utils/circadian) et le sol prend la couleur
+ *  de la feuille (`ground`), pour que le ciel se fonde dans la fiche. Sans lui
+ *  (`?sanscycle`), le ciel de jour d'origine. */
+export function FicheSky({ venue, date, cyc, ground }: { venue: Venue; date: Date; cyc?: Circadian | null; ground?: string }) {
   const glowId = useId();
   const sky = useMemo(() => {
     const nowMin = lisbonMinutesOfDay(date);
@@ -79,6 +85,10 @@ export function FicheSky({ venue, date }: { venue: Venue; date: Date }) {
   const r = 13;
   const glowR = 22 + 22 * look.glow;
   const warm = glyph.kind === 'disc' ? look.color : LIGHT.fire;
+  const bands = cyc ? skyBands(cyc, BANDS.length) : null;
+  const soil = cyc && ground ? ground : DAY.bg;
+  // Le relief et ses légendes se lisent sur le bas du ciel : encre ou crème.
+  const line = bands ? (textOn(bands[bands.length - 1]) === 'ink' ? INK : CREAM) : NIGHT.night;
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label={sky.lastRayMin !== null ? `Dernier rayon à ${hhmm(sky.lastRayMin)}` : 'Le ciel du lieu'}>
@@ -88,14 +98,14 @@ export function FicheSky({ venue, date }: { venue: Venue; date: Date }) {
           <stop offset="1" stopColor={warm} stopOpacity="0" />
         </radialGradient>
       </defs>
-      {BANDS.map((b) => (
-        <rect key={b.y} x="0" y={b.y} width={W} height={b.h} fill={b.fill} />
+      {BANDS.map((b, i) => (
+        <rect key={b.y} x="0" y={b.y} width={W} height={b.h} fill={bands ? bands[i] : b.fill} />
       ))}
-      <polygon points={`0,${H} ${sky.line} ${W},${H}`} fill={DAY.bg} />
-      <polyline points={sky.line} fill="none" stroke={NIGHT.night} strokeWidth="1.8" strokeLinejoin="round" />
+      <polygon points={`0,${H} ${sky.line} ${W},${H}`} fill={soil} />
+      <polyline points={sky.line} fill="none" stroke={line} strokeWidth="1.8" strokeLinejoin="round" />
 
       {lastPt && glyph.kind !== 'none' && glyph.kind !== 'ember' && sky.onScreen && (
-        <line x1={sunPt.x} y1={sunPt.y} x2={lastPt.x} y2={lastPt.y} stroke={NIGHT.night} strokeWidth="1.5" strokeDasharray="3 4" strokeLinecap="round" />
+        <line x1={sunPt.x} y1={sunPt.y} x2={lastPt.x} y2={lastPt.y} stroke={line} strokeWidth="1.5" strokeDasharray="3 4" strokeLinecap="round" />
       )}
 
       {glyph.kind !== 'none' && sky.onScreen && (
@@ -115,11 +125,11 @@ export function FicheSky({ venue, date }: { venue: Venue; date: Date }) {
 
       {lastPt && sky.lastRayMin !== null && (
         <>
-          <circle cx={lastPt.x} cy={lastPt.y} r="5" fill={DAY.bg} stroke={LIGHT.fire} strokeWidth="2" />
-          <text x={Math.min(W - 8, lastPt.x + 10)} y={lastPt.y - 11} textAnchor={lastPt.x + 10 > W - 110 ? 'end' : 'start'} fontSize="12.5" fontWeight="700" fill={NIGHT.night} className="font-mono">
+          <circle cx={lastPt.x} cy={lastPt.y} r="5" fill={soil} stroke={LIGHT.fire} strokeWidth="2" />
+          <text x={Math.min(W - 8, lastPt.x + 10)} y={lastPt.y - 11} textAnchor={lastPt.x + 10 > W - 110 ? 'end' : 'start'} fontSize="12.5" fontWeight="700" fill={line} className="font-mono">
             {hhmm(sky.lastRayMin)}
           </text>
-          <text x={Math.min(W - 8, lastPt.x + 10)} y={lastPt.y - 11} dx={lastPt.x + 10 > W - 110 ? 0 : 44} textAnchor={lastPt.x + 10 > W - 110 ? 'end' : 'start'} dy={lastPt.x + 10 > W - 110 ? -15 : 0} fontSize="11.5" fontWeight="600" fill={NIGHT.night}>
+          <text x={Math.min(W - 8, lastPt.x + 10)} y={lastPt.y - 11} dx={lastPt.x + 10 > W - 110 ? 0 : 44} textAnchor={lastPt.x + 10 > W - 110 ? 'end' : 'start'} dy={lastPt.x + 10 > W - 110 ? -15 : 0} fontSize="11.5" fontWeight="600" fill={line}>
             {sky.caption}
           </text>
         </>

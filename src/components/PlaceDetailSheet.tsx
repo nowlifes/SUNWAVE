@@ -6,17 +6,19 @@ import { VenueService } from '@/services/VenueService';
 import { ReportService } from '@/services/ReportService';
 import { liveReports, type LiveAnswer } from '@/services/LiveReportService';
 import { LIVE_ANSWERS, LIVE_SHORT, LIVE_WHY, isDaylight, liveAge, liveLabel, liveQuestion, liveWho } from '@/utils/live';
-import { formatLisbonTime, lisbonHour, lisbonMinutesOfDay } from '@/utils/lisbonTime';
+import { formatLisbonTime, lisbonHour } from '@/utils/lisbonTime';
 import { categoryLabel, statusCopy, travelParts } from '@/utils/copy';
 import { LIGHT } from '@/utils/palette';
 import { lightCut } from '@/utils/lightCut';
+import { CYCLE, circadian, textOn } from '@/utils/circadian';
+import { isNightAt, stateWord } from '@/utils/ficheState';
 import { BAND_FROM, BAND_TO } from '@/utils/carteDuJour';
 import type { HaloKind } from '@/utils/haloMarkup';
 import { Squiggle } from './Squiggle';
 import { HaloIcon, LiveGlyph } from './Halo';
 import { VoicePile } from './Avatar';
 import { FicheSky } from './FicheSky';
-import { HourBand } from './HourBand';
+import { HourBand, HourLegend } from './HourBand';
 import './carteDuJour.css';
 
 interface PlaceDetailSheetProps {
@@ -83,6 +85,14 @@ export function PlaceDetailSheet({
 
   const isSun = mode === 'SUN';
   const lightVars = useLightVars(currentDate);
+  // Cycle circadien : le ciel du lieu suit l'heure ; la feuille prend la
+  // teinte profonde de l'heure, pour que la carte crème se détache.
+  const cyc = useMemo(() => (CYCLE ? circadian(currentDate, mode) : null), [currentDate, mode]);
+  const ground = cyc?.deep;
+  const sheetStyle = useMemo(
+    () => (ground ? ({ ...lightVars, '--cyc-ground': ground } as CSSProperties) : lightVars),
+    [lightVars, ground]
+  );
 
   // Les réponses de ceux qui sont sur place : l'heure réelle, pas celle du curseur.
   useSyncExternalStore(
@@ -122,11 +132,16 @@ export function PlaceDetailSheet({
   const wanted = isSun ? 'Soleil' : 'Ombre';
   const opposite = isSun ? 'Ombre' : 'Soleil';
   const inIt = (r: Recommendation) => r.sunLeavesInMin !== null;
-  const status = statusCopy(arrivalRec, mode);
+  const status = statusCopy(arrivalRec, mode, arrivalDate);
 
   // Trois lignes : maintenant, à l'arrivée, puis la prochaine bascule.
   const arrivalIn = inIt(arrivalRec);
-  const nextChange: { at: string; word: string; glyph: Glyph } | null = arrivalIn
+  // On arrive de nuit dans la fenêtre : pas de « plus tard » — « dès 19:11
+  // nuit » à 5 h 30 annoncerait une nuit déjà là. Hors fenêtre, le soleil
+  // de 8 h reste à annoncer.
+  const nextChange: { at: string; word: string; glyph: Glyph } | null = isNightAt(arrivalDate) && arrivalIn
+    ? null
+    : arrivalIn
     ? arrivalRec.sunWindowEnd
       ? { at: arrivalRec.sunWindowEnd, word: arrivalRec.endsAtSunset ? 'Nuit' : opposite, glyph: arrivalRec.endsAtSunset || isSun ? OUT : LIT }
       : null
@@ -134,13 +149,11 @@ export function PlaceDetailSheet({
       ? { at: arrivalRec.sunWindowStart, word: wanted, glyph: isSun ? LIT : OUT }
       : null;
 
-  // Après le coucher, « ombre » serait faux : c'est la nuit, pour tout le monde.
-  const sunsetMin = lisbonMinutesOfDay(SunService.getSunset(currentDate));
-  const isNightAt = (d: Date) => lisbonMinutesOfDay(d) >= sunsetMin;
-  const stateOf = (yes: boolean, d: Date): { glyph: Glyph; word: string } =>
-    !yes && isSun && isNightAt(d)
-      ? { glyph: OUT, word: 'Nuit' }
-      : { glyph: yes === isSun ? { kind: 'sun', alt: Math.max(1, SunService.getSunElevation(d)) } : OUT, word: yes ? wanted : opposite };
+  // La nuit, ni « Soleil » ni « Ombre » : c'est la nuit, dans les deux modes.
+  const stateOf = (yes: boolean, d: Date): { glyph: Glyph; word: string } => {
+    const word = stateWord(yes, isSun, isNightAt(d));
+    return { glyph: word === 'Soleil' ? { kind: 'sun', alt: Math.max(1, SunService.getSunElevation(d)) } : OUT, word };
+  };
   const nowState = stateOf(inIt(rec), currentDate);
   const arrivalState = stateOf(arrivalIn, arrivalDate);
 
@@ -212,9 +225,14 @@ export function PlaceDetailSheet({
 
       {/* Bottom sheet */}
       <div className="fixed bottom-0 inset-x-0 z-50 animate-slide-up motion-reduce:animate-none">
-        <div className="cdj cdj-sheet mx-auto max-h-[85vh] max-w-xl overflow-y-auto no-scrollbar" style={lightVars}>
+        <div
+          className="cdj cdj-sheet mx-auto max-h-[85vh] max-w-xl overflow-y-auto no-scrollbar"
+          style={sheetStyle}
+          data-cycle={cyc ? '' : undefined}
+          data-fg={ground ? textOn(ground) : undefined}
+        >
           {/* Drag handle */}
-          <div className="sticky top-0 z-10 flex justify-center bg-day py-2.5">
+          <div className="cdj-handle sticky top-0 z-10 flex justify-center bg-day py-2.5">
             <div className="h-1.5 w-10 rounded-full bg-day-line" />
           </div>
 
@@ -222,7 +240,7 @@ export function PlaceDetailSheet({
             <div className="pb-6">
               {/* Le ciel du lieu : son soleil, son horizon, son dernier rayon. */}
               <div className="cdj-sheet-hero">
-                <FicheSky venue={venue} date={currentDate} />
+                <FicheSky venue={venue} date={currentDate} cyc={cyc} ground={ground} />
                 <button type="button" onClick={onClose} aria-label="Fermer" className="cdj-st">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
                     <line x1="18" y1="6" x2="6" y2="18" />
@@ -255,11 +273,12 @@ export function PlaceDetailSheet({
                 </div>
 
                 {/* La bande de la journée : le composant signature, partagé avec l'Explorer et les Favoris. */}
-                <p className="cdj-rail-label">Les prochaines heures</p>
-                <HourBand venue={venue} date={currentDate} />
+                <p className="cdj-rail-label">{isSun ? "Le soleil aujourd'hui" : "L'ombre aujourd'hui"}</p>
+                <HourBand venue={venue} date={currentDate} mode={mode} />
                 <div className="cdj-ticks" aria-hidden="true">
                   <span>{BAND_FROM}h</span><span>14h</span><span>{BAND_TO}h</span>
                 </div>
+                <HourLegend date={currentDate} mode={mode} />
 
                 {/* Sur place, en direct : ce que disent ceux qui y sont. Rien tant
                     que personne n'a répondu et qu'on n'est pas soi-même là. */}

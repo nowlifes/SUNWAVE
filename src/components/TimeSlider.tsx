@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { SunMode } from '@/types';
 import { formatLisbonTime, lisbonMinutesOfDay, setLisbonTime, snapToQuarter } from '@/utils/lisbonTime';
 import { RIBBON_END_MIN, RIBBON_START_MIN, type RibbonCell } from '@/utils/ribbon';
-import { LIGHT, NIGHT } from '@/utils/palette';
+import { hourCell } from '@/utils/circadian';
 
 // ---------------------------------------------------------------------------
 // La bande de lumière EST le curseur d'heure : on glisse le doigt sur la
@@ -28,9 +28,6 @@ interface TimeSliderProps {
 }
 
 const SPAN = RIBBON_END_MIN - RIBBON_START_MIN;
-const GOOD = { SUN: LIGHT.fire, SHADE: NIGHT.sub } as const;
-const NOT = NIGHT.p3;
-const NIGHT_CELL = NIGHT.deep;
 /** Après le lâcher, la bande reste ouverte le temps de lire l'heure. */
 const SETTLE_MS = 1500;
 
@@ -51,19 +48,23 @@ export function TimeSlider({ mode, currentDate, onTimeChange, cells, onScrubStar
   const nowMin = lisbonMinutesOfDay(currentDate);
   const isNow = Math.abs(currentDate.getTime() - Date.now()) < 90000;
   const pct = pctOf(nowMin);
-  const good = GOOD[mode];
 
+  // Chaque case prend la couleur du ciel à son heure (voir hourCell). La
+  // valeur d'une case est la part du quartier dans le mode (au soleil en
+  // Soleil, à l'ombre en Ombre) : bonne heure dès 40 %, « un peu » dès 15 %,
+  // dans les deux modes. hourCell lit, lui, le soleil d'UN lieu : en Ombre on
+  // lui passe un soleil qui tombe dans la bonne tranche (0, 20 ou 100).
   const cellStyles = useMemo(
     () =>
-      cells.map((c) =>
-        c.value === null
-          ? { background: NIGHT_CELL }
-          : c.value >= 50
-            ? { background: good, opacity: 0.45 + (0.55 * c.value) / 100 }
-            : { background: NOT }
-      ),
-    [cells, good]
+      cells.map((c) => {
+        const mid = c.startMin + 15;
+        const at = setLisbonTime(currentDate, Math.floor(mid / 60), mid % 60);
+        const sun = c.value === null ? null : mode === 'SUN' ? c.value : c.value >= 40 ? 0 : c.value >= 15 ? 20 : 100;
+        return { background: hourCell(at, mode, sun).background };
+      }),
+    [cells, currentDate, mode]
   );
+
 
   const setFromMinutes = useCallback(
     (min: number) => {
@@ -182,7 +183,7 @@ export function TimeSlider({ mode, currentDate, onTimeChange, cells, onScrubStar
           }`}
         >
           {cells.map((c, i) => (
-            <div key={c.startMin} className={`h-full flex-1${c.value !== null && c.value >= 50 ? ' ribbon-good' : ''}`} style={cellStyles[i]} />
+            <div key={c.startMin} className="h-full flex-1" style={cellStyles[i]} />
           ))}
         </div>
         <div
