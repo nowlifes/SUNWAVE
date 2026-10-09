@@ -118,7 +118,7 @@ function ribbonLabel(cells: { startMin: number; value: number | null }[], mode: 
   if (good.length === 0) {
     return mode === 'SUN'
       ? tr("Pas de soleil franc aujourd'hui", 'No full sun today')
-      : tr("Pas d'ombre franc aujourd'hui", 'No real shade today');
+      : tr("Pas d'ombre franche aujourd'hui", 'No real shade today');
   }
   const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
   const from = hhmm(good[0].startMin);

@@ -203,7 +203,7 @@ export function PlaceDetailSheet({
   const provVerdict =
     prov.total === 0 ? 'open' : estimatedShare > 0.5 ? 'estimated' : estimatedShare > 0.2 ? 'mixed' : 'measured';
   const reliability = {
-    open: tr("Rien de haut autour : le chiffre ne dépend d'aucune hauteur devinée.", 'Nothing tall around: the figure doesn’t rely on any guessed height.'),
+    open: tr("Rien de haut autour : le chiffre ne dépend d'aucune hauteur devinée.", 'Nothing tall nearby: the figure doesn’t rely on any guessed height.'),
     measured: tr('Les immeubles voisins sont mesurés : le chiffre est fiable.', 'The nearby buildings are measured: the figure is reliable.'),
     mixed: tr('Une partie des immeubles voisins est estimée : le chiffre est assez fiable.', 'Some nearby buildings are estimated: the figure is fairly reliable.'),
     estimated: tr(

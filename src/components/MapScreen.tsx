@@ -624,7 +624,7 @@ export function MapScreen({
 
 function ModeToggle({ mode, onModeChange }: { mode: SunMode; onModeChange: (m: SunMode) => void }) {
   return (
-    <div className="flex shrink-0 rounded-full border border-dusk-line bg-dusk-panel p-0.5" role="group" aria-label={tr('Chercher', 'Looking for')}>
+    <div className="flex shrink-0 rounded-full border border-dusk-line bg-dusk-panel p-0.5" role="group" aria-label={tr('Chercher', 'Look for')}>
       {(['SUN', 'SHADE'] as const).map((m) => (
         <button
           key={m}

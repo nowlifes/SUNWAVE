@@ -128,7 +128,7 @@ export function ProfileScreen({ mode, onModeChange, locationLabel, locationGrant
                 : tr('Pseudo retiré : tes réponses ne sont plus signées.', 'Nickname removed: your answers are no longer signed.')
               : tr(
                   'Signe tes réponses « il reste des places ? ». Un pseudo, pas ton vrai nom.',
-                  'Signs your answers to “any seats left?”. A nickname, not your real name.'
+                  'Sign your answers to “any seats left?” A nickname, not your real name.'
                 )}
         </p>
       </div>

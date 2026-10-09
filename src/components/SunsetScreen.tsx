@@ -356,7 +356,7 @@ function SunsetSheet({
             {light.minutesAfterOfficial > 0 &&
               tr(
                 ` ${light.minutesAfterOfficial} min de plus que le coucher officiel.`,
-                ` ${light.minutesAfterOfficial} min more than the official sunset.`
+                ` ${light.minutesAfterOfficial} min later than the official sunset.`
               )}
             {season.juneHidden &&
               (season.marchWater
