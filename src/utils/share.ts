@@ -1,6 +1,7 @@
 import type { Recommendation, SunMode } from '@/types';
 import type { SunTrail } from '@/services/SunTrailService';
 import { formatLisbonTime } from './lisbonTime';
+import { tr } from './lang';
 
 // ---------------------------------------------------------------------------
 // Rendez-vous au soleil — l'invitation qu'on envoie à quelqu'un.
@@ -13,28 +14,30 @@ import { formatLisbonTime } from './lisbonTime';
 const PARAM = 'lieu';
 
 function until(end: string, sunset: string): string {
-  return end === sunset ? `jusqu'au coucher (${sunset})` : `jusqu'à ${end}`;
+  return end === sunset
+    ? tr(`jusqu'au coucher (${sunset})`, `until sunset (${sunset})`)
+    : tr(`jusqu'à ${end}`, `until ${end}`);
 }
 
 /** Le texte de l'invitation. `sunset` en « HH:MM », heure de Lisbonne. */
 export function inviteText(rec: Recommendation, mode: SunMode, trail: SunTrail | null, sunset: string): string {
   const isSun = mode === 'SUN';
-  const where = isSun ? 'au soleil' : "à l'ombre";
-  const opener = isSun ? '☀ Rendez-vous au soleil ?' : "Rendez-vous à l'ombre ?";
+  const where = isSun ? tr('au soleil', 'in the sun') : tr("à l'ombre", 'in the shade');
+  const opener = isSun ? tr('☀ Rendez-vous au soleil ?', '☀ Meet in the sun?') : tr("Rendez-vous à l'ombre ?", 'Meet in the shade?');
 
   let when: string;
   if (rec.sunLeavesInMin !== null && rec.sunWindowEnd) when = `${where} ${until(rec.sunWindowEnd, sunset)}`;
-  else if (rec.sunArrivesInMin !== null && rec.sunWindowStart && !rec.arrivesTomorrow) when = `${where} dès ${rec.sunWindowStart}`;
+  else if (rec.sunArrivesInMin !== null && rec.sunWindowStart && !rec.arrivesTomorrow) when = `${where} ${tr('dès', 'from')} ${rec.sunWindowStart}`;
   else when = '';
 
   // La suite du parcours, quand il y en a une — au moment du départ réel de
   // la première étape (fermeture comprise), pas de la fenêtre brute.
   let next = '';
   if (trail && trail.stops.length > 1) {
-    when = `${where} jusqu'à ${formatLisbonTime(trail.stops[0].leaveAt)}`;
+    when = `${where} ${tr('jusqu\'à', 'until')} ${formatLisbonTime(trail.stops[0].leaveAt)}`;
     next = trail.stops
       .slice(1)
-      .map((s) => `, puis ${s.rec.venue.name} ${until(formatLisbonTime(s.leaveAt), sunset)}`)
+      .map((s) => `, ${tr('puis', 'then')} ${s.rec.venue.name} ${until(formatLisbonTime(s.leaveAt), sunset)}`)
       .join('');
   }
 
@@ -43,7 +46,10 @@ export function inviteText(rec: Recommendation, mode: SunMode, trail: SunTrail |
 
 /** L'invitation du moment coucher : un lieu, une minute. */
 export function sunsetInviteText(venueName: string, time: string): string {
-  return `Le soleil plonge dans l'océan à ${time}, vu de ${venueName}. On y va ?`;
+  return tr(
+    `Le soleil plonge dans l'océan à ${time}, vu de ${venueName}. On y va ?`,
+    `The sun dips into the ocean at ${time}, seen from ${venueName}. Shall we go?`
+  );
 }
 
 export function inviteUrl(origin: string, venueId: string): string {

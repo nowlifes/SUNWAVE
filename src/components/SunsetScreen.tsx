@@ -9,6 +9,7 @@ import { lisbonBuildings } from '@/data/lisbonBuildings';
 import { formatLisbonTime, lisbonMinutesOfDay } from '@/utils/lisbonTime';
 import { categoryLabel, formatGap, travelLabel } from '@/utils/copy';
 import { inviteUrl, shareInvite, sunsetInviteText } from '@/utils/share';
+import { tr } from '@/utils/lang';
 
 // ---------------------------------------------------------------------------
 // « Plein ouest » — l'heure qui précède le coucher, quand un lieu à portée de
@@ -99,11 +100,11 @@ export function SunsetScreen({
             <p className="mt-2 text-[14px] leading-snug">
               {minutesToOfficial > 0 ? (
                 <>
-                  Le soleil se couche dans{' '}
+                  {tr('Le soleil se couche dans', 'The sun sets in')}{' '}
                   <span className="whitespace-nowrap font-semibold">{formatGap(minutesToOfficial)}</span>.
                 </>
               ) : (
-                <>Le soleil est à l'horizon.</>
+                <>{tr("Le soleil est à l'horizon.", 'The sun is on the horizon.')}</>
               )}
             </p>
           </div>
@@ -115,11 +116,13 @@ export function SunsetScreen({
       <section className="-mt-1 px-6">
         <div className="-mr-2.5 flex items-start justify-between gap-3">
           <h2 className="font-display text-[1.95rem] font-bold leading-[1.04] tracking-[-0.015em] [font-stretch:85%] [text-wrap:balance]">
-            Va voir le soleil <span className="text-dusk-fire">plonger</span> dans l'eau.
+            {tr('Va voir le soleil ', 'Go watch the sun ')}
+            <span className="text-dusk-fire">{tr('plonger', 'dip')}</span>
+            {tr(" dans l'eau.", ' into the sea.')}
           </h2>
           <button
             onClick={handleShare}
-            aria-label="Inviter quelqu'un"
+            aria-label={tr("Inviter quelqu'un", 'Invite someone')}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-dusk-mist active:scale-90 transition-transform"
           >
             <ShareIcon />
@@ -134,10 +137,10 @@ export function SunsetScreen({
         </button>
 
         <dl className="mt-4 grid grid-cols-3 gap-3 border-t border-dusk-line pt-3.5">
-          <Stat value={formatLisbonTime(lastLight)} label="il disparaît dans l'eau" accent />
-          <Stat value={`${pick.walkMin} min`} label="à pied" />
+          <Stat value={formatLisbonTime(lastLight)} label={tr("il disparaît dans l'eau", 'it sinks into the sea')} accent />
+          <Stat value={`${pick.walkMin} min`} label={tr('à pied', 'walk')} />
           <div className="flex min-w-0 flex-col gap-1">
-            <dt className="order-2 text-[12px] leading-snug text-dusk-sub">océan à l'horizon</dt>
+            <dt className="order-2 text-[12px] leading-snug text-dusk-sub">{tr("océan à l'horizon", 'ocean on the horizon')}</dt>
             <dd className="order-1 h-[22px]">
               <WavesIcon />
             </dd>
@@ -146,7 +149,9 @@ export function SunsetScreen({
 
         {shareState !== 'idle' && (
           <p role="status" className="mt-3.5 text-center text-[12.5px] font-semibold">
-            {shareState === 'copied' ? 'Invitation copiée — colle-la dans ta conversation.' : 'Copie impossible sur cet appareil.'}
+            {shareState === 'copied'
+              ? tr('Invitation copiée — colle-la dans ta conversation.', 'Invite copied. Paste it into your chat.')
+              : tr('Copie impossible sur cet appareil.', 'Can’t copy on this device.')}
           </p>
         )}
 
@@ -155,14 +160,14 @@ export function SunsetScreen({
             onClick={() => onDirections(venue.id)}
             className="min-h-[52px] flex-1 rounded-full bg-dusk-fire text-[16px] font-bold text-dusk-night active:scale-[0.98] transition-transform"
           >
-            J'y vais
+            {tr("J'y vais", 'Let’s go')}
           </button>
           {moment.picks.length > 1 && (
             <button
               onClick={() => setPickIndex((i) => (i + 1) % moment.picks.length)}
               className="min-h-[52px] rounded-full border border-dusk-edge px-5 text-[15px] font-semibold active:scale-[0.98] transition-transform"
             >
-              Autre spot
+              {tr('Autre spot', 'Another spot')}
             </button>
           )}
         </div>
@@ -171,7 +176,7 @@ export function SunsetScreen({
           onClick={() => setSheetOpen(true)}
           className="mt-3 min-h-11 w-full text-center text-[13.5px] font-semibold text-dusk-glow active:opacity-70"
         >
-          Voir le coucher minute par minute
+          {tr('Voir le coucher minute par minute', 'See the sunset minute by minute')}
         </button>
       </section>
 
@@ -256,7 +261,8 @@ function DuskSky({ venue, now, lastLight }: { venue: Venue; now: Date; lastLight
         </text>
       ))}
       <text x={touchX - 12} y={HORIZON_Y - 14} textAnchor="end" fontSize="12" fill="#0B1A45" fontWeight="500">
-        touche l'eau à <tspan className="font-mono" fontWeight="600">{formatLisbonTime(lastLight)}</tspan>
+        {tr("touche l'eau à ", 'touches the water at ')}
+        <tspan className="font-mono" fontWeight="600">{formatLisbonTime(lastLight)}</tspan>
       </text>
     </svg>
   );
@@ -304,7 +310,7 @@ function SunsetSheet({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`Coucher à ${venue.name}`}
+        aria-label={tr(`Coucher à ${venue.name}`, `Sunset at ${venue.name}`)}
         onClick={(e) => e.stopPropagation()}
         className="max-h-[92vh] overflow-y-auto rounded-t-[28px] bg-dusk-night px-6 pb-[calc(env(safe-area-inset-bottom)+28px)] pt-2.5 text-dusk-shell"
       >
@@ -318,12 +324,12 @@ function SunsetSheet({
               {venue.name}
             </h2>
             <p className="mt-1.5 text-[13.5px] text-dusk-sub">
-              {categoryLabel(venue.category)}, {VenueService.getNeighborhood(venue)} · {walkMin} min à pied
+              {categoryLabel(venue.category)}, {VenueService.getNeighborhood(venue)} · {walkMin} {tr('min à pied', 'min walk')}
             </p>
           </div>
           <button
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={tr('Fermer', 'Close')}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-dusk-panel active:scale-90 transition-transform"
           >
             <CloseIcon />
@@ -331,26 +337,34 @@ function SunsetSheet({
         </div>
 
         <div className="mt-6">
-          <p className="text-[14px] font-medium text-dusk-mist">Il touche l'eau dans</p>
+          <p className="text-[14px] font-medium text-dusk-mist">{tr("Il touche l'eau dans", 'It touches the water in')}</p>
           <p className="mt-0.5 font-display text-[4.5rem] font-extrabold leading-[0.95] tracking-[-0.025em] text-dusk-fire [font-stretch:78%]">
             {formatGap(Math.max(0, left))}
           </p>
           <p className="mt-2 text-[14px] leading-snug text-dusk-mist">
-            À <span className="font-mono font-semibold text-dusk-shell">{formatLisbonTime(light.time)}</span> ce soir.
-            Coucher officiel à <span className="font-mono font-semibold text-dusk-shell">{formatLisbonTime(officialSunset)}</span>.
+            {tr('À ', 'At ')}
+            <span className="font-mono font-semibold text-dusk-shell">{formatLisbonTime(light.time)}</span>
+            {tr(' ce soir. Coucher officiel à ', ' tonight. Official sunset at ')}
+            <span className="font-mono font-semibold text-dusk-shell">{formatLisbonTime(officialSunset)}</span>.
           </p>
         </div>
 
         <div className="mt-6">
           <HorizonProfile venue={venue} now={now} lastLight={light.time} />
           <p className="mt-3 text-[14px] leading-relaxed text-dusk-mist">
-            <span className="font-semibold text-dusk-shell">Rien entre toi et l'horizon.</span>
+            <span className="font-semibold text-dusk-shell">{tr("Rien entre toi et l'horizon.", 'Nothing between you and the horizon.')}</span>
             {light.minutesAfterOfficial > 0 &&
-              ` ${light.minutesAfterOfficial} min de plus que le coucher officiel.`}
+              tr(
+                ` ${light.minutesAfterOfficial} min de plus que le coucher officiel.`,
+                ` ${light.minutesAfterOfficial} min later than the official sunset.`
+              )}
             {season.juneHidden &&
               (season.marchWater
-                ? ' En juin, il passera derrière les collines : ce spot marche de septembre à mars.'
-                : ' En juin, il passera derrière les collines.')}
+                ? tr(
+                    ' En juin, il passera derrière les collines : ce spot marche de septembre à mars.',
+                    ' In June it sets behind the hills: this spot works from September to March.'
+                  )
+                : tr(' En juin, il passera derrière les collines.', ' In June it sets behind the hills.'))}
           </p>
         </div>
 
@@ -358,7 +372,7 @@ function SunsetSheet({
 
         {elsewhere.length > 0 && (
           <div className="mt-6 border-t border-dusk-line pt-4">
-            <p className="text-[15px] font-semibold">Ailleurs ce soir</p>
+            <p className="text-[15px] font-semibold">{tr('Ailleurs ce soir', 'Elsewhere tonight')}</p>
             <ul className="mt-2">
               {elsewhere.map((other) => (
                 <ElsewhereRow
@@ -378,13 +392,13 @@ function SunsetSheet({
             onClick={onDirections}
             className="min-h-[52px] flex-1 rounded-full bg-dusk-fire text-[16px] font-bold text-dusk-night active:scale-[0.98] transition-transform"
           >
-            J'y vais
+            {tr("J'y vais", 'Let’s go')}
           </button>
           <button
             onClick={() => onVenueSelect(venue.id)}
             className="min-h-[52px] rounded-full border border-dusk-edge px-5 text-[15px] font-semibold active:scale-[0.98] transition-transform"
           >
-            La fiche
+            {tr('La fiche', 'Details')}
           </button>
         </div>
       </div>
@@ -449,7 +463,10 @@ function HorizonProfile({ venue, now, lastLight }: { venue: Venue; now: Date; la
       viewBox={`0 0 ${W} ${H}`}
       className="block h-auto w-full"
       role="img"
-      aria-label={`Profil d'horizon : le soleil descend et touche l'eau à ${touchTime}`}
+      aria-label={tr(
+        `Profil d'horizon : le soleil descend et touche l'eau à ${touchTime}`,
+        `Horizon profile: the sun goes down and touches the water at ${touchTime}`
+      )}
     >
       <defs>
         <clipPath id="profile-sky">
@@ -509,17 +526,17 @@ function HorizonProfile({ venue, now, lastLight }: { venue: Venue; now: Date; la
       </g>
       {first && (
         <text x={x(first.az)} y={y(first.el) - 18} textAnchor="middle" fontSize="11.5" fontWeight="600" fill="#FFF6EC">
-          maintenant
+          {tr('maintenant', 'now')}
         </text>
       )}
       <text x={x(touch.az)} y={H - 8} textAnchor="middle" fontSize="12" fontWeight="600" fill="#FF6A2B" className="font-mono">
         {touchTime}
       </text>
       <text x="10" y={H - 26} fontSize="11" fill="#8FA3D6">
-        {leftWater ? 'océan' : 'terre'}
+        {leftWater ? tr('océan', 'ocean') : tr('terre', 'land')}
       </text>
       <text x={W - 10} y={H - 26} textAnchor="end" fontSize="11" fill="#8FA3D6">
-        {rightWater ? 'océan' : 'collines'}
+        {rightWater ? tr('océan', 'ocean') : tr('collines', 'hills')}
       </text>
     </svg>
   );
@@ -557,7 +574,7 @@ function LastMinutes({ now, lastLight }: { now: Date; lastLight: Date }) {
 
   return (
     <div className="mt-6">
-      <p className="text-[15px] font-semibold">Les dernières minutes</p>
+      <p className="text-[15px] font-semibold">{tr('Les dernières minutes', 'The last minutes')}</p>
       <svg viewBox={`0 0 ${W} 58`} className="mt-2.5 block h-auto w-full" aria-hidden="true">
         {cells.map((t, i) => {
           const lit = i < endIdx;
@@ -578,7 +595,7 @@ function LastMinutes({ now, lastLight }: { now: Date; lastLight: Date }) {
           <>
             <rect x={nowIdx * cw - 1.25} y="0" width="2.5" height="44" fill="#FFF6EC" />
             <text x={Math.min(W - 30, Math.max(30, nowIdx * cw))} y="55" textAnchor="middle" fontSize="11" fontWeight="600" fill="#FFF6EC">
-              maintenant
+              {tr('maintenant', 'now')}
             </text>
           </>
         )}
@@ -627,7 +644,8 @@ function ElsewhereRow({
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[15px] font-semibold">{light.venue.name}</span>
           <span className="block text-[13px] text-dusk-sub">
-            dans l'eau à <span className="font-mono text-dusk-fire">{formatLisbonTime(light.time)}</span> · {travelLabel(rec)}
+            {tr("dans l'eau à ", 'in the water at ')}
+            <span className="font-mono text-dusk-fire">{formatLisbonTime(light.time)}</span> · {travelLabel(rec)}
           </span>
         </span>
       </button>
@@ -648,7 +666,7 @@ function Stat({ value, label, accent = false }: { value: string; label: string; 
 
 function DuskModeSwitch({ mode, onModeChange }: { mode: SunMode; onModeChange: (mode: SunMode) => void }) {
   return (
-    <div role="radiogroup" aria-label="Chercher" className="flex shrink-0 rounded-full border border-dusk-edge bg-dusk-deep p-1">
+    <div role="radiogroup" aria-label={tr('Chercher', 'Look for')} className="flex shrink-0 rounded-full border border-dusk-edge bg-dusk-deep p-1">
       {(['SUN', 'SHADE'] as const).map((m) => (
         <button
           key={m}
@@ -659,7 +677,7 @@ function DuskModeSwitch({ mode, onModeChange }: { mode: SunMode; onModeChange: (
             mode === m ? 'bg-dusk-fire text-dusk-night' : 'text-dusk-shell'
           }`}
         >
-          {m === 'SUN' ? 'Soleil' : 'Ombre'}
+          {m === 'SUN' ? tr('Soleil', 'Sun') : tr('Ombre', 'Shade')}
         </button>
       ))}
     </div>

@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { VenueService } from './VenueService';
+import { setLang } from '@/utils/lang';
+import type { Venue } from '@/types';
 
 // Le quartier sortait d'une liste de cercles testés dans l'ordre : le premier
 // qui contenait le lieu gagnait. Chiado, premier et large, avalait la moitié
@@ -138,5 +140,27 @@ describe('rive sud', () => {
 
   it('les ids des lieux existants ne bougent pas', () => {
     expect(VenueService.getVenueById('v_64')?.name).toBe('Pavilhão Chinês');
+  });
+});
+
+// Les descriptions existent aussi en anglais : la recherche les lit, et le
+// quartier par défaut suit la langue.
+describe('lieux en anglais', () => {
+  afterEach(() => setLang('fr'));
+
+  it('chaque lieu a sa description anglaise', () => {
+    for (const v of VenueService.getAllVenues()) expect(v.descriptionEn, v.name).toBeTruthy();
+  });
+
+  it('la recherche trouve un lieu par sa description anglaise', () => {
+    setLang('en');
+    expect(VenueService.search('wisteria').map((v) => v.name)).toContain('Miradouro de Santa Luzia');
+  });
+
+  it('sans quartier dans l\'adresse, le lieu est à Lisbon en anglais', () => {
+    const sansQuartier = { ...VenueService.getAllVenues()[0], address: '' } as Venue;
+    expect(VenueService.getNeighborhood(sansQuartier)).toBe('Lisbonne');
+    setLang('en');
+    expect(VenueService.getNeighborhood(sansQuartier)).toBe('Lisbon');
   });
 });

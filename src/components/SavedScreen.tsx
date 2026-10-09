@@ -12,6 +12,7 @@ import { favGroup, nowFraction, BAND_FROM, BAND_TO, type FavGroup } from '@/util
 import { HaloIcon } from './Halo';
 import { HourBand } from './HourBand';
 import { useCycleScreen } from './useCycleScreen';
+import { getLang, tr, useLang } from '@/utils/lang';
 import './carteDuJour.css';
 
 // ---------------------------------------------------------------------------
@@ -38,15 +39,16 @@ interface Row {
 
 function rightLabel({ rec, group }: Row): string {
   if (group === 'now') return statusShort(rec, 'SUN');
-  if (group === 'off') return "rue à l'ombre";
+  if (group === 'off') return tr("rue à l'ombre", 'shaded street');
   if (rec.sunArrivesInMin !== null && rec.sunWindowStart) {
-    return `${rec.arrivesTomorrow ? 'demain' : 'dès'} ${rec.sunWindowStart.replace(/^0/, '')}`;
+    return `${rec.arrivesTomorrow ? tr('demain', 'tomorrow') : tr('dès', 'from')} ${rec.sunWindowStart.replace(/^0/, '')}`;
   }
-  return 'demain';
+  return tr('demain', 'tomorrow');
 }
 
 export function SavedScreen({ savedVenues, currentDate, userLocation, onVenueSelect, mode = 'SUN' }: SavedScreenProps) {
   const cyc = useCycleScreen(currentDate, mode);
+  useLang();
   const lightVars = useMemo(() => {
     const cut = lightCut(SunService.getSunAzimuth(currentDate), SunService.getSunElevation(currentDate));
     return { '--sx': `${cut.dx}px`, '--sy': `${cut.dy}px`, '--f': nowFraction(lisbonMinutesOfDay(currentDate)).toFixed(3) } as CSSProperties;
@@ -87,22 +89,24 @@ export function SavedScreen({ savedVenues, currentDate, userLocation, onVenueSel
   return (
     <div className="cdj h-full overflow-y-auto no-scrollbar pb-24" style={{ ...lightVars, ...cyc.vars }} {...cyc.attrs}>
       <header className="cdj-fhead">
-        <h1>Mes lieux, aujourd'hui</h1>
-        <p>Quand y aller pour avoir la bonne lumière.</p>
+        <h1>{tr("Mes lieux, aujourd'hui", 'My places, today')}</h1>
+        <p>{tr('Quand y aller pour avoir la bonne lumière.', 'When to go for the right light.')}</p>
       </header>
 
       {savedVenues.length === 0 ? (
         <div className="flex flex-col items-center justify-center px-6 py-20">
           <HaloIcon kind="sun" tone="day" alt={30} size={44} className="mb-4" />
-          <p className="text-center text-sm font-semibold">Aucun lieu enregistré.</p>
-          <p className="mt-1 text-center text-xs text-[color:var(--sub)]">Touche « Garder » sur un lieu pour voir ici ses heures de soleil.</p>
+          <p className="text-center text-sm font-semibold">{tr('Aucun lieu enregistré.', 'No saved places yet.')}</p>
+          <p className="mt-1 text-center text-xs text-[color:var(--sub)]">
+            {tr('Touche « Enregistrer » sur un lieu pour voir ici ses heures de soleil.', 'Tap “Save” on a place to see its sun hours here.')}
+          </p>
         </div>
       ) : (
         <>
           <div className="cdj-ruler" aria-hidden="true">
             <div>
               {RULER.map((h) => (
-                <span key={h} style={{ left: `${((h - BAND_FROM) / (BAND_TO - BAND_FROM)) * 100}%` }}>{h}h</span>
+                <span key={h} style={{ left: `${((h - BAND_FROM) / (BAND_TO - BAND_FROM)) * 100}%` }}>{getLang() === 'en' ? `${h}:00` : `${h}h`}</span>
               ))}
             </div>
           </div>
@@ -110,19 +114,19 @@ export function SavedScreen({ savedVenues, currentDate, userLocation, onVenueSel
             <div className="cdj-nowline"><span>{formatLisbonTime(currentDate)}</span></div>
             {groups.now.length > 0 && (
               <>
-                <h2 className="cdj-grp"><span className="cdj-dot" aria-hidden="true" />Bons maintenant</h2>
+                <h2 className="cdj-grp"><span className="cdj-dot" aria-hidden="true" />{tr('Bons maintenant', 'Good right now')}</h2>
                 {groups.now.map(card)}
               </>
             )}
             {groups.later.length > 0 && (
               <>
-                <h2 className="cdj-grp"><span className="cdj-dot o" aria-hidden="true" />Plus tard <small>ou au frais</small></h2>
+                <h2 className="cdj-grp"><span className="cdj-dot o" aria-hidden="true" />{tr('Plus tard', 'Later')} <small>{tr('ou au frais', 'or in the shade')}</small></h2>
                 {groups.later.map(card)}
               </>
             )}
             {groups.off.length > 0 && (
               <>
-                <h2 className="cdj-grp"><small>Pas de soleil aujourd'hui</small></h2>
+                <h2 className="cdj-grp"><small>{tr("Pas de soleil aujourd'hui", 'No sun today')}</small></h2>
                 {groups.off.map(card)}
               </>
             )}

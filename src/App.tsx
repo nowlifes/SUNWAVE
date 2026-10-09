@@ -14,6 +14,7 @@ import { ProfileScreen } from '@/components/ProfileScreen';
 import { BottomNav } from '@/components/BottomNav';
 import { CLAIR } from '@/utils/mapFlags';
 import { PlaceDetailSheet } from '@/components/PlaceDetailSheet';
+import { tr, useLang } from '@/utils/lang';
 import { CYCLE, barTint, circadian } from '@/utils/circadian';
 
 const LISBON_CENTER: GeoPoint = { lat: 38.7223, lng: -9.1393 };
@@ -49,6 +50,8 @@ function saveToStorage(key: string, value: unknown) {
 const DUSK_NIGHT = '#0B1A45';
 
 export default function App() {
+  // Abonné ici : à la bascule FR/EN, tout l'arbre se redessine.
+  const lang = useLang();
   // Arrivé par une invitation (« ?lieu=… ») : la fiche du lieu s'ouvre tout
   // de suite, sans les écrans d'accueil — l'invité veut savoir où et jusqu'à
   // quand, pas découvrir l'app. Lu une fois, au montage.
@@ -245,9 +248,10 @@ export default function App() {
   }, [selectedVenueId]);
 
   const locationLabel = useMemo(() => {
-    if (locationGranted) return 'Ta position';
-    return 'Lisbonne, Portugal';
-  }, [locationGranted]);
+    if (locationGranted) return tr('Ta position', 'Your location');
+    return tr('Lisbonne, Portugal', 'Lisbon, Portugal');
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `lang` : tr() lit la langue hors de React, le texte du memo doit suivre la bascule.
+  }, [locationGranted, lang]);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-dusk-deep flex items-center justify-center">

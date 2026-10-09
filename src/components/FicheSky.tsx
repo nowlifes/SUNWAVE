@@ -10,6 +10,7 @@ import { haloLook } from '@/utils/halo';
 import { lastRayMinute, sunGlyph } from '@/utils/ficheSky';
 import { DAY, LIGHT, NIGHT } from '@/utils/palette';
 import { skyBands, textOn, type Circadian } from '@/utils/circadian';
+import { tr, useLang } from '@/utils/lang';
 
 // ---------------------------------------------------------------------------
 // Le ciel de la fiche : strates du jour, le disque du soleil et son halo à
@@ -39,6 +40,7 @@ const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}
  *  (`?sanscycle`), le ciel de jour d'origine. */
 export function FicheSky({ venue, date, cyc, ground }: { venue: Venue; date: Date; cyc?: Circadian | null; ground?: string }) {
   const glowId = useId();
+  useLang();
   const sky = useMemo(() => {
     const nowMin = lisbonMinutesOfDay(date);
     // Le dernier rayon vient de la même courbe que tous les chiffres de la
@@ -69,7 +71,8 @@ export function FicheSky({ venue, date, cyc, ground }: { venue: Venue; date: Dat
     });
     const angleAt = (az: number) => angles[Math.max(0, Math.min(angles.length - 1, Math.round(az - azs[0])))];
     const line = azs.map((az, i) => `${x(az).toFixed(1)},${y(angles[i]).toFixed(1)}`);
-    const caption = agrees ? (lastLight!.over === 'water' ? "dans l'eau" : 'caché par le relief') : 'dernier rayon';
+    // Une clé, pas le texte : la légende se traduit au rendu, hors du memo.
+    const caption: 'water' | 'relief' | 'last' = agrees ? (lastLight!.over === 'water' ? 'water' : 'relief') : 'last';
     const glyph = sunGlyph({ nowMin, lastRayMin, elevation: now.elevation });
     const lastPt = last ? { x: x(last.azimuth), y: y(angleAt(last.azimuth)) } : null;
     // Au ras de l'horizon, la braise se pose sur la ligne, jamais dessous.
@@ -81,6 +84,12 @@ export function FicheSky({ venue, date, cyc, ground }: { venue: Venue; date: Dat
   }, [venue, date]);
 
   const { glyph, sunPt, lastPt, look } = sky;
+  const caption =
+    sky.caption === 'water'
+      ? tr("dans l'eau", 'into the water')
+      : sky.caption === 'relief'
+        ? tr('caché par le relief', 'behind the hills')
+        : tr('dernier rayon', 'last light');
   const at = glyph.kind === 'ember' && lastPt ? lastPt : sunPt;
   const r = 13;
   const glowR = 22 + 22 * look.glow;
@@ -91,7 +100,7 @@ export function FicheSky({ venue, date, cyc, ground }: { venue: Venue; date: Dat
   const line = bands ? (textOn(bands[bands.length - 1]) === 'ink' ? INK : CREAM) : NIGHT.night;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label={sky.lastRayMin !== null ? `Dernier rayon à ${hhmm(sky.lastRayMin)}` : 'Le ciel du lieu'}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" role="img" aria-label={sky.lastRayMin !== null ? tr(`Dernier rayon à ${hhmm(sky.lastRayMin)}`, `Last light at ${hhmm(sky.lastRayMin)}`) : tr('Le ciel du lieu', 'The sky here')}>
       <defs>
         <radialGradient id={glowId}>
           <stop offset="0.3" stopColor={warm} stopOpacity="0.75" />
@@ -130,7 +139,7 @@ export function FicheSky({ venue, date, cyc, ground }: { venue: Venue; date: Dat
             {hhmm(sky.lastRayMin)}
           </text>
           <text x={Math.min(W - 8, lastPt.x + 10)} y={lastPt.y - 11} dx={lastPt.x + 10 > W - 110 ? 0 : 44} textAnchor={lastPt.x + 10 > W - 110 ? 'end' : 'start'} dy={lastPt.x + 10 > W - 110 ? -15 : 0} fontSize="11.5" fontWeight="600" fill={line}>
-            {sky.caption}
+            {caption}
           </text>
         </>
       )}

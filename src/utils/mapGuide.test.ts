@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { setLang } from '@/utils/lang';
 import type { Recommendation } from '@/types';
 import {
   WALK_RING_M,
@@ -241,5 +242,26 @@ describe('cityLightCurve — la bande de lumière du quartier', () => {
   });
   it('sans lieu, une bande vide plutôt qu’une division par zéro', () => {
     expect(cityLightCurve([], 'SUN').every((v) => v === 0)).toBe(true);
+  });
+});
+
+describe('en anglais — la carte parle à qui ne lit pas le français', () => {
+  afterEach(() => setLang('fr'));
+  const base = { mode: 'SUN' as const, count: 7, nowMin: 16 * 60 + 40, sunriseMin: 7 * 60 + 20, sunsetMin: 19 * 60 + 27, isNow: true };
+
+  it('astuces et accroches', () => {
+    setLang('en');
+    expect(hintForVisit(1, 'SHADE')).toBe('Drag the time to watch the shade move');
+    expect(hintForVisit(2, 'SUN')).toBe('Tap anywhere on the map');
+    expect(sheetHeadlines(base)).toEqual(['7 places in the sun within walking distance', '7 sunny spots around you']);
+    expect(sheetHeadlines({ ...base, count: 1, mode: 'SHADE' })[0]).toBe('1 place in the shade within walking distance');
+    expect(sheetHeadlines({ ...base, nowMin: 18 * 60 + 30 })[0]).toBe('Sunset at 19:27 · 7 places in the sun');
+    expect(sheetHeadlines({ ...base, nowMin: 22 * 60 })[0]).toBe('Night · the sun is back at 07:20');
+  });
+  it('la bulle « ici »', () => {
+    setLang('en');
+    expect(hereSentence({ state: 'in', untilMin: 17 * 60 + 45 }, 'SUN')).toEqual({ lead: 'Here: sun until', time: '17:45' });
+    expect(hereSentence({ state: 'out', untilMin: null }, 'SUN')).toEqual({ lead: 'Here: shade until sunset', time: null });
+    expect(hereSentence({ state: 'night', untilMin: 7 * 60 + 20 }, 'SUN')).toEqual({ lead: 'Here: night, sun back at', time: '07:20' });
   });
 });

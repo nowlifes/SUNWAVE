@@ -1,5 +1,6 @@
 import type { GeoPoint } from '@/types';
 import { TerrainService } from '@/services/TerrainService';
+import { tr } from '@/utils/lang';
 
 // ---------------------------------------------------------------------------
 // Pourquoi ce lieu, et pas un autre — dit par le relief.
@@ -86,9 +87,15 @@ class ReliefServiceClass {
     const hauteur = `${metres}${NBSP}m`;
 
     if (prominence >= COMMANDING_THRESHOLD_M) {
-      return `Garde le soleil après les rues d'en bas — il est ${hauteur} au-dessus d'elles.`;
+      return tr(
+        `Garde le soleil après les rues d'en bas — il est ${hauteur} au-dessus d'elles.`,
+        `Keeps the sun after the streets below have lost it — it sits ${hauteur} above them.`
+      );
     }
-    return `Garde le soleil un peu après les rues autour — il est ${hauteur} au-dessus d'elles.`;
+    return tr(
+      `Garde le soleil un peu après les rues autour — il est ${hauteur} au-dessus d'elles.`,
+      `Keeps the sun a bit longer than the streets around — it sits ${hauteur} above them.`
+    );
   }
 }
 

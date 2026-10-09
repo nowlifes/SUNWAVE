@@ -2,6 +2,7 @@ import type { VenueCategory } from '@/types';
 import type { LiveVoice } from '@/services/LiveReportService';
 import { IN_IT_THRESHOLD } from '@/services/RecommendationService';
 import { voiceLight, type AvatarLight, type LensScene } from '@/utils/avatar';
+import { tr } from '@/utils/lang';
 
 // ---------------------------------------------------------------------------
 // L'avatar : une silhouette illustrée à contre-jour, la même pour tout le
@@ -70,7 +71,7 @@ export function VoicePile({
           code={v.avatar}
           light={voiceLight(sunByHour, v.at, now, IN_IT_THRESHOLD.SUN)}
           size={size}
-          label={v.pseudo ?? 'Quelqu’un sur place'}
+          label={v.pseudo ?? tr('Quelqu’un sur place', 'Someone on the spot')}
           className={k ? '-ml-2.5' : ''}
         />
       ))}

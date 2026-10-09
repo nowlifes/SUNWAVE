@@ -24,6 +24,7 @@ import { lisbonMinutesOfDay, lisbonParts } from '@/utils/lisbonTime';
 import { ribbonCells } from '@/utils/ribbon';
 import { categoryLabel, statusCopy, travelLabel } from '@/utils/copy';
 import { CLAIR } from '@/utils/mapFlags';
+import { getLang, tr, useLang } from '@/utils/lang';
 import {
   betterNeighbour,
   cityLightCurve,
@@ -55,14 +56,14 @@ interface MapScreenProps {
   savedVenueIds: string[];
 }
 
-const FILTER_CATEGORIES: { value: VenueCategory | 'all'; label: string }[] = [
-  { value: 'all', label: 'Tout' },
-  { value: 'cafe', label: 'Cafés' },
-  { value: 'bar', label: 'Bars' },
-  { value: 'restaurant', label: 'Restaurants' },
-  { value: 'park', label: 'Parcs' },
-  { value: 'beach', label: 'Plages' },
-  { value: 'rooftop', label: 'Rooftops' },
+const FILTER_CATEGORIES: { value: VenueCategory | 'all'; label: [fr: string, en: string] }[] = [
+  { value: 'all', label: ['Tout', 'All'] },
+  { value: 'cafe', label: ['Cafés', 'Cafés'] },
+  { value: 'bar', label: ['Bars', 'Bars'] },
+  { value: 'restaurant', label: ['Restaurants', 'Restaurants'] },
+  { value: 'park', label: ['Parcs', 'Parks'] },
+  { value: 'beach', label: ['Plages', 'Beaches'] },
+  { value: 'rooftop', label: ['Rooftops', 'Rooftops'] },
 ];
 
 /** « À pied », pour la feuille : un quart d'heure de marche. */
@@ -113,6 +114,8 @@ export function MapScreen({
   onSave,
   savedVenueIds,
 }: MapScreenProps) {
+  // Les phrases mémoïsées (titre, bulle « ici ») se refont à la bascule.
+  const lang = useLang();
   const [activeFilter, setActiveFilter] = useState<VenueCategory | 'all'>('all');
   /** Feuille tirée : 3 lieux, recherche, filtres. Repliée par défaut. */
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -198,7 +201,8 @@ export function MapScreen({
   // (ni d'une visite à l'autre).
   const candidates = useMemo(
     () => sheetHeadlines({ mode, count: nearInIt.length, nowMin, sunriseMin, sunsetMin, isNow }),
-    [mode, nearInIt.length, nowMin, sunriseMin, sunsetMin, isNow]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `lang` : tr() lit la langue hors de React, le texte du memo doit suivre la bascule.
+    [mode, nearInIt.length, nowMin, sunriseMin, sunsetMin, isNow, lang]
   );
   const candidatesKey = candidates.join('|');
   const [headline, setHeadline] = useState(() => pickHeadline(candidates, readStorage(STORAGE.headline)));
@@ -257,12 +261,16 @@ export function MapScreen({
         point: probePoint,
         lead: '',
         time: null,
-        error: `Impossible de calculer le soleil ici : ${e instanceof Error ? e.message : String(e)}`,
+        error: tr(
+          `Impossible de calculer le soleil ici : ${e instanceof Error ? e.message : String(e)}`,
+          `Can’t work out the sun here: ${e instanceof Error ? e.message : String(e)}`
+        ),
         mode,
         neighbour: null,
       };
     }
-  }, [probePoint, currentDate, mode, nowMin, sunriseMin, sunsetMin, categories, weather]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `lang` : tr() lit la langue hors de React, le texte du memo doit suivre la bascule.
+  }, [probePoint, currentDate, mode, nowMin, sunriseMin, sunsetMin, categories, weather, lang]);
 
   const selectedRec = useMemo(() => {
     if (!selectedVenueId) return null;
@@ -382,14 +390,14 @@ export function MapScreen({
         <div className="map-search absolute inset-x-4 top-[calc(env(safe-area-inset-top)+12px)] z-30 flex items-center gap-2">
           <div className="min-w-0 flex-1">
             <SearchBar
-              placeholder="Un café, un parc, une rue…"
+              placeholder={tr('Un café, un parc, une rue…', 'A café, a park, a street…')}
               autoFocus
               onSelectVenue={(v) => { handleSearchSelect(v); setSearchOpen(false); }}
             />
           </div>
           <button
             onClick={() => setSearchOpen(false)}
-            aria-label="Fermer la recherche"
+            aria-label={tr('Fermer la recherche', 'Close search')}
             className="map-search-btn flex h-11 w-11 shrink-0 items-center justify-center rounded-full active:scale-95 transition-transform motion-reduce:transition-none"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -400,7 +408,7 @@ export function MapScreen({
       ) : (
         <button
           onClick={() => setSearchOpen(true)}
-          aria-label="Chercher un lieu"
+          aria-label={tr('Chercher un lieu', 'Search for a place')}
           data-mode={CLAIR ? (mode === 'SUN' ? 'soleil' : 'ombre') : undefined}
           style={cycTint && mode === 'SUN' ? { background: cycTint.bg, color: cycTint.fg === 'ink' ? '#0B1A45' : '#FFF1D6' } : undefined}
           className="map-search-btn absolute left-4 top-[calc(env(safe-area-inset-top)+12px)] z-20 flex h-11 w-11 items-center justify-center rounded-full active:scale-95 transition-transform motion-reduce:transition-none"
@@ -509,7 +517,7 @@ export function MapScreen({
                     onPointerDown={(e) => e.stopPropagation()}
                     onPointerUp={(e) => e.stopPropagation()}
                     onClick={onRecenter}
-                    aria-label="Me recentrer"
+                    aria-label={tr('Me recentrer', 'Recentre on me')}
                     className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dusk-edge text-dusk-shell active:scale-95 transition-transform motion-reduce:transition-none"
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -545,7 +553,7 @@ export function MapScreen({
                               {bain ? (
                                 // Le titre dit déjà « au frais » / « au soleil » : ici, seulement jusqu'à quand.
                                 <span className="flex shrink-0 flex-col items-end">
-                                  <span className="text-[11px] text-dusk-sub">{inIt(r) ? "jusqu'à" : 'dès'}</span>
+                                  <span className="text-[11px] text-dusk-sub">{inIt(r) ? tr("jusqu'à", 'until') : tr('dès', 'from')}</span>
                                   <span className="bain-time font-display text-[22px] font-extrabold leading-none">
                                     {inIt(r) ? r.sunWindowEnd : r.sunWindowStart}
                                   </span>
@@ -553,7 +561,7 @@ export function MapScreen({
                               ) : (
                                 <span className="flex shrink-0 flex-col items-end gap-1.5">
                                   <span className={`font-mono text-[13px] font-semibold ${mode === 'SUN' ? 'text-dusk-glow' : 'text-dusk-sub'}`}>
-                                    {inIt(r) ? r.sunWindowEnd : r.sunWindowStart ? `dès ${r.sunWindowStart}` : ''}
+                                    {inIt(r) ? r.sunWindowEnd : r.sunWindowStart ? tr(`dès ${r.sunWindowStart}`, `from ${r.sunWindowStart}`) : ''}
                                   </span>
                                   <DayRibbon venue={r.venue} mode={mode} date={currentDate} sunrise={sunrise} sunset={sunset} size="mini" tone="night" />
                                 </span>
@@ -572,7 +580,7 @@ export function MapScreen({
                               activeFilter === cat.value ? 'bg-dusk-shell text-dusk-night' : 'border border-dusk-line text-dusk-sub'
                             }`}
                           >
-                            {cat.label}
+                            {tr(...cat.label)}
                           </button>
                         ))}
                       </div>
@@ -616,7 +624,7 @@ export function MapScreen({
 
 function ModeToggle({ mode, onModeChange }: { mode: SunMode; onModeChange: (m: SunMode) => void }) {
   return (
-    <div className="flex shrink-0 rounded-full border border-dusk-line bg-dusk-panel p-0.5" role="group" aria-label="Chercher">
+    <div className="flex shrink-0 rounded-full border border-dusk-line bg-dusk-panel p-0.5" role="group" aria-label={tr('Chercher', 'Look for')}>
       {(['SUN', 'SHADE'] as const).map((m) => (
         <button
           key={m}
@@ -626,7 +634,7 @@ function ModeToggle({ mode, onModeChange }: { mode: SunMode; onModeChange: (m: S
             mode === m ? (m === 'SUN' ? 'bg-dusk-fire text-dusk-night' : 'bg-dusk-sub text-dusk-night') : 'text-dusk-sub'
           }`}
         >
-          {m === 'SUN' ? 'Soleil' : 'Ombre'}
+          {m === 'SUN' ? tr('Soleil', 'Sun') : tr('Ombre', 'Shade')}
         </button>
       ))}
     </div>
@@ -640,7 +648,12 @@ function StatusLine({ rec, mode, isNow, at, lead = false }: { rec: Recommendatio
   if (inIt(rec) && rec.sunWindowEnd) {
     return (
       <>
-        {cap(`${isNow ? '' : 'à cette heure, '}${mode === 'SUN' ? 'au soleil' : "à l'ombre"} jusqu'à`)}{' '}
+        {cap(
+          tr(
+            `${isNow ? '' : 'à cette heure, '}${mode === 'SUN' ? 'au soleil' : "à l'ombre"} jusqu'à`,
+            `${isNow ? '' : 'at this time, '}${mode === 'SUN' ? 'in the sun' : 'in the shade'} until`
+          )
+        )}{' '}
         <span className={`font-mono font-semibold ${accent}`}>{rec.sunWindowEnd}</span>
       </>
     );
@@ -652,13 +665,18 @@ function StatusLine({ rec, mode, isNow, at, lead = false }: { rec: Recommendatio
  *  « 7 lieux au soleil à pied » → « 7 lieux [au soleil] à pied » : ce qu'on
  *  cherche devient le sticker. Une accroche sans ce mot reste telle quelle. */
 function stickerHeadline(headline: string): ReactNode {
-  const m = headline.match(/^(.*?)(à l'ombre|au soleil|(?<=coins? )d'ombre|(?<=coins? )de soleil)(.*)$/);
+  // En anglais : « 7 places [in the shade] within walking distance »,
+  // « 7 [sunny] spots around you » — le mot reste le sien.
+  const en = getLang() === 'en';
+  const m = en
+    ? headline.match(/^(.*?)(in the shade|in the sun|shaded(?= spots? )|sunny(?= spots? ))(.*)$/)
+    : headline.match(/^(.*?)(à l'ombre|au soleil|(?<=coins? )d'ombre|(?<=coins? )de soleil)(.*)$/);
   if (!m) return headline;
   const shade = m[2].includes('ombre');
   return (
     <>
       {m[1]}
-      <span className="titre-sticker">{shade ? 'au frais' : 'au soleil'}</span>
+      <span className="titre-sticker">{en ? m[2] : shade ? 'au frais' : 'au soleil'}</span>
       {/* La fin (« à pied ») ne se coupe pas : elle passe à la ligne d'un bloc. */}
       <span className="whitespace-nowrap">{m[3]}</span>
     </>
@@ -680,7 +698,7 @@ function BestRow({ rec, mode, at, onOpen, onGo }: { rec: Recommendation; mode: S
           mode === 'SUN' ? 'bg-dusk-fire' : 'bg-dusk-sub'
         }`}
       >
-        Y aller
+        {tr('Y aller', 'Go')}
       </button>
     </div>
   );
@@ -717,7 +735,7 @@ function PlaceCard({
         </div>
         <button
           onClick={onClose}
-          aria-label="Fermer"
+          aria-label={tr('Fermer', 'Close')}
           className="-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dusk-edge text-dusk-sub active:scale-95 transition-transform motion-reduce:transition-none"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -733,13 +751,13 @@ function PlaceCard({
             mode === 'SUN' ? 'bg-dusk-fire' : 'bg-dusk-sub'
           }`}
         >
-          Y aller
+          {tr('Y aller', 'Go')}
         </button>
         <button
           onClick={onDetail}
           className="min-h-12 flex-1 rounded-full border border-dusk-edge text-[15px] font-semibold active:scale-[0.98] transition-transform motion-reduce:transition-none"
         >
-          Voir la fiche
+          {tr('Voir la fiche', 'See details')}
         </button>
       </div>
     </div>

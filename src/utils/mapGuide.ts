@@ -1,5 +1,6 @@
 import type { GeoPoint, Recommendation, SunMode } from '@/types';
 import { IN_IT_THRESHOLD } from '@/services/RecommendationService';
+import { tr } from '@/utils/lang';
 
 // ---------------------------------------------------------------------------
 // Ce que la carte dit, et quand. Logique pure : la carte s'explique en
@@ -24,8 +25,12 @@ export function nextVisit(stored: string | null): number {
 /** Une phrase par visite, deux visites, puis plus rien : on apprend le geste
  *  une fois, on ne le relit pas à chaque ouverture. */
 export function hintForVisit(visit: number, mode: SunMode): string | null {
-  if (visit === 1) return `Glisse l'heure pour voir ${mode === 'SUN' ? 'le soleil' : "l'ombre"} bouger`;
-  if (visit === 2) return "Touche la carte n'importe où";
+  if (visit === 1) {
+    return mode === 'SUN'
+      ? tr("Glisse l'heure pour voir le soleil bouger", 'Drag the time to watch the sun move')
+      : tr("Glisse l'heure pour voir l'ombre bouger", 'Drag the time to watch the shade move');
+  }
+  if (visit === 2) return tr("Touche la carte n'importe où", 'Tap anywhere on the map');
   return null;
 }
 
@@ -48,18 +53,27 @@ export function sheetHeadlines(ctx: HeadlineContext): string[] {
   const { mode, count, nowMin, sunriseMin, sunsetMin } = ctx;
   const sun = mode === 'SUN';
   if (nowMin < sunriseMin || nowMin >= sunsetMin) {
-    return [`Nuit · le soleil revient à ${hhmm(sunriseMin)}`, `Le soleil est couché, retour à ${hhmm(sunriseMin)}`];
+    const rise = hhmm(sunriseMin);
+    return [
+      tr(`Nuit · le soleil revient à ${rise}`, `Night · the sun is back at ${rise}`),
+      tr(`Le soleil est couché, retour à ${rise}`, `The sun has set, back at ${rise}`),
+    ];
   }
   if (count === 0) {
     return sun
-      ? ['Pas de soleil franc à pied', "Rien au soleil tout près pour l'instant"]
-      : ["Pas d'ombre franche à pied", "Rien à l'ombre tout près pour l'instant"];
+      ? [tr('Pas de soleil franc à pied', 'No full sun within walking distance'), tr("Rien au soleil tout près pour l'instant", 'Nothing in the sun close by right now')]
+      : [tr("Pas d'ombre franche à pied", 'No real shade within walking distance'), tr("Rien à l'ombre tout près pour l'instant", 'Nothing in the shade close by right now')];
   }
-  const lieux = count === 1 ? '1 lieu' : `${count} lieux`;
-  const coins = count === 1 ? '1 coin' : `${count} coins`;
-  const dans = sun ? 'au soleil' : "à l'ombre";
-  const base = [`${lieux} ${dans} à pied`, `${coins} ${sun ? 'de soleil' : "d'ombre"} autour de toi`];
-  if (sun && sunsetMin - nowMin <= 90) return [`Coucher à ${hhmm(sunsetMin)} · ${lieux} ${dans}`, ...base];
+  const lieux = count === 1 ? tr('1 lieu', '1 place') : tr(`${count} lieux`, `${count} places`);
+  const dans = sun ? tr('au soleil', 'in the sun') : tr("à l'ombre", 'in the shade');
+  const coins = sun
+    ? tr(count === 1 ? '1 coin de soleil' : `${count} coins de soleil`, count === 1 ? '1 sunny spot' : `${count} sunny spots`)
+    : tr(count === 1 ? "1 coin d'ombre" : `${count} coins d'ombre`, count === 1 ? '1 shaded spot' : `${count} shaded spots`);
+  const base = [tr(`${lieux} ${dans} à pied`, `${lieux} ${dans} within walking distance`), tr(`${coins} autour de toi`, `${coins} around you`)];
+  if (sun && sunsetMin - nowMin <= 90) {
+    const set = hhmm(sunsetMin);
+    return [tr(`Coucher à ${set} · ${lieux} ${dans}`, `Sunset at ${set} · ${lieux} ${dans}`), ...base];
+  }
   return base;
 }
 
@@ -106,10 +120,11 @@ export function hereWindow(
 
 /** La bulle : une phrase et une heure (l'heure en chasse fixe, à part). */
 export function hereSentence(w: HereWindow, mode: SunMode): { lead: string; time: string | null } {
-  if (w.state === 'night') return { lead: 'Ici : nuit, soleil à', time: hhmm(w.untilMin ?? 0) };
-  const what = (w.state === 'in') === (mode === 'SUN') ? 'soleil' : 'ombre';
-  if (w.untilMin === null) return { lead: `Ici : ${what} jusqu'au coucher`, time: null };
-  return { lead: `Ici : ${what} jusqu'à`, time: hhmm(w.untilMin) };
+  if (w.state === 'night') return { lead: tr('Ici : nuit, soleil à', 'Here: night, sun back at'), time: hhmm(w.untilMin ?? 0) };
+  const sunny = (w.state === 'in') === (mode === 'SUN');
+  const what = sunny ? tr('soleil', 'sun') : tr('ombre', 'shade');
+  if (w.untilMin === null) return { lead: tr(`Ici : ${what} jusqu'au coucher`, `Here: ${what} until sunset`), time: null };
+  return { lead: tr(`Ici : ${what} jusqu'à`, `Here: ${what} until`), time: hhmm(w.untilMin) };
 }
 
 /** Au moins une demi-heure de mieux, sinon le détour ne vaut pas la peine. */

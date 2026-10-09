@@ -1,3 +1,4 @@
+import { getLang } from '@/utils/lang';
 import type { GeoPoint } from '@/types';
 
 const EARTH_RADIUS_M = 6371000;
@@ -61,7 +62,8 @@ class MapServiceClass {
 
   formatDistance(m: number): string {
     if (m < 1000) return `${Math.round(m)} m`;
-    return `${(m / 1000).toFixed(1).replace('.', ',')} km`;
+    const km = (m / 1000).toFixed(1);
+    return `${getLang() === 'fr' ? km.replace('.', ',') : km} km`;
   }
 }
 

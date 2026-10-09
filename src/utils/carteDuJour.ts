@@ -6,6 +6,7 @@
 
 import type { Recommendation, SunMode } from '@/types';
 import { IN_IT_THRESHOLD } from '@/services/RecommendationService';
+import { tr } from './lang';
 
 export const BAND_FROM = 8;
 export const BAND_TO = 21;
@@ -72,14 +73,14 @@ export function untilOf(
   const isSun = mode === 'SUN';
   const exposure = isSun ? rec.sunPercentage : rec.shadePercentage;
   if (rec.sunLeavesInMin !== null && exposure >= IN_IT_THRESHOLD[mode]) {
-    const prefix = isSun ? '' : 'au frais ';
+    const prefix = isSun ? '' : tr('au frais ', 'in the shade ');
     if (isSun ? rec.endsAtSunset : rec.lastsUntilSunset) {
-      return { label: `${prefix}jusqu'au`, value: 'coucher', cool: !isSun };
+      return { label: `${prefix}${tr("jusqu'au", 'until')}`, value: tr('coucher', 'sunset'), cool: !isSun };
     }
-    return { label: `${prefix}jusqu'à`, value: rec.sunWindowEnd ?? '', cool: !isSun };
+    return { label: `${prefix}${tr("jusqu'à", 'until')}`, value: rec.sunWindowEnd ?? '', cool: !isSun };
   }
   if (rec.sunArrivesInMin !== null && rec.sunWindowStart) {
-    return { label: rec.arrivesTomorrow ? 'demain dès' : 'dès', value: rec.sunWindowStart, cool: true };
+    return { label: rec.arrivesTomorrow ? tr('demain dès', 'tomorrow from') : tr('dès', 'from'), value: rec.sunWindowStart, cool: true };
   }
-  return { label: isSun ? 'pas de soleil' : "pas d'ombre", value: '—', cool: true };
+  return { label: isSun ? tr('pas de soleil', 'no sun') : tr("pas d'ombre", 'no shade'), value: '—', cool: true };
 }

@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { configDefaults, defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 
@@ -17,5 +17,10 @@ export default defineConfig({
   // doit sortir en ESM, sinon il est chargé comme module et échoue.
   worker: {
     format: 'es',
+  },
+  // Les worktrees d'agents vivent sous .claude/ : sans ça, vitest exécute aussi
+  // LEURS tests, et un test cassé sur une autre branche fait échouer celle-ci.
+  test: {
+    exclude: [...configDefaults.exclude, '.claude/**'],
   },
 });
