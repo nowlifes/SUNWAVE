@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { Venue, SunMode, VenueCategory, GeoPoint, WeatherData, Recommendation } from '@/types';
 import { MapView, type ProbeView } from './MapView';
@@ -8,12 +8,7 @@ import { SearchBar } from './SearchBar';
 import { PlaceDetailSheet } from './PlaceDetailSheet';
 import { ModeSwitch } from './ModeSwitch';
 import { CYCLE, circadian, textOn as textTone } from '@/utils/circadian';
-import { LiveQuestion } from './LiveQuestion';
-import { liveThanks } from '@/utils/live';
-import { getPseudo, markPseudoAsked, pseudoAsked, setPseudo } from '@/utils/pseudo';
-import type { LiveAnswer } from '@/services/LiveReportService';
-import { liveReports } from '@/services/LiveReportService';
-import { isDaylight } from '@/utils/live';
+import { HereLiveQuestion } from './HereLiveQuestion';
 import { RecommendationService } from '@/services/RecommendationService';
 import { VenueService } from '@/services/VenueService';
 import { VenueSunService } from '@/services/VenueSunService';
@@ -126,26 +121,6 @@ export function MapScreen({
   // La recherche se replie derrière une loupe : la feuille laisse la carte.
   const [searchOpen, setSearchOpen] = useState(false);
 
-  // « Il reste des places ? » : posée seulement à qui est vraiment sur place
-  // (position réelle, à moins de 100 m), une fois par lieu tant qu'on n'a pas
-  // répondu ou dit « pas maintenant ».
-  useSyncExternalStore(
-    (cb) => liveReports.subscribe(cb),
-    () => liveReports.getVersion()
-  );
-  const [dismissedLiveId, setDismissedLiveId] = useState<string | null>(null);
-  // Après le tap : la carte reste 3 s avec ce que la réponse a produit.
-  const [justAnswered, setJustAnswered] = useState<{ venue: Venue; answer: LiveAnswer; thanks: string; total: number; askPseudo: boolean } | null>(null);
-  const closeThanks = useCallback(() => setJustAnswered(null), []);
-  const hereVenue = useMemo(
-    () =>
-      locationGranted
-        ? VenueService.getAllVenues().find((v) => liveReports.isInZone(v, userLocation)) ?? null
-        : null,
-    [locationGranted, userLocation]
-  );
-  const askLive =
-    hereVenue && isDaylight(new Date()) && dismissedLiveId !== hereVenue.id && !liveReports.hasAnswered(hereVenue.id) ? hereVenue : null;
   // Non-visual: source real weather from Open-Meteo via WeatherService instead
   // of a static computed value — synchronous cache read on mount, then a real
   // fetch (+ periodic refresh) updates it in the background. See
@@ -432,39 +407,12 @@ export function MapScreen({
 
       {/* « Il reste des places ? » : une couche flottante, jamais par-dessus une
           autre (lieu choisi, bulle « ici », feuille tirée, glissement d'heure). */}
-      {askLive && !detailOpen && layer === 'list' && !sheetOpen && !scrubbing && (
-        <LiveQuestion
-          venue={askLive}
-          mode={mode}
-          onAnswer={(answer) => {
-            if (!liveReports.submit(askLive, answer, userLocation)) return;
-            const agreement = liveReports.getAgreement(askLive.id);
-            // Le pseudo n'est demandé qu'une fois, juste après la toute première réponse.
-            const askPseudo = !getPseudo() && !pseudoAsked();
-            if (askPseudo) markPseudoAsked();
-            setJustAnswered({ venue: askLive, answer, thanks: liveThanks(agreement, getPseudo()), total: agreement?.total ?? 1, askPseudo });
-          }}
-          onDismiss={() => setDismissedLiveId(askLive.id)}
-        />
-      )}
-      {justAnswered && !askLive && (
-        <LiveQuestion
-          venue={justAnswered.venue}
-          mode={mode}
-          onAnswer={closeThanks}
-          onDismiss={closeThanks}
-          answered={justAnswered}
-          onDone={closeThanks}
-          onPseudo={(pseudo) => {
-            if (pseudo) {
-              setPseudo(pseudo);
-              // Renvoie la même réponse, signée cette fois (le serveur remplace).
-              liveReports.submit(justAnswered.venue, justAnswered.answer, userLocation);
-            }
-            closeThanks();
-          }}
-        />
-      )}
+      <HereLiveQuestion
+        userLocation={userLocation}
+        locationGranted={locationGranted}
+        mode={mode}
+        hidden={detailOpen || layer !== 'list' || sheetOpen || scrubbing}
+      />
 
       {/* En bas, à portée du pouce : la feuille, puis le curseur d'heure. */}
       <div className="absolute inset-x-0 bottom-0 z-20" style={{ paddingBottom: NAV_HEIGHT }}>

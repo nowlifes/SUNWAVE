@@ -14,6 +14,7 @@ import { categoryLabel, exposureNow, formatGap, placeName, statusCopy, statusSho
 import { inviteText, inviteUrl, shareInvite } from '@/utils/share';
 import { LiveGlyph } from './Halo';
 import { VoicePile } from './Avatar';
+import { HereLiveQuestion } from './HereLiveQuestion';
 import { liveReports } from '@/services/LiveReportService';
 import { LIVE_SHORT, liveAge, liveHello, liveWho } from '@/utils/live';
 import { getPseudo, subscribePseudo } from '@/utils/pseudo';
@@ -226,6 +227,9 @@ export function NowScreen({
       data-sunup={cyc?.shadow ? '' : undefined}
       style={cycStyle}
     >
+      {/* Sur place : on est arrivé, la question n'est plus « où aller » mais
+          « c'est comme promis ? ». Un tap, sans changer d'onglet. */}
+      <HereLiveQuestion userLocation={userLocation} locationGranted={locationGranted} mode={mode} />
       <div className="px-5 pt-[calc(env(safe-area-inset-top)+14px)]">
         {/* --- l'heure, posée sur le bain ---------------------------------- */}
         <div className="bain-top">
