@@ -21,6 +21,6 @@ export default defineConfig({
   // Les worktrees d'agents vivent sous .claude/ : sans ça, vitest exécute aussi
   // LEURS tests, et un test cassé sur une autre branche fait échouer celle-ci.
   test: {
-    exclude: [...configDefaults.exclude, '.claude/**'],
+    exclude: [...configDefaults.exclude, '.claude/**', 'e2e/**'],
   },
 });
