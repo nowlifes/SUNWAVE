@@ -575,7 +575,7 @@ function SunTrailCard({ trail, onSelect }: { trail: SunTrail; onSelect: (venueId
             </p>
             <button
               onClick={() => onSelect(stop.rec.venue.id)}
-              className="block w-full text-left active:opacity-70 transition-opacity"
+              className="relative block w-full text-left active:opacity-70 transition-opacity before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']"
             >
               <TrailRow
                 as="div"
