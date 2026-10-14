@@ -336,7 +336,7 @@ export function PlaceDetailSheet({
                     <svg width="17" height="17" viewBox="0 0 24 24" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
                       <path d="M7 3.5h10v17l-5-3.5-5 3.5z" />
                     </svg>
-                    {saved ? tr('Enregistré', 'Saved') : tr('Enregistrer', 'Save')}
+                    {saved ? tr('Gardé', 'Saved') : tr('Garder', 'Save')}
                   </button>
                 </div>
 
