@@ -302,6 +302,7 @@ export function NowScreen({
             onDirections={() => onGetDirections(pick.venue.id)}
             onSomethingElse={handleSomethingElse}
             hasAlternatives={answers.length > 1}
+            here={locationGranted && liveReports.isInZone(pick.venue, userLocation)}
             onShare={handleShare}
             tones={answerTones}
             shareState={shareState}
@@ -389,6 +390,7 @@ function AnswerCard({
   onDirections,
   onSomethingElse,
   hasAlternatives,
+  here,
   onShare,
   shareState,
   tones,
@@ -401,6 +403,8 @@ function AnswerCard({
   onDirections: () => void;
   onSomethingElse: () => void;
   hasAlternatives: boolean;
+  /** On se tient déjà dans ce lieu (position réelle, moins de 100 m). */
+  here: boolean;
   onShare: () => void;
   shareState: 'idle' | 'copied' | 'failed';
 }) {
@@ -456,7 +460,7 @@ function AnswerCard({
         <button onClick={onOpen} className="min-w-0 flex-1 text-left active:opacity-70 transition-opacity motion-reduce:transition-none">
           <p className="bain-venue">{rec.venue.name}</p>
           <p className="bain-meta">
-            {categoryLabel(rec.venue.category)} · {VenueService.getNeighborhood(rec.venue)} · {travelLabel(rec)}
+            {categoryLabel(rec.venue.category)} · {VenueService.getNeighborhood(rec.venue)} · {here ? tr('tu y es', 'you’re here') : travelLabel(rec)}
           </p>
         </button>
         <button
@@ -508,10 +512,14 @@ function AnswerCard({
         </p>
       )}
 
+      {/* Sur place, l'itinéraire n'a plus d'objet : reste « Autre chose »,
+          pour qui ne trouve pas la lumière promise. */}
       <div className="bain-actions">
-        <button className="bain-go" onClick={onDirections}>
-          {tr("M'y emmener", 'Take me there')}
-        </button>
+        {!here && (
+          <button className="bain-go" onClick={onDirections}>
+            {tr("M'y emmener", 'Take me there')}
+          </button>
+        )}
         {hasAlternatives && (
           <button className="bain-alt" onClick={onSomethingElse}>
             {tr('Autre chose', 'Something else')}
