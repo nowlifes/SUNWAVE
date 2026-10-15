@@ -26,3 +26,7 @@ scripts/.anchors-cache.json
 scripts/.named-cache.json
 .vercel
 .env*
+
+# Playwright
+test-results/
+playwright-report/
