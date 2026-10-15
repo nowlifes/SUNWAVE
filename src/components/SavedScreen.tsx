@@ -100,7 +100,7 @@ export function SavedScreen({ savedVenues, currentDate, userLocation, onVenueSel
           <HaloIcon kind="sun" tone="day" alt={30} size={44} className="mb-4" />
           <p className="text-center text-sm font-semibold">{tr('Aucun lieu enregistré.', 'No saved places yet.')}</p>
           <p className="mt-1 text-center text-xs text-[color:var(--sub)]">
-            {tr('Touche « Enregistrer » dans la fiche d’un lieu pour voir ici ses heures de soleil.', 'Tap “Save” on a place’s page to see its sun hours here.')}
+            {tr('Touche « Garder » dans la fiche d’un lieu pour voir ici ses heures de soleil.', 'Tap “Save” on a place’s page to see its sun hours here.')}
           </p>
           {onFindPlace && (
             <div className="cdj-cta mt-6 w-full max-w-xs">

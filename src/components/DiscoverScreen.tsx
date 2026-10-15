@@ -308,6 +308,10 @@ export function DiscoverResults({
                 <div className="cdj-cta">
                   <button type="button" onClick={() => onDirections(rec.venue.id)}>{tr("M'y emmener", 'Take me there')}</button>
                   <button type="button" className="g" aria-pressed={saved} onClick={() => onSave(rec.venue.id)}>
+                    {/* Le signet de l'onglet Favoris : on voit où le lieu va. */}
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M7 3.5h10v17l-5-3.5-5 3.5z" />
+                    </svg>
                     {saved ? tr('Gardé', 'Saved') : tr('Garder', 'Save')}
                   </button>
                 </div>
