@@ -256,21 +256,22 @@ export function NowScreen({
           )}
         </p>
 
-        {/* Premier lancement : dire pourquoi soleil ou ombre, et offrir l'autre. */}
+        {/* Premier lancement : dire pourquoi soleil ou ombre, et offrir l'autre.
+            Une ligne sous l'heure, pas un encadré : l'encadré poussait « M'y
+            emmener » sous la barre sur un iPhone SE. Le bouton garde ses 44 px
+            de cible, la marge négative les retire de la hauteur de ligne. */}
         {autoTemperature !== null && (
-          <div className="bain-live mt-4 justify-between">
-            <span>
-              {isSun
-                ? tr(`Il fait ${autoTemperature} °C : on te montre le soleil.`, `It’s ${autoTemperature}°C, so here’s the sun.`)
-                : tr(`Il fait ${autoTemperature} °C : on te montre l'ombre.`, `It’s ${autoTemperature}°C, so here’s the shade.`)}
-            </span>
+          <p className="bain-said max-w-none">
+            {isSun
+              ? tr(`Il fait ${autoTemperature} °C : on te montre le soleil.`, `It’s ${autoTemperature}°C, so here’s the sun.`)
+              : tr(`Il fait ${autoTemperature} °C : on te montre l'ombre.`, `It’s ${autoTemperature}°C, so here’s the shade.`)}{' '}
             <button
               onClick={() => onModeChange(isSun ? 'SHADE' : 'SUN')}
-              className="min-h-11 shrink-0 px-1 font-bold underline active:opacity-70 transition-opacity motion-reduce:transition-none"
+              className="-my-3 inline-flex min-h-11 items-center font-bold underline active:opacity-70 transition-opacity motion-reduce:transition-none"
             >
               {isSun ? tr("L'ombre plutôt ?", 'Shade instead?') : tr('Le soleil plutôt ?', 'Sun instead?')}
             </button>
-          </div>
+          </p>
         )}
 
         {/* --- la réponse --------------------------------------------------- */}
