@@ -88,6 +88,14 @@ function nextSunrise(at: Date): Date {
 
 /** `at` : l'instant décrit. La nuit en Ombre, « 100 % d'ombre » ou « à l'ombre
  *  jusqu'au coucher » seraient vrais mais à côté : il fait nuit pour tous. */
+/** « 85 % de soleil maintenant » — la ligne sous l'heure géante, qui dit
+ *  déjà quand ça s'arrête : elle ne répète pas l'heure. */
+export function exposureNow(rec: Recommendation, mode: SunMode): string {
+  const isSun = mode === 'SUN';
+  const exposure = pct(isSun ? rec.sunPercentage : rec.shadePercentage);
+  return isSun ? tr(`${exposure} de soleil maintenant`, `${exposure} sun now`) : tr(`${exposure} d'ombre maintenant`, `${exposure} shade now`);
+}
+
 export function statusCopy(rec: Recommendation, mode: SunMode, at?: Date): StatusCopy {
   if (mode === 'SHADE' && at && isNightAt(at)) {
     const sunrise = formatLisbonTime(nextSunrise(at));

@@ -10,7 +10,7 @@ import { SunsetScreen } from './SunsetScreen';
 import { DayRibbon, type RibbonTone } from './DayRibbon';
 import { ModeSwitch } from './ModeSwitch';
 import { formatLisbonTime } from '@/utils/lisbonTime';
-import { categoryLabel, formatGap, placeName, statusCopy, statusShort, travelLabel, venueCountLine } from '@/utils/copy';
+import { categoryLabel, exposureNow, formatGap, placeName, statusCopy, statusShort, travelLabel, venueCountLine } from '@/utils/copy';
 import { inviteText, inviteUrl, shareInvite } from '@/utils/share';
 import { LiveGlyph } from './Halo';
 import { VoicePile } from './Avatar';
@@ -471,23 +471,19 @@ function AnswerCard({
           <span>{cap2 ? `${cap1} ${cap2}` : cap1}</span>
         </p>
       )}
-      <p className="bain-detail">{status.detail}</p>
+      {/* Sous l'heure géante, l'heure ne se répète pas : seul le pourcentage. */}
+      <p className="bain-detail">{bigTime ? exposureNow(rec, mode) : status.detail}</p>
 
-      {/* Le signal de la communauté : éclat = frais, éteint = personne n'a encore confirmé. */}
-      <p className="bain-live">
-        {live ? (
+      {/* Le signal de la communauté, quand quelqu'un a confirmé : il aide à
+          choisir, il passe avant le bouton. Personne encore : voir plus bas. */}
+      {live && (
+        <p className="bain-live">
           <VoicePile voices={live.voices} sunByHour={rec.venue.sunExposureByHour} category={rec.venue.category} />
-        ) : (
-          <LiveGlyph level="none" size={20} tone={tones.glyph} className="opacity-60" />
-        )}
-        {live ? (
           <span>
             <span className="font-bold">{LIVE_SHORT[live.level]}</span> · {liveWho(live.count, live.by)}, {liveAge(live.ageMin)}
           </span>
-        ) : (
-          <span>{tr('Pas encore confirmé sur place. Sois le premier.', 'Not confirmed on the spot yet. Be the first.')}</span>
-        )}
-      </p>
+        </p>
+      )}
 
       <div className="mt-5">
         <DayRibbon venue={rec.venue} mode={mode} {...day} tone={tones.ribbon} />
@@ -518,6 +514,15 @@ function AnswerCard({
           </button>
         )}
       </div>
+
+      {/* Personne n'a encore confirmé : rien à décider là-dessus, une ligne
+          calme sous les boutons. La confirmation se fait sur place. */}
+      {!live && (
+        <p className="bain-live bain-live-calme">
+          <LiveGlyph level="none" size={20} tone={tones.glyph} className="opacity-60" />
+          <span>{tr('Pas encore confirmé sur place. Sois le premier.', 'Not confirmed on the spot yet. Be the first.')}</span>
+        </p>
+      )}
     </section>
   );
 }

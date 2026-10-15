@@ -339,6 +339,8 @@ body {
 }
 
 .bain-actions { display: flex; gap: 10px; margin-top: 22px; }
+/* « Pas encore confirmé » : sous les boutons, sans fond — une info, pas un appel. */
+.bain-live-calme { margin-top: 12px; padding: 0 2px; background: transparent; }
 .bain-go {
   flex: 1;
   min-height: 48px;

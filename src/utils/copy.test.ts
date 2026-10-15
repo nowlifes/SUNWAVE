@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Recommendation } from '@/types';
-import { categoryLabel, formatGap, markerLabel, statusCopy, statusShort, travelLabel, placeName, travelParts, venueCountLine } from './copy';
+import { categoryLabel, exposureNow, formatGap, markerLabel, statusCopy, statusShort, travelLabel, placeName, travelParts, venueCountLine } from './copy';
 
 // Une seule source pour les phrases de statut : la fiche détail disait
 // « Sunny for 5H » quand l'accueil disait « Perd le soleil dans 4h 30m ».
@@ -75,6 +75,17 @@ describe('statusCopy', () => {
   it('rien de prévu : le pourcentage, sans promesse', () => {
     const r = rec({ sunPercentage: 20, sunLeavesInMin: null, sunArrivesInMin: null });
     expect(statusCopy(r, 'SUN')).toEqual({ title: '20 % de soleil maintenant', detail: "Pas de soleil franc d'ici ce soir" });
+  });
+});
+
+// Sous l'heure géante, l'heure ne se répète pas : « 17:30 puis l'ombre »
+// suivi de « … jusqu'à 17:30 » faisait lire deux fois la même chose.
+describe('exposureNow', () => {
+  it('soleil : le pourcentage seul, sans heure', () => {
+    expect(exposureNow(rec({}), 'SUN')).toBe('92 % de soleil maintenant');
+  });
+  it('ombre : le pourcentage d\'ombre', () => {
+    expect(exposureNow(rec({}), 'SHADE')).toBe("8 % d'ombre maintenant");
   });
 });
 
