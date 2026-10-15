@@ -254,7 +254,7 @@ export default function App() {
   }, [locationGranted, lang]);
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-dusk-deep flex items-center justify-center">
+    <div className="app-h relative w-full overflow-hidden bg-dusk-deep flex items-center justify-center">
       {/* Mobile container */}
       <div className="relative w-full h-full max-w-md mx-auto bg-day overflow-hidden shadow-2xl">
         {/* Screen routing */}

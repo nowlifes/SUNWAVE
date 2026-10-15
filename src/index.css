@@ -21,6 +21,11 @@ body {
   color: #0B1A45;
 }
 
+/* La hauteur de l'app suit la zone VISIBLE : sur Safari iOS et Chrome Android,
+   100vh compte aussi la place de la barre d'adresse, et la barre d'onglets
+   passait dessous. 100vh reste pour les navigateurs sans dvh (iOS < 15.4). */
+.app-h { height: 100vh; height: 100dvh; }
+
 /* Hide scrollbars but keep scroll */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
