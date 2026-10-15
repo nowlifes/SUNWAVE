@@ -325,6 +325,7 @@ export default function App() {
             currentDate={currentDate}
             userLocation={userLocation}
             onVenueSelect={handleVenueSelect}
+            onFindPlace={() => handleScreenChange('now')}
           />
         )}
 

@@ -26,6 +26,8 @@ interface SavedScreenProps {
   currentDate: Date;
   userLocation: GeoPoint;
   onVenueSelect: (venueId: string) => void;
+  /** Liste vide : pas d'impasse, on renvoie vers la réponse du moment. */
+  onFindPlace?: () => void;
   mode?: SunMode;
 }
 
@@ -46,7 +48,7 @@ function rightLabel({ rec, group }: Row): string {
   return tr('demain', 'tomorrow');
 }
 
-export function SavedScreen({ savedVenues, currentDate, userLocation, onVenueSelect, mode = 'SUN' }: SavedScreenProps) {
+export function SavedScreen({ savedVenues, currentDate, userLocation, onVenueSelect, onFindPlace, mode = 'SUN' }: SavedScreenProps) {
   const cyc = useCycleScreen(currentDate, mode);
   useLang();
   const lightVars = useMemo(() => {
@@ -98,8 +100,15 @@ export function SavedScreen({ savedVenues, currentDate, userLocation, onVenueSel
           <HaloIcon kind="sun" tone="day" alt={30} size={44} className="mb-4" />
           <p className="text-center text-sm font-semibold">{tr('Aucun lieu enregistré.', 'No saved places yet.')}</p>
           <p className="mt-1 text-center text-xs text-[color:var(--sub)]">
-            {tr('Touche « Enregistrer » sur un lieu pour voir ici ses heures de soleil.', 'Tap “Save” on a place to see its sun hours here.')}
+            {tr('Touche « Enregistrer » dans la fiche d’un lieu pour voir ici ses heures de soleil.', 'Tap “Save” on a place’s page to see its sun hours here.')}
           </p>
+          {onFindPlace && (
+            <div className="cdj-cta mt-6 w-full max-w-xs">
+              <button type="button" onClick={onFindPlace}>
+                {tr('Où aller maintenant', 'Where to go now')}
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <>
