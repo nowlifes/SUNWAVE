@@ -356,7 +356,10 @@ class ShadowServiceClass {
 
     const sunPos = SunService.getSunPosition(date, lat, lng);
     const elevation = sunPos.elevation;
-    if (elevation < 1) return 80;
+    // Soleil au ras de l'horizon : plus de soleil de terrasse. Avant, 80 %
+    // d'office, bâtiments ignorés — d'où « 12 % » pour TOUS les lieux à hh:30
+    // juste avant le coucher, y compris ceux à l'ombre depuis des heures.
+    if (elevation < 1) return 100;
 
     let shadowedCount = 0;
     const samplePoints = this.usableSamplePoints(targetPoint, targetOrientationDeg, buildings);
