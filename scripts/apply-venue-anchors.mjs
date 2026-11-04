@@ -4,7 +4,7 @@
 // Why this exists, and why the generic pass was not enough: those venues'
 // coordinates were not off by a few metres, they were off by 50-250 m. The OSM
 // node for Miradouro das Portas do Sol sits 115 m from the coordinate in the
-// file; Santa Catarina's is 161 m away; "Rossio Square" pointed 165 m from
+// file; Santa Catarina's is 161 m away; "Praça do Rossio" pointed 165 m from
 // Praça Dom Pedro IV. fix-venue-coordinates.mjs moved each one to the nearest
 // open ground, which for a viewpoint hemmed in by a block is the alley next
 // door, not the esplanade.
@@ -41,10 +41,10 @@ const ANCHORS = {
   'Parque Eduardo VII': 'relation/13137361',
   'Jardim da São Pedro de Alcântara': 'way/40705509',   // Jardim de São Pedro de Alcântara
   'Praça do Comércio': 'relation/9218842',
-  'Rossio Square': 'way/1317749306',                    // Praça Dom Pedro IV — the Rossio's actual name
+  'Praça do Rossio': 'way/1317749306',                    // Praça Dom Pedro IV — the Rossio's actual name
   'Praça da Figueira': 'way/1301226315',
   'Praça do Príncipe Real': 'way/160122832',            // Jardim do Príncipe Real
-  'Príncipe Real Garden': 'way/160122832',              // same garden — duplicate
+  'Jardim do Príncipe Real': 'way/160122832',              // same garden — duplicate
   'Praça do Império': 'relation/9227991',               // Jardim da Praça do Império
 };
 
@@ -208,7 +208,7 @@ try {
   for (const [n, why] of Object.entries(SKIPPED)) console.log(`  ${n.padEnd(34)} ${why}`);
   console.log('\nDuplicate venues sharing one real place (data issue, not a coordinate issue):');
   console.log('  Estrela Park          == Jardim da Estrela      (way/23697561)');
-  console.log('  Príncipe Real Garden  == Praça do Príncipe Real (way/160122832)');
+  console.log('  Jardim do Príncipe Real  == Praça do Príncipe Real (way/160122832)');
   console.log('  Anchored at least 25 m apart so they are not literally the same point.');
 
   if (!DRY) {

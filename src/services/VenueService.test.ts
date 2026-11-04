@@ -22,7 +22,7 @@ describe('quartier d\'un lieu', () => {
   });
 
   it('Rossio est en Baixa, pas au Chiado', () => {
-    expect(VenueService.getNeighborhood(byName('Rossio Square'))).toBe('Baixa');
+    expect(VenueService.getNeighborhood(byName('Praça do Rossio'))).toBe('Baixa');
   });
 
   it('chaque lieu porte un vrai nom de quartier', () => {
@@ -85,17 +85,17 @@ describe('doublons retirés', () => {
   it('chaque jardin n\'apparaît qu\'une fois', () => {
     expect(names).not.toContain('Praça do Príncipe Real');
     expect(names).not.toContain('Estrela Park');
-    expect(names).toContain('Príncipe Real Garden');
+    expect(names).toContain('Jardim do Príncipe Real');
     expect(names).toContain('Jardim da Estrela');
   });
 
   it('un lien vers le doublon ouvre le lieu gardé', () => {
-    expect(VenueService.getVenueById('v_19')?.name).toBe('Príncipe Real Garden');
+    expect(VenueService.getVenueById('v_19')?.name).toBe('Jardim do Príncipe Real');
     expect(VenueService.getVenueById('v_32')?.name).toBe('Jardim da Estrela');
   });
 
   it('les ids des autres lieux ne bougent pas', () => {
-    expect(VenueService.getVenueById('v_17')?.name).toBe('Príncipe Real Garden');
+    expect(VenueService.getVenueById('v_17')?.name).toBe('Jardim do Príncipe Real');
     expect(VenueService.getVenueById('v_31')?.name).toBe('Jardim da Estrela');
     expect(VenueService.getVenueById('v_64')).toBeDefined();
   });
@@ -162,5 +162,16 @@ describe('lieux en anglais', () => {
     expect(VenueService.getNeighborhood(sansQuartier)).toBe('Lisbonne');
     setLang('en');
     expect(VenueService.getNeighborhood(sansQuartier)).toBe('Lisbon');
+  });
+});
+
+describe('noms des lieux', () => {
+  // Le nom est ce qu'on lit sur la plaque et dans Google Maps : « Rossio Square »
+  // au milieu de « Praça da Figueira » et « Praça do Comércio » n'existe nulle part.
+  it('garde le nom local, pas une traduction anglaise', () => {
+    const traduits = VenueService.getAllVenues()
+      .map((v) => v.name)
+      .filter((n) => /\b(Square|Garden|Viewpoint|Gardens)\b/.test(n));
+    expect(traduits).toEqual([]);
   });
 });
