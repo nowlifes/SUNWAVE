@@ -175,7 +175,7 @@ function retired(): null {
 
 /** Un lien ou un favori vers un doublon retiré ouvre le lieu gardé. */
 export const RETIRED_VENUE_IDS: Record<string, string> = {
-  v_19: 'v_17', // Praça do Príncipe Real → Príncipe Real Garden
+  v_19: 'v_17', // Praça do Príncipe Real → Jardim do Príncipe Real
   v_32: 'v_31', // Estrela Park → Jardim da Estrela
 };
 
@@ -464,7 +464,7 @@ const entries: (Venue | null)[] = [
       "Lively Baixa square ringed by pastel buildings, with café terraces along the south side.",
   }),
   venue({
-    name: 'Rossio Square',
+    name: 'Praça do Rossio',
     category: 'square',
     lat: 38.713453,
     lng: -9.139278,
@@ -563,7 +563,7 @@ const entries: (Venue | null)[] = [
 
   // --- Príncipe Real (38.7170, -9.1480) ---
   venue({
-    name: 'Príncipe Real Garden',
+    name: 'Jardim do Príncipe Real',
     category: 'park',
     lat: 38.71604,
     lng: -9.14863,
@@ -600,7 +600,7 @@ const entries: (Venue | null)[] = [
     descriptionEn:
       "Well-loved neighbourhood bistro with a few outdoor tables that fill with sun at midday.",
   }),
-  // Doublon de Príncipe Real Garden (même jardin, même cèdre) : retiré.
+  // Doublon de Jardim do Príncipe Real (même jardin, même cèdre) : retiré.
   retired(),
 
   // --- Alfama (38.7125, -9.1295) ---
