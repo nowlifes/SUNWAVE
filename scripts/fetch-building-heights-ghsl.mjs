@@ -52,6 +52,7 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { fromFile } from 'geotiff';
+import { readBuildingsLiteral } from './lib/pack-buildings.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUT_FILE = join(__dirname, '../src/data/lisbonBuildingHeightsGHSL.ts');
@@ -82,13 +83,7 @@ function tileForLatLng(lat, lng) {
  *  RAW_BUILDINGS literal is plain JSON, readable without evaluating the module. */
 function readFootprints() {
   const src = readFileSync(BUILDINGS_FILE, 'utf8');
-  const marker = 'const RAW_BUILDINGS: RawBuilding[] = ';
-  const start = src.indexOf(marker);
-  if (start < 0) throw new Error('RAW_BUILDINGS not found — did the data format change?');
-  const open = src.indexOf('[', start + marker.length);
-  const end = src.indexOf('];', open);
-  if (open < 0 || end < 0) throw new Error('could not delimit the RAW_BUILDINGS literal');
-  const raw = JSON.parse(src.slice(open, end + 1));
+  const raw = readBuildingsLiteral(src);
   return raw.map((b) => b[1]); // [osmId, [[lat,lng],...], heightM, heightSourceIndex]
 }
 

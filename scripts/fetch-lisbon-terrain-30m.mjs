@@ -60,6 +60,7 @@ import { writeFileSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { fromUrl } from 'geotiff';
+import { readBuildingsLiteral } from './lib/pack-buildings.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // One fine grid per region, not one rectangle over everything: a box from
@@ -103,14 +104,8 @@ function wrapNumbers(nums, perLine) {
  *  so it can be read without evaluating the module or its imports. */
 function readFootprints() {
   const src = readFileSync(BUILDINGS_FILE, 'utf8');
-  const marker = 'const RAW_BUILDINGS: RawBuilding[] = ';
-  const start = src.indexOf(marker);
-  if (start < 0) throw new Error('RAW_BUILDINGS not found — did the data format change?');
-  // From the END of the marker: the marker itself contains a '[' (RawBuilding[]).
-  const open = src.indexOf('[', start + marker.length);
-  const end = src.indexOf('];', open);
-  if (open < 0 || end < 0) throw new Error('could not delimit the RAW_BUILDINGS literal');
-  const raw = JSON.parse(src.slice(open, end + 1));
+  // Lit l'ancien comme le nouveau format compact (scripts/lib/pack-buildings.mjs).
+  const raw = readBuildingsLiteral(src);
   // [osmId, [[lat,lng],...], heightM, heightSourceIndex]
   return raw.map((b) => b[1]).filter((ring) => KEEP(ring[0]));
 }
