@@ -41,6 +41,8 @@ interface NowScreenProps {
   currentDate: Date;
   userLocation: GeoPoint;
   locationGranted: boolean;
+  /** Position demandée, pas encore reçue : pas de lieu à proposer. */
+  locating?: boolean;
   /** Position GPS obtenue mais hors de Lisbonne : on mesure depuis le centre. */
   outsideLisbon: boolean;
   onModeChange: (mode: SunMode) => void;
@@ -76,6 +78,7 @@ export function NowScreen({
   currentDate,
   userLocation,
   locationGranted,
+  locating = false,
   outsideLisbon,
   onModeChange,
   onVenueSelect,
@@ -273,7 +276,16 @@ export function NowScreen({
         )}
 
         {/* --- la réponse --------------------------------------------------- */}
-        {nightShade ? (
+        {locating && !nightShade ? (
+          <section className="bain-answer mt-7" aria-busy="true">
+            <h2 className="bain-headline">{tr('Je te localise…', 'Finding you…')}</h2>
+            <p className="bain-detail">
+              {isSun
+                ? tr('Pour te montrer le soleil le plus proche.', 'To show you the nearest sun.')
+                : tr("Pour te montrer l'ombre la plus proche.", 'To show you the nearest shade.')}
+            </p>
+          </section>
+        ) : nightShade ? (
           <section className="bain-answer mt-7">
             <h2 className="bain-headline">{tr("Il fait nuit : l'ombre est partout.", 'It’s night: shade is everywhere.')}</h2>
             <p className="bain-detail">
@@ -317,10 +329,10 @@ export function NowScreen({
           </section>
         )}
 
-        {trail && <SunTrailCard trail={trail} onSelect={onVenueSelect} />}
+        {!locating && trail && <SunTrailCard trail={trail} onSelect={onVenueSelect} />}
 
         {/* --- le filet, toujours visible ----------------------------------- */}
-        {!nightShade && alternatives.length > 0 && (
+        {!locating && !nightShade && alternatives.length > 0 && (
           <section className="bain-low">
             <h2 className="bain-also">{isSun ? tr('Aussi au soleil', 'Also in the sun') : tr('Aussi au frais', 'Also in the shade')}</h2>
             {alternatives.map((alt) => (

@@ -78,6 +78,9 @@ export default function App() {
   const followNowRef = useRef(true);
   const [userLocation, setUserLocation] = useState<GeoPoint>(LISBON_CENTER);
   const [locationGranted, setLocationGranted] = useState(false);
+  // Tant que la position n'est pas là, l'écran Maintenant attend au lieu de
+  // proposer un lieu depuis le centre qu'il remplacerait sous les yeux.
+  const [locating, setLocating] = useState(true);
   const [outsideLisbon, setOutsideLisbon] = useState(false);
   const [locationRequested, setLocationRequested] = useState(false);
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(invitedVenueId);
@@ -150,10 +153,14 @@ export default function App() {
   useEffect(() => {
     if (!locationRequested) {
       setLocationRequested(true);
+      // Invite de position laissée sans réponse : le délai de getCurrentPosition
+      // ne court qu'après l'accord (spécification W3C). On n'attend pas plus de 4 s.
+      setTimeout(() => setLocating(false), 4000);
       LocationService.getCurrentLocation().then((loc) => {
         setUserLocation(loc.coords);
         setLocationGranted(loc.granted);
         setOutsideLisbon(loc.outsideLisbon);
+        setLocating(false);
         if (loc.granted) {
           setMapCenter(loc.coords);
         }
@@ -270,6 +277,7 @@ export default function App() {
             currentDate={currentDate}
             userLocation={userLocation}
             locationGranted={locationGranted}
+            locating={locating}
             outsideLisbon={outsideLisbon}
             autoTemperature={autoTemperature}
             onModeChange={handleModeChange}
