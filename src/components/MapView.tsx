@@ -1009,7 +1009,12 @@ export function MapView({
 
   return (
     <div className="relative h-full w-full overflow-hidden">
-      <div ref={containerRef} className="absolute inset-0" style={{ background: C.night }} />
+      {/* `!absolute` : MapLibre donne à son conteneur la classe `.maplibregl-map`
+          (position: relative). Depuis que la carte est chargée à la demande, sa
+          feuille de style arrive APRÈS celle de Tailwind et l'emporte à
+          spécificité égale : le conteneur redevenait `relative`, `inset-0` ne
+          comptait plus et la carte tombait à 96 px de haut. */}
+      <div ref={containerRef} className="!absolute inset-0" style={{ background: C.night }} />
       {mapError && (
         <p role="alert" className="absolute inset-x-4 top-20 z-10 rounded-2xl bg-dusk-panel px-4 py-3 text-[13px] text-dusk-shell">
           {tr(`La carte n'a pas pu se charger (${mapError}).`, `The map couldn’t load (${mapError}).`)}

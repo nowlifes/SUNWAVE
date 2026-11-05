@@ -88,3 +88,21 @@ test('les arrêts du parcours se touchent sur 44 px', async ({ page }) => {
   });
   expect(touchable).toBeGreaterThanOrEqual(44);
 });
+
+// Régression du 2026-11-04 : la feuille de style de MapLibre (chargée avec la
+// carte, donc APRÈS Tailwind) redonnait `position: relative` au conteneur de la
+// carte ; `inset-0` ne comptait plus et elle tombait à 96 px de haut, sans
+// aucune erreur dans la console. Les tests ne regardaient que « un canvas existe ».
+test('la carte remplit tout l’écran (pas 96 px)', async ({ page }) => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await openApp(page);
+  await goTab(page, 'Carte');
+  const canvas = page.locator('.maplibregl-map canvas.maplibregl-canvas');
+  await expect(canvas).toBeVisible({ timeout: 15_000 });
+  const m = await page.evaluate(() => {
+    const map = document.querySelector('.maplibregl-map') as HTMLElement;
+    return { h: map.getBoundingClientRect().height, w: map.getBoundingClientRect().width, pos: getComputedStyle(map).position, H: innerHeight, W: innerWidth };
+  });
+  expect(m.pos, 'le conteneur de la carte doit rester absolu').toBe('absolute');
+  expect(m.h, `carte ${m.w}×${m.h} dans un écran ${m.W}×${m.H}`).toBeGreaterThanOrEqual(m.H - 1);
+});
