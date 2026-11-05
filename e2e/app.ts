@@ -30,3 +30,6 @@ export async function openApp(page: Page, geo: Geo = CHIADO) {
 export async function goTab(page: Page, name: string) {
   await page.locator(`${NAV} button`, { hasText: name }).click();
 }
+
+/** « Tu étais à … » : la question posée au retour d'une sortie (M'y emmener). */
+export const TRIP = '[role="group"][aria-label="Retour de sortie"], [role="group"][aria-label="Back from your trip"]';

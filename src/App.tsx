@@ -5,6 +5,7 @@ import { VenueService } from '@/services/VenueService';
 import { WeatherService } from '@/services/WeatherService';
 import { autoMode } from '@/utils/autoMode';
 import { venueIdFromUrl } from '@/utils/share';
+import { rememberTrip } from '@/utils/trip';
 
 import { NowScreen } from '@/components/NowScreen';
 import { DiscoverScreen, DiscoverResults } from '@/components/DiscoverScreen';
@@ -215,9 +216,11 @@ export default function App() {
     const venue = VenueService.getVenueById(venueId);
     if (venue) {
       const url = `https://www.google.com/maps/dir/?api=1&destination=${venue.latitude},${venue.longitude}`;
+      // Mémorisé pour poser « c'était au soleil ? » au retour (voir utils/trip).
+      rememberTrip(venue.id, mode);
       window.open(url, '_blank');
     }
-  }, []);
+  }, [mode]);
 
   const handleSave = useCallback((venueId: string) => {
     setSavedVenueIds((prev) => {

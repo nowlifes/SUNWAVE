@@ -1,11 +1,13 @@
-import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { GeoPoint, SunMode, Venue } from '@/types';
 import type { LiveAnswer } from '@/services/LiveReportService';
 import { liveReports } from '@/services/LiveReportService';
 import { VenueService } from '@/services/VenueService';
 import { isDaylight, liveThanks } from '@/utils/live';
 import { getPseudo, markPseudoAsked, pseudoAsked, setPseudo } from '@/utils/pseudo';
+import { closeTrip, pendingTrip, type Trip } from '@/utils/trip';
 import { LiveQuestion } from './LiveQuestion';
+import { TripBackQuestion } from './TripBackQuestion';
 
 // « Pas maintenant » vaut pour la session, sur tous les écrans : passer d'un
 // onglet à l'autre ne doit pas reposer la question qu'on vient d'écarter.
@@ -38,6 +40,16 @@ export function HereLiveQuestion({ userLocation, locationGranted, mode, hidden =
         : null,
     [locationGranted, userLocation]
   );
+  // La sortie en attente se relit à l'ouverture et au retour au premier plan.
+  const [trip, setTrip] = useState<Trip | null>(() => pendingTrip());
+  useEffect(() => {
+    const sync = () => {
+      if (document.visibilityState === 'visible') setTrip((t) => t ?? pendingTrip());
+    };
+    document.addEventListener('visibilitychange', sync);
+    return () => document.removeEventListener('visibilitychange', sync);
+  }, []);
+  const tripVenue = trip ? VenueService.getVenueById(trip.venueId) ?? null : null;
   const askLive =
     hereVenue && isDaylight(new Date()) && !dismissed.has(hereVenue.id) && !liveReports.hasAnswered(hereVenue.id) ? hereVenue : null;
 
@@ -77,6 +89,24 @@ export function HereLiveQuestion({ userLocation, locationGranted, mode, hidden =
             liveReports.submit(justAnswered.venue, justAnswered.answer, userLocation);
           }
           closeThanks();
+        }}
+      />
+    );
+  }
+  // Plus tard : de retour d'une sortie lancée par « M'y emmener ». Jamais avec
+  // la question sur place — une seule surcouche à la fois.
+  if (trip && tripVenue && !hidden) {
+    return (
+      <TripBackQuestion
+        trip={trip}
+        venue={tripVenue}
+        onAnswer={(answer) => {
+          closeTrip(trip, answer);
+          setTrip(null);
+        }}
+        onDismiss={() => {
+          closeTrip(trip, null);
+          setTrip(null);
         }}
       />
     );
