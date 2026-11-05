@@ -12,9 +12,10 @@ import { getAvatar } from '@/utils/avatar';
 // plutôt que de mentir.
 //
 // Une réponse ne compte que si son auteur est à moins de LIVE_ZONE_M du lieu.
-// Le contrôle est ici, côté client, faute de serveur : quand les réponses
-// seront partagées (LiveStore distant), il devra être refait côté serveur.
-// Une voix par appareil et par lieu : répondre deux fois remplace, ne cumule pas.
+// Le contrôle est fait ici pour répondre tout de suite, puis refait par
+// api/live.ts (150 m, et des limites par adresse IP) : le serveur ne croit pas
+// le client. Une voix par appareil et par lieu : répondre deux fois remplace,
+// ne cumule pas.
 // ---------------------------------------------------------------------------
 
 export type LiveAnswer = 'plenty' | 'few' | 'none';

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { neon } from '@neondatabase/serverless';
 
 // Les réponses « il reste des places ? » partagées entre tous les appareils.
@@ -15,6 +16,14 @@ export type Answer = (typeof ANSWERS)[number];
 /** Le client accepte 100 m ; le serveur laisse 150 m pour l'imprécision du GPS. */
 export const ZONE_M = 150;
 export const TTL_MIN = 45;
+
+/** Garde-fous par adresse IP (le `deviceId` est inventé par le client, il ne
+ *  protège de rien) : au plus IP_MAX_RECENT lieux répondus en IP_WINDOW_MIN
+ *  minutes, et au plus IP_MAX_DEVICES_PER_VENUE appareils par lieu — deux
+ *  téléphones sur le même wifi passent, trente « appareils » fabriqués non. */
+export const IP_WINDOW_MIN = 10;
+export const IP_MAX_RECENT = 10;
+export const IP_MAX_DEVICES_PER_VENUE = 2;
 
 const DEVICE_RE = /^d_[a-z0-9]{6,40}$/;
 const VENUE_RE = /^[A-Za-z0-9_-]{1,80}$/;
@@ -74,6 +83,18 @@ interface Req {
   method?: string;
   body?: unknown;
   query?: Record<string, string | string[] | undefined>;
+  headers?: Record<string, string | string[] | undefined>;
+}
+
+/** Empreinte de l'IP de l'appelant, ou null si elle n'est pas lisible. Vercel
+ *  pose `x-forwarded-for` à la frontière ; on prend la première adresse. Le
+ *  jour UTC sert de sel : la même personne n'a pas la même empreinte demain,
+ *  et l'adresse elle-même n'est jamais écrite en base. */
+export function clientIpHash(headers: Req['headers'], now: Date = new Date()): string | null {
+  const raw = headers?.['x-forwarded-for'];
+  const first = (Array.isArray(raw) ? raw[0] : raw)?.split(',')[0]?.trim();
+  if (!first) return null;
+  return createHash('sha256').update(`${first}|${now.toISOString().slice(0, 10)}`).digest('hex').slice(0, 32);
 }
 interface Res {
   status(code: number): Res;
@@ -118,13 +139,34 @@ export function createHandler(getSql: () => Sql) {
         const d = distanceM(Number(venue[0].lat), Number(venue[0].lng), body.lat, body.lng);
         if (d > ZONE_M) return res.status(403).json({ error: 'too_far' });
 
+        // Fabriquer des voix : même IP, trop de lieux d'un coup, ou trop
+        // d'« appareils » sur un seul lieu. Sans IP lisible (dev local), pas de garde.
+        const ip = clientIpHash(req.headers);
+        if (ip) {
+          const [{ n: recent }] = await sql(
+            `select count(*)::int as n from live_reports
+              where ip_hash = $1 and reported_at > now() - ($2 || ' minutes')::interval
+                and not (venue_id = $3 and device_id = $4)`,
+            [ip, String(IP_WINDOW_MIN), body.venueId, body.deviceId]
+          );
+          const [{ n: others }] = await sql(
+            `select count(distinct device_id)::int as n from live_reports
+              where ip_hash = $1 and venue_id = $2 and device_id <> $3
+                and reported_at > now() - ($4 || ' minutes')::interval`,
+            [ip, body.venueId, body.deviceId, String(TTL_MIN)]
+          );
+          if (Number(recent) >= IP_MAX_RECENT || Number(others) >= IP_MAX_DEVICES_PER_VENUE) {
+            return res.status(429).json({ error: 'rate_limited' });
+          }
+        }
+
         await sql(
-          `insert into live_reports (venue_id, device_id, answer, pseudo, avatar)
-           values ($1, $2, $3, $4, $5)
+          `insert into live_reports (venue_id, device_id, answer, pseudo, avatar, ip_hash)
+           values ($1, $2, $3, $4, $5, $6)
            on conflict (venue_id, device_id)
            do update set answer = excluded.answer, pseudo = excluded.pseudo,
-                         avatar = excluded.avatar, reported_at = now()`,
-          [body.venueId, body.deviceId, body.answer, body.pseudo, body.avatar]
+                         avatar = excluded.avatar, ip_hash = excluded.ip_hash, reported_at = now()`,
+          [body.venueId, body.deviceId, body.answer, body.pseudo, body.avatar, ip]
         );
         await sql(`delete from live_reports where reported_at < now() - interval '3 hours'`);
         return res.status(200).json({ ok: true });
