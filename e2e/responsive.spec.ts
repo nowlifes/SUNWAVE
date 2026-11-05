@@ -5,6 +5,7 @@ import { NAV, goTab, openApp } from './app';
 // visible, chaque cible se touche sur 44 px (zone réelle, pseudo-éléments
 // compris). Tailles CSS des téléphones courants, du plus étroit au plus grand.
 const PHONES: [string, number, number][] = [
+  ['iPhone SE 1re génération', 320, 568],
   ['Galaxy Z Fold (écran ext.)', 344, 882],
   ['Android compact', 360, 640],
   ['Galaxy S24', 360, 780],

@@ -18,6 +18,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { readBuildingsLiteral } from './lib/pack-buildings.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BUILDINGS_FILE = join(__dirname, '../src/data/lisbonBuildings.ts');
@@ -55,7 +56,8 @@ function extractLiteral(src, marker) {
 
 const buildingsSrc = readFileSync(BUILDINGS_FILE, 'utf8');
 const HEIGHT_SOURCES = extractLiteral(buildingsSrc, 'const HEIGHT_SOURCES');
-const RAW_BUILDINGS = extractLiteral(buildingsSrc, 'const RAW_BUILDINGS');
+// Ancien ou nouveau format compact : toujours [osmId, [[lat,lng],...], h, s].
+const RAW_BUILDINGS = readBuildingsLiteral(buildingsSrc);
 
 const ghslSrc = readFileSync(GHSL_FILE, 'utf8');
 const ghsl = extractLiteral(ghslSrc, 'export const lisbonBuildingHeightsGHSL');
