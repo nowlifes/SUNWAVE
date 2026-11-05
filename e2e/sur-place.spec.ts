@@ -39,7 +39,7 @@ for (const width of [320, 390]) {
         await openApp(page, TABERNA);
         const dismiss = page.getByRole('button', { name: 'Pas maintenant' });
         if (await dismiss.count()) await dismiss.click();
-        if (shade) await page.getByText("L'ombre plutôt ?").click();
+        if (shade) await page.getByRole('switch', { name: "Chercher l'ombre" }).click();
         const answer = page.locator('.bain-answer');
         const venue = (await answer.locator('.bain-venue').innerText()).trim();
         const meta = answer.locator('.bain-meta');
